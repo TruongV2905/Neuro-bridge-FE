@@ -61,7 +61,7 @@ const AuthSplitCard = () => {
 
         <div className="relative flex min-h-0 items-center justify-center p-10 md:p-14">
           <div className="flex h-full min-h-0 w-full max-w-md flex-col">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <div className="h-[5em] w-[5em] shrink-0">
                 <Image
                   src={logo}
@@ -77,7 +77,7 @@ const AuthSplitCard = () => {
             <h1 className="text-3xl font-semibold text-slate-900">{title}</h1>
 
 
-            <div className="mt-2 min-h-0 pr-1">
+            <div className="mt-2 pr-1">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.form
                   key={mode}
@@ -87,7 +87,7 @@ const AuthSplitCard = () => {
                   onSubmit={(e) => e.preventDefault()}
                 >
                   {isRegister && (
-                    <label className="block">
+                    <label className="">
                       <span className="mb-1 block text-sm font-medium text-slate-700">Full name</span>
                       <input
                         className="h-12 w-full rounded-full border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500"
@@ -96,7 +96,9 @@ const AuthSplitCard = () => {
                     </label>
                   )}
 
-                  <label className="block">
+                  
+
+                  <label className="">
                     <span className="mb-1 block text-sm font-medium text-slate-700">Email</span>
                     <input
                       type="email"
@@ -105,7 +107,7 @@ const AuthSplitCard = () => {
                     />
                   </label>
 
-                  <label className="block">
+                  <label className="">
                     <span className="mb-1 block text-sm font-medium text-slate-700">Password</span>
                     <div className="relative">
                       <input
@@ -125,7 +127,7 @@ const AuthSplitCard = () => {
                   </label>
 
                   {isRegister && (
-                    <label className="block">
+                    <label className="">
                       <span className="mb-1 block text-sm font-medium text-slate-700">Confirm password</span>
                       <div className="relative">
                         <input

@@ -40,7 +40,7 @@ const AuthSplitCard = () => {
 
   return (
     <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_15%_15%,#5f7bff_0%,#3e5ee0_35%,#8b5cf6_65%,#ec4899_100%)] p-4 md:p-6">
-      <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[28px] bg-white/95 shadow-2xl md:h-[min(600px,calc(100dvh-2rem))] md:grid-cols-[42%_58%]">
+      <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[28px] bg-white/95 shadow-2xl md:h-170 md:grid-cols-[42%_58%]">
         <div className="relative hidden bg-[#0f0a29] md:block">
           <div className="relative h-full w-full overflow-hidden rounded-2xl">
             <video

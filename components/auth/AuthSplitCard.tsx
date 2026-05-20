@@ -3,13 +3,12 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import logo from "@/public/img/Logo.png"
-import logoText from "@/public/img/LogoText.png"
-import googleLogo from "@/public/img/google-logo.png"
+import logo from "@/public/img/Logo.png";
+import logoText from "@/public/img/LogoText.png";
+import googleLogo from "@/public/img/google-logo.png";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
 
 type AuthMode = "login" | "register";
 
@@ -24,10 +23,7 @@ const formMotion = {
   exit: { opacity: 0, y: -18 },
 };
 
-
-
 const AuthSplitCard = () => {
-
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -39,7 +35,7 @@ const AuthSplitCard = () => {
   );
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_15%_15%,#5f7bff_0%,#3e5ee0_35%,#8b5cf6_65%,#ec4899_100%)] p-4 md:p-6">
+    <main className="flex h-screen items-center justify-center [background:var(--gradient)] ">
       <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[28px] bg-white/95 shadow-2xl md:h-170 md:grid-cols-[42%_58%]">
         <div className="relative hidden bg-[#0f0a29] md:block">
           <div className="relative h-full w-full overflow-hidden rounded-2xl">
@@ -85,7 +81,6 @@ const AuthSplitCard = () => {
             </div>
             <h1 className="text-3xl font-semibold text-slate-900">{title}</h1>
 
-
             <div className="mt-2 pr-1">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.form
@@ -97,7 +92,9 @@ const AuthSplitCard = () => {
                 >
                   {isRegister && (
                     <label className="">
-                      <span className="mb-1 block text-sm font-medium text-slate-700">Full name</span>
+                      <span className="mb-1 block text-sm font-medium text-slate-700">
+                        Full name
+                      </span>
                       <Input
                         className="h-12 rounded-full border-slate-200 px-4 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
                         placeholder="Nguyen Van A"
@@ -106,7 +103,9 @@ const AuthSplitCard = () => {
                   )}
 
                   <label className="">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">Email</span>
+                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                      Email
+                    </span>
                     <Input
                       type="email"
                       className="h-12 rounded-2xl border-slate-200 px-4 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
@@ -115,7 +114,9 @@ const AuthSplitCard = () => {
                   </label>
 
                   <label className="">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">Password</span>
+                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                      Password
+                    </span>
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
@@ -130,14 +131,20 @@ const AuthSplitCard = () => {
                         className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full text-slate-500 hover:bg-transparent hover:text-slate-700"
                         aria-label="toggle password"
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
                       </Button>
                     </div>
                   </label>
 
                   {isRegister && (
                     <label className="">
-                      <span className="mb-1 block text-sm font-medium text-slate-700">Confirm password</span>
+                      <span className="mb-1 block text-sm font-medium text-slate-700">
+                        Confirm password
+                      </span>
                       <div className="relative">
                         <Input
                           type={showPassword ? "text" : "password"}
@@ -152,7 +159,11 @@ const AuthSplitCard = () => {
                           className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full text-slate-500 hover:bg-transparent hover:text-slate-700"
                           aria-label="toggle password"
                         >
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          {showPassword ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
                         </Button>
                       </div>
                     </label>
@@ -172,7 +183,9 @@ const AuthSplitCard = () => {
 
                   <div className="mt-2 flex items-center gap-4">
                     <div className="h-px flex-1 bg-slate-300" />
-                    <span className="text-sm font-semibold text-slate-600">OR</span>
+                    <span className="text-sm font-semibold text-slate-600">
+                      OR
+                    </span>
                     <div className="h-px flex-1 bg-slate-300" />
                   </div>
 
@@ -181,8 +194,12 @@ const AuthSplitCard = () => {
                     variant="outline"
                     className="h-12 w-full rounded-2xl border-slate-300 bg-white text-xl font-semibold text-slate-500 hover:bg-slate-50"
                   >
-                    
-                    <Image src={googleLogo} alt="Google" width={28} height={28} />
+                    <Image
+                      src={googleLogo}
+                      alt="Google"
+                      width={28}
+                      height={28}
+                    />
                     Continue with Google
                   </Button>
                 </motion.form>
@@ -190,7 +207,11 @@ const AuthSplitCard = () => {
             </div>
 
             <div className="mt-4 flex shrink-0 items-center justify-center gap-2 text-sm text-slate-500">
-              <span>{isRegister ? "Already have an account?" : "Don't have an account?"}</span>
+              <span>
+                {isRegister
+                  ? "Already have an account?"
+                  : "Don't have an account?"}
+              </span>
               <Button
                 type="button"
                 onClick={() => setMode(isRegister ? "login" : "register")}
@@ -205,6 +226,6 @@ const AuthSplitCard = () => {
       </section>
     </main>
   );
-}
+};
 
-export default AuthSplitCard
+export default AuthSplitCard;

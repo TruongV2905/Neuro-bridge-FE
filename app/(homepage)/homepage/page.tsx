@@ -2,15 +2,35 @@ import React from 'react'
 import HeroBanner from './HeroBanner'
 import Content from './Content'
 import Testimonial from './Testimonial'
+import AppWrap from '@/components/common/AppWrap'
+import NavDots from '@/components/common/NavDots'
 
 const page = () => {
+  const sections = [
+    { id: 'hero', label: 'Hero' },
+    { id: 'content', label: 'Content' },
+    { id: 'testimonial', label: 'Testimonial' },
+  ]
+
   return (
     <div>
-      <HeroBanner/>
+      <NavDots items={sections} />
+
+      <AppWrap id="hero">
+        <HeroBanner />
+      </AppWrap>
+
       <br />
-      <Content/>
+
+      <AppWrap id="content">
+        <Content />
+      </AppWrap>
+
       <br />
-      <Testimonial/>
+
+      <AppWrap id="testimonial">
+        <Testimonial />
+      </AppWrap>
     </div>
   )
 }

@@ -57,7 +57,6 @@ function Button({
   ...props
 }: ButtonProps) {
   
-  // Nếu asChild = true, đổi sang dùng component Slot để chuyển tiếp style xuống Link con
   if (asChild) {
     return (
       <Slot

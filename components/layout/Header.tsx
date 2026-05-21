@@ -1,87 +1,7 @@
-// "use client";
-
-// import Link from "next/link";
-// import { usePathname } from "next/navigation";
-
-// const NAV_LINKS = [
-//   { label: "AI Models", path: "/ai-models" },
-//   { label: "AI Experts", path: "/experts" },
-//   { label: "Support", path: "/support" },
-//   { label: "Contact", path: "/contact" },
-// ];
-
-// export default function Header() {
-//   const pathname = usePathname();
-
-//   return (
-//     <header 
-//       // Tuyệt chiêu xử lý Width ôm trọn và tự căn giữa mọi thiết bị
-//       className="fixed top-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-7xl z-50 
-//                  bg-[#232943] text-white rounded-full px-6 py-3 shadow-lg 
-//                  flex items-center justify-between border border-white/10 backdrop-blur-sm"
-//     >
-//       {/* LOGO */}
-//       <Link href="/" className="flex items-center gap-2">
-//           <img 
-//             src="/img/LogoFull.png" 
-//             alt="Neuro Bridge Logo" 
-//             className="h-10 w-auto object-contain"
-//             // Hiển thị chữ fallback nếu ảnh gặp sự cố load
-//             onError={(e) => {
-//               e.currentTarget.style.display = 'none';
-//               e.currentTarget.parentElement!.innerHTML = '<span class="font-bold text-white text-lg">Neuro Bridge</span>';
-//             }}
-//           />
-//         </Link>
-
-//       {/* MENU NAVIGATION */}
-//       <nav className="hidden md:flex items-center gap-8">
-//         {NAV_LINKS.map((link) => {
-//           const isActive = pathname === link.path;
-//           return (
-//             <Link
-//               key={link.path}
-//               href={link.path}
-//               className={`relative py-1 text-sm font-medium transition-colors duration-300
-//                 ${isActive ? "text-blue-400" : "text-gray-300 hover:text-white"}
-                
-//                 /* Hiệu ứng gạch chân chạy từ trái sang phải */
-//                 after:content-[''] after:absolute after:bottom-0 after:left-0 
-//                 after:h-[2px] after:bg-blue-400 after:transition-all after:duration-300
-//                 ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}
-//               `}
-//             >
-//               {link.label}
-//             </Link>
-//           );
-//         })}
-//       </nav>
-
-//       {/* AUTH BUTTONS */}
-//       <div className="flex items-center gap-4">
-//         <Link 
-//           href="/login" 
-//           className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
-//         >
-//           Login
-//         </Link>
-//         <Link 
-//           href="/register" 
-//           className="px-5 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-700 
-//                      text-white rounded-full transition-all shadow-md shadow-blue-600/20"
-//         >
-//           Register
-//         </Link>
-//       </div>
-//     </header>
-//   );
-// }
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-// Import Button từ Shadcn UI
 import { Button } from "@/components/ui/button"; 
 
 const NAV_LINKS = [
@@ -124,7 +44,6 @@ export default function Header() {
               className={`relative py-1 text-sm font-medium transition-colors duration-300
                 ${isActive ? "text-blue-400" : "text-gray-300 hover:text-white"}
                 
-                /* Hiệu ứng gạch chân chạy từ trái sang phải */
                 after:content-[''] after:absolute after:bottom-0 after:left-0 
                 after:h-[2px] after:bg-blue-400 after:transition-all after:duration-300
                 ${isActive ? "after:w-full" : "after:w-0 hover:after:w-full"}
@@ -136,9 +55,7 @@ export default function Header() {
         })}
       </nav>
 
-      {/* AUTH BUTTONS (Chuẩn cấu trúc Shadcn UI) */}
       <div className="flex items-center gap-4">
-        {/* Nút Login dạng Ghost (chỉ có chữ, trong suốt) */}
         <Button 
           asChild 
           variant="ghost" 
@@ -147,7 +64,6 @@ export default function Header() {
           <Link href="/login">Login</Link>
         </Button>
 
-        {/* Nút Register dạng Default / Primary */}
         <Button 
           asChild 
           className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5"

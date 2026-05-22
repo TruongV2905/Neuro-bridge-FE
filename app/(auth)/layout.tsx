@@ -1,4 +1,5 @@
 import React from "react";
+import AuthFormTransition from "@/components/auth/AuthFormTransition";
 
 function AuthLayout({
   children,
@@ -24,7 +25,7 @@ function AuthLayout({
 
         {/* Right side */}
         <div className="flex h-full items-center justify-center overflow-hidden bg-background px-6 py-8 md:px-10">
-          {children}
+          <AuthFormTransition>{children}</AuthFormTransition>
         </div>
       </section>
     </main>

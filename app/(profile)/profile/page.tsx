@@ -1,16 +1,15 @@
+
+"use client"
+
+import { useState, useRef } from "react"
 import {
-  Bell,
-  MessageSquare,
-  Mic,
-  Search,
-  Sun,
   User,
   Mail,
   Phone,
   MapPin,
   ShieldCheck,
   BadgeCheck,
-  Image,
+  Image as ImageIcon,
   Hash,
   Building2,
   BriefcaseBusiness,
@@ -22,340 +21,254 @@ import {
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
-type UserRole = "CLIENT" | "AI_EXPERT"
-type UserStatus = "ACTIVE" | "INACTIVE"
+// Import types và components tách nhỏ
+import { UserProfile } from "./types"
+import { ProfileHeader } from "./components/profile-header"
+import { FormField } from "./components/form-field"
+import { ReadOnlyItem } from "./components/read-only-item"
+import { RoleSection } from "./components/role-section"
 
-type BaseUser = {
-  userId: string
-  name: string
-  userName: string
-  email: string
-  avatarUrl: string
-  phoneNumber: string
-  address: string
-  role: UserRole
-  status: UserStatus
-}
-
-type ClientProfile = BaseUser & {
-  role: "CLIENT"
-  companyName: string
-  industry: string
-  companyDescription: string
-}
-
-type AIExpertProfile = BaseUser & {
-  role: "AI_EXPERT"
-  portfolio: string
-  completedProjects: number
-  rating: number
-  availabilityStatus: boolean
-}
-
-type UserProfile = ClientProfile | AIExpertProfile
-
-const user: UserProfile = {
+const mockUser: UserProfile = {
   userId: "USR-0002",
-  name: "Alexa Rawles",
+  name: "Thương Nhị Ca",
   userName: "alexarawles",
   email: "alexarawles@gmail.com",
-  avatarUrl: "https://i.pravatar.cc/160?img=47",
+  avatarUrl: "/thuongnhica.png", // Đường dẫn ảnh mặc định trỏ vào thư mục public
   phoneNumber: "+0123456789",
   address: "Ho Chi Minh City, Vietnam",
-  role: "AI_EXPERT",
+  role: "AI_EXPERT", // Bạn có thể chuyển sang "CLIENT" để test giao diện Client
   status: "ACTIVE",
-
   portfolio: "https://portfolio.alexarawles.dev",
   completedProjects: 24,
   rating: 4.8,
   availabilityStatus: true,
+  companyName: "NeuroBridge Solutions Corp",
+  industry: "Artificial Intelligence & SaaS",
+  companyDescription: "Providing cutting-edge AI collaboration tools and expert matching workflows globally."
 }
 
 export default function ProfilePage() {
-  const isClient = user.role === "CLIENT"
-  const isExpert = user.role === "AI_EXPERT"
+  const isClient = mockUser.role === "CLIENT"
+  const isExpert = mockUser.role === "AI_EXPERT"
+
+  // State quản lý avatar động và ref điều khiển File Explorer
+  const [avatar, setAvatar] = useState(mockUser.avatarUrl)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      const localImageUrl = URL.createObjectURL(file)
+      setAvatar(localImageUrl)
+    }
+  }
 
   return (
-    // Sử dụng bg-background và text-foreground chuẩn từ CSS global
-    <main className="min-h-screen bg-background text-foreground">
-      {/* Header đồng bộ màu primary của hệ thống */}
-      <header className="h-[56px] bg-primary text-primary-foreground px-4 shadow-sm">
-        <div className="flex h-full items-center justify-between">
-          <div className="text-xl font-bold tracking-wide">
-            Neuro<span className="text-muted-foreground/80">Bridge</span>
-            <p className="text-[10px] font-normal opacity-60">
-              AI Project Collaboration Platform
-            </p>
+    <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
+      {/* Đồng bộ avatar mới lên Header */}
+      <ProfileHeader user={{ ...mockUser, avatarUrl: avatar }} />
+
+      {/* Banner AI Control Panel */}
+      <section className="relative overflow-hidden bg-gradient-to-r from-[#5f7bff] via-[#3e5ee0] via-[#8b5cf6] to-[#ec4899] px-6 py-6 border-b border-border">
+        <div
+          className="absolute inset-0 opacity-10 mix-blend-overlay z-0"
+          style={{
+            backgroundImage: `linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px), 
+                        linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px)`,
+            backgroundSize: '20px 20px'
+          }}
+        />
+
+        <div className="absolute inset-0 bg-black/15 dark:bg-black/30 z-0" />
+
+        <div className="relative z-10 text-white flex flex-col gap-1.5">
+          <div className="self-start inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white/90 backdrop-blur-md">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+            </span>
+            Profile management
           </div>
 
-          <div className="hidden h-10 w-[360px] items-center rounded-xl bg-primary-foreground/10 px-4 text-primary-foreground/80 md:flex">
-            <span className="mr-2 text-sm">✧</span>
-            <input
-              className="w-full bg-transparent text-xs outline-none placeholder:text-primary-foreground/50 text-primary-foreground"
-              placeholder="Ask AI to manage your projects"
-            />
-            <Mic size={16} className="mr-3 opacity-80" />
-            <Search size={17} />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <IconBox>
-              <Bell size={16} />
-            </IconBox>
-            <IconBox>
-              <MessageSquare size={16} />
-            </IconBox>
-            <IconBox>
-              <Sun size={16} />
-            </IconBox>
-
-            <Button
-              variant="ghost"
-              className="h-10 gap-3 rounded-xl bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
-            >
-              <img
-                src={user.avatarUrl}
-                alt={user.name}
-                className="h-8 w-8 rounded-full object-cover"
-              />
-              <div className="hidden max-w-[120px] text-left leading-tight sm:block">
-                <p className="truncate text-xs font-semibold">{user.name}</p>
-                <p className="truncate text-[10px] opacity-60">
-                  {user.role}
-                </p>
-              </div>
-            </Button>
-          </div>
-        </div>
-      </header>
-
-      {/* Banner phụ sử dụng bg-muted tinh tế thay cho slate cũ */}
-      <section className="relative overflow-hidden bg-muted px-8 py-8 border-b border-border">
-        <div className="relative">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
-            Profile Management
-          </p>
-          <h1 className="mt-2 text-2xl font-extrabold tracking-tight">
-            Welcome back, {user.name}
+          <h1 className="text-xl font-black tracking-tight sm:text-2xl text-white">
+            Welcome,{" "}
+            <span className="bg-gradient-to-r from-[#ffffff] via-purple-200 to-[#fc38da] bg-clip-text text-transparent">
+              {mockUser.name}
+            </span>{" "}
+            <span className="inline-block animate-pulse text-sm text-[#fc38da]">✧</span>
           </h1>
-          <p className="mt-2 max-w-xl text-sm font-medium text-muted-foreground">
-            Manage your account information, profile details, and platform identity.
+
+          <p className="max-w-xl text-xs font-medium text-white/75 leading-normal">
+            Manage your AI node identity and workspace configuration on the <span className="font-bold text-white">NeuroBridge Matrix</span>.
           </p>
         </div>
       </section>
 
+      {/* Main Content Container */}
       <section className="mx-auto max-w-6xl px-6 py-8">
-        {/* Card chính đổi sang dùng bg-card và border-border */}
-        <Card className="overflow-hidden rounded-3xl border border-border bg-card py-0 shadow-md">
-          {/* Banner nhỏ đổi từ gradient màu sang màu đối lập nhẹ của hệ thống */}
-          <div className="h-28 bg-muted border-b border-border" />
+        {/* Card chính với viền màu Gradient */}
+        <Card 
+          style={{
+            backgroundImage: "linear-gradient(var(--card), var(--card)), linear-gradient(to right, #5f7bff 0%, #3e5ee0 35%, #8b5cf6 65%, #ec4899 100%)",
+            backgroundOrigin: "border-box",
+            backgroundClip: "padding-box, border-box"
+          }}
+          className="overflow-hidden rounded-3xl border border-transparent py-0 shadow-lg"
+        >
+          {/* Cover Photo màu Gradient */}
+          <div
+            style={{
+              background: 'linear-gradient(to right, #5f7bff 0%, #3e5ee0 35%, #8b5cf6 65%, #ec4899 100%)'
+            }}
+            className="h-28 border-b border-border/20 relative"
+          >
+            <div className="absolute inset-0 bg-black/5 dark:bg-black/20" />
+          </div>
 
           <CardContent className="px-8 pb-8">
-            <div className="-mt-14 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+            {/* Top Info Banner (Avatar & Name) */}
+            <div className="-mt-14 flex flex-col gap-6 md:flex-row md:items-center md:justify-between relative z-10">
               <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-                <img
-                  src={user.avatarUrl}
-                  alt={user.name}
-                  className="h-32 w-32 rounded-3xl border-4 border-card object-cover shadow-lg"
+                
+                {/* Input file ẩn phục vụ tính năng upload */}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  className="hidden" 
                 />
+
+                {/* Khung chứa Avatar hỗ trợ Hover & Click như Facebook */}
+                <div 
+                  onClick={handleAvatarClick}
+                  className="group/avatar relative h-32 w-32 shrink-0 cursor-pointer overflow-hidden rounded-3xl border-4 border-card shadow-xl transition-transform active:scale-95 bg-muted"
+                >
+                  <img
+                    src={avatar}
+                    alt={mockUser.name}
+                    className="h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 opacity-0 group-hover/avatar:opacity-100 transition-opacity duration-300 text-white gap-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                      <circle cx="12" cy="13" r="3"/>
+                    </svg>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-white/90">Update</span>
+                  </div>
+                </div>
 
                 <div className="pt-0 sm:pt-10">
                   <div className="flex flex-wrap items-center gap-3">
-                    <h2 className="break-words text-3xl font-extrabold tracking-tight md:text-4xl">
-                      {user.name}
-                    </h2> 
-
-                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                    <h2 className="break-words text-3xl font-extrabold tracking-tight md:text-4xl text-card-foreground">
+                      {mockUser.name}
+                    </h2>
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]">
                       <BadgeCheck size={18} />
                     </div>
                   </div>
 
-                  <p className="mt-2 text-base font-semibold text-muted-foreground">
-                    @{user.userName}
-                  </p>
-
-                  <p className="mt-1 break-all text-sm font-medium text-muted-foreground/80">
-                    {user.email}
-                  </p>
+                  <p className="mt-2 text-base font-semibold text-primary">@{mockUser.userName}</p>
+                  <p className="mt-1 break-all text-sm font-medium text-muted-foreground">{mockUser.email}</p>
 
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Badge variant="outline" className="border-border bg-transparent">
+                    <Badge variant="outline" className="border-border text-muted-foreground bg-transparent">
                       {isClient ? "Client" : "AI Expert"}
                     </Badge>
-
-                    <Badge variant="secondary">
-                      {user.status}
+                    <Badge variant="outline" className="border-emerald-500 text-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20">
+                      {mockUser.status}
                     </Badge>
-
-                    <Badge variant="secondary">
+                    <Badge variant="outline" className="border-emerald-500 text-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20">
                       Verified Account
                     </Badge>
                   </div>
                 </div>
               </div>
 
-              <Button variant="default" className="h-11 rounded-2xl px-8 text-sm font-bold shadow-sm">
+              <Button className="h-11 rounded-2xl bg-gradient-to-r from-[#5b51ef] to-[#6366f1] text-white hover:opacity-90 px-8 text-sm font-bold shadow-md transition-opacity">
                 Edit Profile
               </Button>
             </div>
 
             <Separator className="my-8 bg-border" />
 
+            {/* Info Grid Split */}
             <div className="grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
-              {/* Box thông tin cá nhân dùng bg-muted/40 lót nền mượt mà */}
-              <Card className="rounded-2xl border border-border bg-muted/40 shadow-none">
+              {/* Personal Info Box */}
+              <Card className="rounded-2xl border border-border bg-muted/30 shadow-none">
                 <CardHeader>
-                  <CardTitle>Personal Information</CardTitle>
-                  <CardDescription>
-                    Common profile fields for every user.
-                  </CardDescription>
+                  <CardTitle className="text-card-foreground">Personal Information</CardTitle>
+                  <CardDescription className="text-muted-foreground">Common profile fields for every user.</CardDescription>
                 </CardHeader>
-
                 <CardContent>
                   <div className="grid gap-4 md:grid-cols-2">
-                    <FormField
-                      icon={<User size={16} />}
-                      label="Full Name"
-                      value={user.name}
-                    />
-                    <FormField
-                      icon={<User size={16} />}
-                      label="Username"
-                      value={user.userName}
-                    />
-                    <FormField
-                      icon={<Mail size={16} />}
-                      label="Email Address"
-                      value={user.email}
-                    />
-                    <FormField
-                      icon={<Phone size={16} />}
-                      label="Phone Number"
-                      value={user.phoneNumber}
-                    />
-
+                    <FormField icon={<User size={16} />} label="Full Name" value={mockUser.name} />
+                    <FormField icon={<User size={16} />} label="Username" value={mockUser.userName} />
+                    <FormField icon={<Mail size={16} />} label="Email Address" value={mockUser.email} />
+                    <FormField icon={<Phone size={16} />} label="Phone Number" value={mockUser.phoneNumber} />
                     <div className="md:col-span-2">
-                      <FormField
-                        icon={<MapPin size={16} />}
-                        label="Address"
-                        value={user.address}
-                      />
+                      <FormField icon={<MapPin size={16} />} label="Address" value={mockUser.address} />
                     </div>
-
                     <div className="md:col-span-2">
-                      <FormField
-                        icon={<Image size={16} />}
-                        label="Avatar URL"
-                        value={user.avatarUrl}
-                      />
+                      <FormField icon={<ImageIcon size={16} />} label="Avatar URL" value={mockUser.avatarUrl} />
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Box bên phải tài khoản */}
-              <Card className="rounded-2xl border border-border bg-muted/60 shadow-none">
+              {/* Account Info Box */}
+              <Card className="rounded-2xl border border-border bg-muted/50 shadow-none">
                 <CardHeader>
-                  <CardTitle>Account Information</CardTitle>
-                  <CardDescription>System controlled fields.</CardDescription>
+                  <CardTitle className="text-card-foreground">Account Information</CardTitle>
+                  <CardDescription className="text-muted-foreground">System controlled fields.</CardDescription>
                 </CardHeader>
-
                 <CardContent>
                   <div className="space-y-4">
-                    <ReadOnlyItem
-                      icon={<Hash size={17} />}
-                      label="User ID"
-                      value={user.userId}
-                    />
-                    <ReadOnlyItem
-                      icon={<ShieldCheck size={17} />}
-                      label="Role"
-                      value={isClient ? "Client" : "AI Expert"}
-                    />
-                    <ReadOnlyItem
-                      icon={<BadgeCheck size={17} />}
-                      label="Status"
-                      value={user.status}
-                      active
-                    />
+                    <ReadOnlyItem icon={<Hash size={17} />} label="User ID" value={mockUser.userId} />
+                    <ReadOnlyItem icon={<ShieldCheck size={17} />} label="Role" value={isClient ? "Client" : "AI Expert"} />
+                    <ReadOnlyItem icon={<BadgeCheck size={17} />} label="Status" value={mockUser.status} active />
                   </div>
                 </CardContent>
               </Card>
             </div>
 
+            {/* Conditional Client Section (Sửa lỗi ép kiểu an toàn khi đổi role) */}
             {isClient && (
-              <RoleSection
-                title="Client Information"
-                description="Company profile information for client users."
-              >
-                <FormField
-                  icon={<Building2 size={16} />}
-                  label="Company Name"
-                  value={user.companyName}
-                />
-                <FormField
-                  icon={<BriefcaseBusiness size={16} />}
-                  label="Industry"
-                  value={user.industry}
-                />
+              <RoleSection title="Client Information" description="Company profile information for client users.">
+                <FormField icon={<Building2 size={16} />} label="Company Name" value={(mockUser as any).companyName || ""} />
+                <FormField icon={<BriefcaseBusiness size={16} />} label="Industry" value={(mockUser as any).industry || ""} />
                 <div className="md:col-span-2">
-                  <FormField
-                    icon={<FileText size={16} />}
-                    label="Company Description"
-                    value={user.companyDescription}
-                  />
+                  <FormField icon={<FileText size={16} />} label="Company Description" value={(mockUser as any).companyDescription || ""} />
                 </div>
               </RoleSection>
             )}
 
             {isExpert && (
-              <RoleSection
-                title="AI Expert Information"
-                description="Professional information for AI expert users."
-              >
-                <FormField
-                  icon={<Globe size={16} />}
-                  label="Portfolio"
-                  value={user.portfolio}
-                />
-                <FormField
-                  icon={<FolderCheck size={16} />}
-                  label="Completed Projects"
-                  value={String(user.completedProjects)}
-                />
-                <FormField
-                  icon={<Star size={16} />}
-                  label="Rating"
-                  value={String(user.rating)}
-                />
-                <FormField
-                  icon={<Clock size={16} />}
-                  label="Availability Status"
-                  value={user.availabilityStatus ? "Available" : "Unavailable"}
-                />
+              <RoleSection title="AI Expert Information" description="Professional information for AI expert users.">
+                <FormField icon={<Globe size={16} />} label="Portfolio" value={(mockUser as any).portfolio || ""} />
+                <FormField icon={<FolderCheck size={16} />} label="Completed Projects" value={String((mockUser as any).completedProjects || 0)} />
+                <FormField icon={<Star size={16} />} label="Rating" value={String((mockUser as any).rating || 0)} />
+                <FormField icon={<Clock size={16} />} label="Availability Status" value={(mockUser as any).availabilityStatus ? "Available" : "Unavailable"} />
               </RoleSection>
             )}
 
+            {/* Actions Footer */}
             <div className="mt-8 flex justify-end gap-3">
               <Button
                 variant="outline"
-                className="h-10 rounded-xl px-6 font-semibold border-border hover:bg-destructive hover:text-destructive-foreground"
+                className="h-10 rounded-xl px-6 font-semibold border-border text-card-foreground hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors"
               >
                 Cancel
               </Button>
-
-              <Button className="h-10 rounded-xl px-6 font-semibold">
+              <Button className="h-10 rounded-xl bg-gradient-to-r from-[#5b51ef] to-[#6366f1] text-white hover:opacity-90 px-6 font-semibold shadow-md transition-opacity">
                 Save Changes
               </Button>
             </div>
@@ -363,105 +276,5 @@ export default function ProfilePage() {
         </Card>
       </section>
     </main>
-  )
-}
-
-function IconBox({ children }: { children: React.ReactNode }) {
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="relative h-10 w-10 rounded-xl bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
-    >
-      {children}
-    </Button>
-  )
-}
-
-function RoleSection({
-  title,
-  description,
-  children,
-}: {
-  title: string
-  description: string
-  children: React.ReactNode
-}) {
-  return (
-    <Card className="mt-8 rounded-2xl border border-border bg-muted/40 shadow-none">
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-
-      <CardContent>
-        <div className="grid gap-4 md:grid-cols-2">{children}</div>
-      </CardContent>
-    </Card>
-  )
-}
-
-function FormField({
-  label,
-  value,
-  icon,
-}: {
-  label: string
-  value: string
-  icon: React.ReactNode
-}) {
-  return (
-    <div className="group rounded-2xl border border-border bg-muted/30 p-4 transition-all duration-300 hover:border-primary/50 hover:bg-muted/10 hover:shadow-sm">
-      <label className="mb-2 block text-xs font-bold text-muted-foreground group-hover:text-foreground">
-        {label}
-      </label>
-
-      <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 group-hover:text-foreground">
-          {icon}
-        </div>
-
-        <Input
-          defaultValue={value}
-          className="h-11 rounded-xl border border-input bg-card pl-10 text-sm font-medium text-foreground focus-visible:ring-1 focus-visible:ring-ring"
-        />
-      </div>
-    </div>
-  )
-}
-
-function ReadOnlyItem({
-  icon,
-  label,
-  value,
-  active,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  active?: boolean
-}) {
-  return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-border bg-muted/50 p-4 transition-all duration-300 hover:border-border hover:bg-muted/20">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground">
-        {icon}
-      </div>
-
-      <div>
-        <p className="text-xs font-semibold text-muted-foreground">
-          {label}
-        </p>
-
-        <p
-          className={
-            active
-              ? "text-sm font-bold text-foreground opacity-90"
-              : "text-sm font-bold text-foreground"
-          }
-        >
-          {value}
-        </p>
-      </div>
-    </div>
   )
 }

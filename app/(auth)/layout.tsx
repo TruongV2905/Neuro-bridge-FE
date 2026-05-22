@@ -24,7 +24,7 @@ function AuthLayout({
         </div>
 
         {/* Right side */}
-        <div className="flex h-full items-center justify-center overflow-hidden bg-background px-6 py-8 md:px-10">
+        <div className="flex h-full items-start justify-center overflow-hidden bg-background px-6 py-8 md:px-10">
           <AuthFormTransition>{children}</AuthFormTransition>
         </div>
       </section>

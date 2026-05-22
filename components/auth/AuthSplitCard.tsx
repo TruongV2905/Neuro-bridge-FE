@@ -3,9 +3,12 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import clsx from "clsx";
-import logo from "@/public/img/Logo.png"
+import logo from "@/public/img/Logo.png";
+import logoText from "@/public/img/LogoText.png";
+import googleLogo from "@/public/img/google-logo.png";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type AuthMode = "login" | "register";
 
@@ -20,10 +23,7 @@ const formMotion = {
   exit: { opacity: 0, y: -18 },
 };
 
-
-
 const AuthSplitCard = () => {
-
   const [mode, setMode] = useState<AuthMode>("login");
   const [showPassword, setShowPassword] = useState(false);
 
@@ -35,12 +35,12 @@ const AuthSplitCard = () => {
   );
 
   return (
-    <main className="flex min-h-dvh items-center justify-center bg-[radial-gradient(circle_at_15%_15%,#5f7bff_0%,#3e5ee0_35%,#8b5cf6_65%,#ec4899_100%)] p-4 md:p-6">
-      <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[28px] bg-white/95 shadow-2xl md:h-[min(600px,calc(100dvh-2rem))] md:grid-cols-[42%_58%]">
-        <div className="relative hidden bg-[#0f0a29] p-4 md:block">
+    <main className="flex h-screen items-center justify-center [background:var(--gradient)] ">
+      <section className="mx-auto grid w-full max-w-4xl overflow-hidden rounded-[28px] bg-white/95 shadow-2xl md:h-170 md:grid-cols-[42%_58%]">
+        <div className="relative hidden bg-[#0f0a29] md:block">
           <div className="relative h-full w-full overflow-hidden rounded-2xl">
             <video
-              className="absolute h-full w-full object-cover"
+              className="absolute h-full w-full object-cover transform scale-150"
               autoPlay
               muted
               loop
@@ -59,10 +59,10 @@ const AuthSplitCard = () => {
           />
         </div>
 
-        <div className="relative flex min-h-0 items-center justify-center p-10 md:p-14">
+        <div className="relative flex min-h-0 items-center justify-center p-10 md:p-4">
           <div className="flex h-full min-h-0 w-full max-w-md flex-col">
             <div className="flex items-center justify-center gap-2">
-              <div className="h-[5em] w-[5em] shrink-0">
+              <div className="h-20 w-30 shrink-0">
                 <Image
                   src={logo}
                   alt="Neuro Bridge logo"
@@ -70,12 +70,16 @@ const AuthSplitCard = () => {
                   priority
                 />
               </div>
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-600">
-                Neuro Bridge
-              </p>
+              <div className="h-[7em] w-[20em] shrink-0">
+                <Image
+                  src={logoText}
+                  alt="Neuro Bridge logo"
+                  className="h-full w-full object-contain"
+                  priority
+                />
+              </div>
             </div>
             <h1 className="text-3xl font-semibold text-slate-900">{title}</h1>
-
 
             <div className="mt-2 pr-1">
               <AnimatePresence mode="wait" initial={false}>
@@ -88,94 +92,140 @@ const AuthSplitCard = () => {
                 >
                   {isRegister && (
                     <label className="">
-                      <span className="mb-1 block text-sm font-medium text-slate-700">Full name</span>
-                      <input
-                        className="h-12 w-full rounded-full border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500"
+                      <span className="mb-1 block text-sm font-medium text-slate-700">
+                        Full name
+                      </span>
+                      <Input
+                        className="h-12 rounded-full border-slate-200 px-4 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
                         placeholder="Nguyen Van A"
                       />
                     </label>
                   )}
 
-                  
-
                   <label className="">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">Email</span>
-                    <input
+                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                      Email
+                    </span>
+                    <Input
                       type="email"
-                      className="h-12 w-full rounded-full border border-slate-200 px-4 text-sm outline-none transition focus:border-blue-500"
+                      className="h-12 rounded-2xl border-slate-200 px-4 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
                       placeholder="you@email.com"
                     />
                   </label>
 
                   <label className="">
-                    <span className="mb-1 block text-sm font-medium text-slate-700">Password</span>
+                    <span className="mb-1 block text-sm font-medium text-slate-700">
+                      Password
+                    </span>
                     <div className="relative">
-                      <input
+                      <Input
                         type={showPassword ? "text" : "password"}
-                        className="h-12 w-full rounded-full border border-slate-200 px-4 pr-11 text-sm outline-none transition focus:border-blue-500"
+                        className="h-12 rounded-2xl border-slate-200 px-4 pr-11 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
                         placeholder="••••••••"
                       />
-                      <button
+                      <Button
                         type="button"
                         onClick={() => setShowPassword((s) => !s)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full text-slate-500 hover:bg-transparent hover:text-slate-700"
                         aria-label="toggle password"
                       >
-                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                      </button>
+                        {showPassword ? (
+                          <EyeOff size={18} />
+                        ) : (
+                          <Eye size={18} />
+                        )}
+                      </Button>
                     </div>
                   </label>
 
                   {isRegister && (
                     <label className="">
-                      <span className="mb-1 block text-sm font-medium text-slate-700">Confirm password</span>
+                      <span className="mb-1 block text-sm font-medium text-slate-700">
+                        Confirm password
+                      </span>
                       <div className="relative">
-                        <input
+                        <Input
                           type={showPassword ? "text" : "password"}
-                          className="h-12 w-full rounded-full border border-slate-200 px-4 pr-11 text-sm outline-none transition focus:border-blue-500"
+                          className="h-12 rounded-full border-slate-200 px-4 pr-11 text-sm focus-visible:border-blue-500 focus-visible:ring-0"
                           placeholder="••••••••"
                         />
-                        <button
+                        <Button
                           type="button"
                           onClick={() => setShowPassword((s) => !s)}
-                          className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-2 top-1/2 h-8 w-8 -translate-y-1/2 rounded-full text-slate-500 hover:bg-transparent hover:text-slate-700"
                           aria-label="toggle password"
                         >
-                          {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                        </button>
+                          {showPassword ? (
+                            <EyeOff size={18} />
+                          ) : (
+                            <Eye size={18} />
+                          )}
+                        </Button>
                       </div>
                     </label>
                   )}
 
-                  <button
-                    className={clsx(
-                      "mt-3 h-12 w-full rounded-full text-sm font-semibold text-white transition",
+                  <Button
+                    type="submit"
+                    variant="default"
+                    className={`mt-3 h-12 w-full rounded-2xl text-sm font-semibold text-white transition ${
                       isRegister
                         ? "bg-fuchsia-600 hover:bg-fuchsia-500"
-                        : "bg-blue-600 hover:bg-blue-500",
-                    )}
+                        : "bg-blue-600 hover:bg-blue-500"
+                    }`}
                   >
                     {isRegister ? "Create Account" : "Login"}
-                  </button>
+                  </Button>
+
+                  <div className="mt-2 flex items-center gap-4">
+                    <div className="h-px flex-1 bg-slate-300" />
+                    <span className="text-sm font-semibold text-slate-600">
+                      OR
+                    </span>
+                    <div className="h-px flex-1 bg-slate-300" />
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-12 w-full rounded-2xl border-slate-300 bg-white text-xl font-semibold text-slate-500 hover:bg-slate-50"
+                  >
+                    <Image
+                      src={googleLogo}
+                      alt="Google"
+                      width={28}
+                      height={28}
+                    />
+                    Continue with Google
+                  </Button>
                 </motion.form>
               </AnimatePresence>
             </div>
 
             <div className="mt-4 flex shrink-0 items-center justify-center gap-2 text-sm text-slate-500">
-              <span>{isRegister ? "Already have an account?" : "Don't have an account?"}</span>
-              <button
+              <span>
+                {isRegister
+                  ? "Already have an account?"
+                  : "Don't have an account?"}
+              </span>
+              <Button
                 type="button"
                 onClick={() => setMode(isRegister ? "login" : "register")}
-                className="font-semibold text-blue-600 hover:text-blue-500"
+                variant="link"
+                className="h-auto p-0 font-semibold text-blue-600 hover:text-blue-500"
               >
                 {isRegister ? "Sign in" : "Sign up"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       </section>
     </main>
   );
-}
+};
 
-export default AuthSplitCard
+export default AuthSplitCard;

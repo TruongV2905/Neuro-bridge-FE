@@ -6,7 +6,7 @@ interface Props {
   children: ReactNode;
 }
 
-export default function PageContainer({
+export default function PageWrapper({
   title,
   description,
   children,

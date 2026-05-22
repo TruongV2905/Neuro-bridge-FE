@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 
 interface Props {
-  title: string
+  title?: string
   onCreate?: () => void
 }
 
@@ -21,14 +21,14 @@ export function CrudToolbar({
         </h1>
 
         <p className="text-sm text-muted-foreground">
-          Manage all {title.toLowerCase()}
+          Manage all {title?.toLowerCase()}
         </p>
       </div>
 
       {/* RIGHT */}
       <div className="flex items-center gap-3">
         <Input
-          placeholder={`Search ${title.toLowerCase()}...`}
+          placeholder={`Search ${title?.toLowerCase()}...`}
           className="w-64"
         />
 

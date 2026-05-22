@@ -6,6 +6,8 @@ import { useState } from "react"
 import { CrudModal } from "./CrudModal"
 import { CrudToolbar } from "./CrudToolbar"
 import { TablePagination } from "../table/TablePagination"
+// Import PageWrapper mới
+import PageWrapper from "@/components/common/PageWrapper"
 
 export function CrudPage<T extends object>({
   config,
@@ -74,71 +76,79 @@ export function CrudPage<T extends object>({
   const endItem = Math.min(endIndex, totalItems)
 
   return (
-    <div className="space-y-6">
-      <CrudToolbar
-        title={config.title}
-        onCreate={handleCreate}
-      />
-      <CrudModal<T>
-        open={isOpen}
-        onClose={() => setIsOpen(false)}
-        onSubmit={handleSubmit}
-        fields={config.fields}
-        formData={formData}
-        setFormData={setFormData}
-        isEdit={editingIndex !== null}
-      />
+    // Sử dụng PageWrapper bao bọc toàn bộ nội dung
+    <PageWrapper 
+      title={config.title} 
+      description={`Quản lý danh mục ${config.title.toLowerCase()}`}
+    >
+      <div className="space-y-6">
+        <CrudToolbar
+          // Đã bỏ title ở đây vì PageWrapper đã lo phần hiển thị tiêu đề
+          onCreate={handleCreate}
+        />
+        
+        <CrudModal<T>
+          open={isOpen}
+          onClose={() => setIsOpen(false)}
+          onSubmit={handleSubmit}
+          fields={config.fields}
+          formData={formData}
+          setFormData={setFormData}
+          isEdit={editingIndex !== null}
+        />
 
-      <DataTable
-        columns={config.columns}
-        data={paginatedData}
-        // Pagination info for toolbar
-        paginationInfo={{
-          startItem,
-          endItem,
-          totalItems,
-        }}
-        pageSize={pageSize}
-          pageSizeOptions={pageSizeOptions}
-          onPageSizeChange={(size) => {
-            setPageSize(size)
-            setCurrentPage(1)
+        <DataTable
+          columns={config.columns}
+          data={paginatedData}
+          // Pagination info for toolbar
+          paginationInfo={{
+            startItem,
+            endItem,
+            totalItems,
           }}
-        actions={[
-          {
-            type: "edit",
-            label: "Edit",
-            onClick: (row) => {
-              const index = data.indexOf(row)
-              handleEdit(row, index)
-            },
-          },
-          {
-            type: "delete",
-            label: "Delete",
-            onClick: (row) => {
-              const index = data.indexOf(row)
-              handleDelete(index)
-            },
-          },
-        ]}
-      />
-      {config.table?.pagination && (
-        <TablePagination
-          currentPage={currentPage}
-          totalPages={totalPages}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}
-          totalItems={totalItems}
-          startItem={startItem}
-          endItem={endItem}
-          onPageChange={setCurrentPage}
           onPageSizeChange={(size) => {
             setPageSize(size)
             setCurrentPage(1)
           }}
+          actions={[
+            {
+              type: "edit",
+              label: "Edit",
+              onClick: (row) => {
+                const index = data.indexOf(row)
+                handleEdit(row, index)
+              },
+            },
+            {
+              type: "delete",
+              label: "Delete",
+              onClick: (row) => {
+                const index = data.indexOf(row)
+                handleDelete(index)
+              },
+            },
+          ]}
         />
-      )}
-    </div>
+        
+        {config.table?.pagination && (
+          <TablePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            pageSize={pageSize}
+            pageSizeOptions={pageSizeOptions}
+            totalItems={totalItems}
+            startItem={startItem}
+            endItem={endItem}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => {
+              setPageSize(size)
+              setCurrentPage(1)
+            }}
+          />
+        )}
+      </div>
+    </PageWrapper>
   )
 }

@@ -1,4 +1,5 @@
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
+import { Slot } from "@radix-ui/react-slot" // Thêm thư viện Slot
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
@@ -40,12 +41,32 @@ const buttonVariants = cva(
   }
 )
 
+// Khai báo kiểu dữ liệu mở rộng có chứa thuộc tính asChild
+export interface ButtonProps 
+  extends ButtonPrimitive.Props, 
+    VariantProps<typeof buttonVariants> {
+  asChild?: boolean
+}
+
 function Button({
   className,
   variant = "default",
   size = "default",
+  asChild = false,
+  style,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: ButtonProps) {
+  
+  if (asChild) {
+    return (
+      <Slot
+        data-slot="button"
+        className={cn(buttonVariants({ variant, size, className }))}
+        {...props}
+      />
+    )
+  }
+
   return (
     <ButtonPrimitive
       data-slot="button"

@@ -22,7 +22,7 @@ function CtaSection() {
           Ready to have a decorated lifestyle?
         </h1>
 
-        <Button asChild variant="cta" size="cta" className="mt-8 shadow-lg shadow-black/20">
+        <Button asChild variant="default" size="lg" className="mt-8 shadow-lg shadow-black/20">
           <Link href="/availableAI">Start Shopping</Link>
         </Button>
       </div>

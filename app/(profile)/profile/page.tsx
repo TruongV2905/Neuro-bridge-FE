@@ -12,201 +12,355 @@ import {
   BadgeCheck,
   Image,
   Hash,
+  Building2,
+  BriefcaseBusiness,
+  FileText,
+  Star,
+  FolderCheck,
+  Globe,
+  Clock,
 } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 
-const user = {
-  userId: "USR-0001",
+type UserRole = "CLIENT" | "AI_EXPERT"
+type UserStatus = "ACTIVE" | "INACTIVE"
+
+type BaseUser = {
+  userId: string
+  name: string
+  userName: string
+  email: string
+  avatarUrl: string
+  phoneNumber: string
+  address: string
+  role: UserRole
+  status: UserStatus
+}
+
+type ClientProfile = BaseUser & {
+  role: "CLIENT"
+  companyName: string
+  industry: string
+  companyDescription: string
+}
+
+type AIExpertProfile = BaseUser & {
+  role: "AI_EXPERT"
+  portfolio: string
+  completedProjects: number
+  rating: number
+  availabilityStatus: boolean
+}
+
+type UserProfile = ClientProfile | AIExpertProfile
+
+const user: UserProfile = {
+  userId: "USR-0002",
   name: "Alexa Rawles",
   userName: "alexarawles",
   email: "alexarawles@gmail.com",
   avatarUrl: "https://i.pravatar.cc/160?img=47",
   phoneNumber: "+0123456789",
   address: "Ho Chi Minh City, Vietnam",
-  role: "ROLE_USER",
+  role: "AI_EXPERT",
   status: "ACTIVE",
+
+  portfolio: "https://portfolio.alexarawles.dev",
+  completedProjects: 24,
+  rating: 4.8,
+  availabilityStatus: true,
 }
 
 export default function ProfilePage() {
+  const isClient = user.role === "CLIENT"
+  const isExpert = user.role === "AI_EXPERT"
+
   return (
-    <main className="min-h-screen bg-[#f7f8fc] text-[#202124]">
-      <header className="h-[56px] bg-gradient-to-r from-[#5b3fd4] via-[#8d3fd1] to-[#465bd6] px-4">
+    // Sử dụng bg-background và text-foreground chuẩn từ CSS global
+    <main className="min-h-screen bg-background text-foreground">
+      {/* Header đồng bộ màu primary của hệ thống */}
+      <header className="h-[56px] bg-primary text-primary-foreground px-4 shadow-sm">
         <div className="flex h-full items-center justify-between">
-          <div className="text-xl font-bold tracking-wide text-[#10105a]">
-            Neuro<span className="text-[#00a7ff]">Bridge</span>
-            <p className="text-[10px] font-normal text-white/60">
+          <div className="text-xl font-bold tracking-wide">
+            Neuro<span className="text-muted-foreground/80">Bridge</span>
+            <p className="text-[10px] font-normal opacity-60">
               AI Project Collaboration Platform
             </p>
           </div>
 
-          <div className="hidden h-10 w-[360px] items-center rounded-xl bg-white/10 px-4 text-white/70 md:flex">
+          <div className="hidden h-10 w-[360px] items-center rounded-xl bg-primary-foreground/10 px-4 text-primary-foreground/80 md:flex">
             <span className="mr-2 text-sm">✧</span>
             <input
-              className="w-full bg-transparent text-xs outline-none placeholder:text-white/55"
+              className="w-full bg-transparent text-xs outline-none placeholder:text-primary-foreground/50 text-primary-foreground"
               placeholder="Ask AI to manage your projects"
             />
-            <Mic size={16} className="mr-3 text-blue-300" />
+            <Mic size={16} className="mr-3 opacity-80" />
             <Search size={17} />
           </div>
 
           <div className="flex items-center gap-3">
-            <IconBox><Bell size={16} /></IconBox>
-            <IconBox><MessageSquare size={16} /></IconBox>
-            <IconBox><Sun size={16} /></IconBox>
+            <IconBox>
+              <Bell size={16} />
+            </IconBox>
+            <IconBox>
+              <MessageSquare size={16} />
+            </IconBox>
+            <IconBox>
+              <Sun size={16} />
+            </IconBox>
 
-            <div className="flex h-10 items-center gap-3 rounded-xl bg-white/12 px-3 text-white">
+            <Button
+              variant="ghost"
+              className="h-10 gap-3 rounded-xl bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20 hover:text-primary-foreground"
+            >
               <img
                 src={user.avatarUrl}
                 alt={user.name}
                 className="h-8 w-8 rounded-full object-cover"
               />
-              <div className="hidden leading-tight sm:block">
-                <p className="text-xs font-semibold">{user.name}</p>
-                <p className="text-[10px] text-white/55">{user.role}</p>
+              <div className="hidden max-w-[120px] text-left leading-tight sm:block">
+                <p className="truncate text-xs font-semibold">{user.name}</p>
+                <p className="truncate text-[10px] opacity-60">
+                  {user.role}
+                </p>
               </div>
-            </div>
+            </Button>
           </div>
         </div>
       </header>
 
-      <section className="relative overflow-hidden bg-gradient-to-r from-[#d9ecff] via-[#eef3ff] to-[#fff4cf] px-8 py-8">
-        <div className="absolute right-10 top-1/2 h-28 w-28 -translate-y-1/2 rounded-full bg-[#7c3aed]/10 blur-2xl" />
-        <div className="absolute right-40 top-4 h-20 w-20 rounded-full bg-[#3f7df4]/10 blur-2xl" />
-
-        <div className="relative flex flex-col gap-2">
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-[#3f7df4]">
+      {/* Banner phụ sử dụng bg-muted tinh tế thay cho slate cũ */}
+      <section className="relative overflow-hidden bg-muted px-8 py-8 border-b border-border">
+        <div className="relative">
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-muted-foreground">
             Profile Management
           </p>
-
-          <h1 className="text-2xl font-extrabold tracking-tight text-[#1f2937]">
+          <h1 className="mt-2 text-2xl font-extrabold tracking-tight">
             Welcome back, {user.name}
           </h1>
-
-          <p className="max-w-xl text-sm font-medium text-gray-600">
+          <p className="mt-2 max-w-xl text-sm font-medium text-muted-foreground">
             Manage your account information, profile details, and platform identity.
           </p>
         </div>
       </section>
 
       <section className="mx-auto max-w-6xl px-6 py-8">
-        <div className="overflow-hidden rounded-3xl bg-white shadow-[0_20px_70px_rgba(30,41,59,0.08)]">
-          <div className="h-28 bg-gradient-to-r from-[#5b6cff] via-[#8b45e8] to-[#23b7ff]" />
+        {/* Card chính đổi sang dùng bg-card và border-border */}
+        <Card className="overflow-hidden rounded-3xl border border-border bg-card py-0 shadow-md">
+          {/* Banner nhỏ đổi từ gradient màu sang màu đối lập nhẹ của hệ thống */}
+          <div className="h-28 bg-muted border-b border-border" />
 
-          <div className="px-8 pb-8">
+          <CardContent className="px-8 pb-8">
             <div className="-mt-14 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-center gap-6">
+              <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
                 <img
                   src={user.avatarUrl}
                   alt={user.name}
-                  className="h-32 w-32 rounded-3xl border-4 border-white object-cover shadow-[0_12px_30px_rgba(0,0,0,0.18)]"
+                  className="h-32 w-32 rounded-3xl border-4 border-card object-cover shadow-lg"
                 />
 
-                <div className="pt-10">
-                  <div className="flex items-center gap-3">
-                    <h2 className="text-4xl font-extrabold tracking-tight text-[#1f2937]">
+                <div className="pt-0 sm:pt-10">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h2 className="break-words text-3xl font-extrabold tracking-tight md:text-4xl">
                       {user.name}
-                    </h2>
+                    </h2> 
 
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-500 shadow-[0_0_20px_rgba(34,197,94,0.45)]">
-                      <BadgeCheck size={18} className="text-white" />
+                    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-md">
+                      <BadgeCheck size={18} />
                     </div>
                   </div>
 
-                  <p className="mt-2 text-base font-semibold text-[#3f7df4]">
+                  <p className="mt-2 text-base font-semibold text-muted-foreground">
                     @{user.userName}
                   </p>
 
-                  <p className="mt-1 text-sm font-medium text-gray-500">
+                  <p className="mt-1 break-all text-sm font-medium text-muted-foreground/80">
                     {user.email}
                   </p>
 
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Badge>{user.role}</Badge>
-                    <Badge variant="success">{user.status}</Badge>
+                    <Badge variant="outline" className="border-border bg-transparent">
+                      {isClient ? "Client" : "AI Expert"}
+                    </Badge>
 
-                    <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600">
+                    <Badge variant="secondary">
+                      {user.status}
+                    </Badge>
+
+                    <Badge variant="secondary">
                       Verified Account
-                    </span>
+                    </Badge>
                   </div>
                 </div>
               </div>
 
-              <Button className="h-11 rounded-2xl bg-[#3f7df4] px-8 text-sm font-bold shadow-[0_10px_25px_rgba(63,125,244,0.28)] transition-all duration-300 hover:-translate-y-1 hover:bg-[#2f69dd] hover:shadow-[0_14px_30px_rgba(63,125,244,0.35)]">
+              <Button variant="default" className="h-11 rounded-2xl px-8 text-sm font-bold shadow-sm">
                 Edit Profile
               </Button>
             </div>
 
-            <div className="mt-10 grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
-              <div className="rounded-2xl border border-gray-100 p-6">
-                <h3 className="mb-6 text-lg font-bold text-black">
-                  Personal Information
-                </h3>
+            <Separator className="my-8 bg-border" />
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <FormField icon={<User size={16} />} label="Full Name" value={user.name} />
-                  <FormField icon={<User size={16} />} label="Username" value={user.userName} />
-                  <FormField icon={<Mail size={16} />} label="Email Address" value={user.email} />
-                  <FormField icon={<Phone size={16} />} label="Phone Number" value={user.phoneNumber} />
-                  <div className="md:col-span-2">
-                    <FormField icon={<MapPin size={16} />} label="Address" value={user.address} />
+            <div className="grid gap-8 lg:grid-cols-[1.5fr_0.8fr]">
+              {/* Box thông tin cá nhân dùng bg-muted/40 lót nền mượt mà */}
+              <Card className="rounded-2xl border border-border bg-muted/40 shadow-none">
+                <CardHeader>
+                  <CardTitle>Personal Information</CardTitle>
+                  <CardDescription>
+                    Common profile fields for every user.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <FormField
+                      icon={<User size={16} />}
+                      label="Full Name"
+                      value={user.name}
+                    />
+                    <FormField
+                      icon={<User size={16} />}
+                      label="Username"
+                      value={user.userName}
+                    />
+                    <FormField
+                      icon={<Mail size={16} />}
+                      label="Email Address"
+                      value={user.email}
+                    />
+                    <FormField
+                      icon={<Phone size={16} />}
+                      label="Phone Number"
+                      value={user.phoneNumber}
+                    />
+
+                    <div className="md:col-span-2">
+                      <FormField
+                        icon={<MapPin size={16} />}
+                        label="Address"
+                        value={user.address}
+                      />
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <FormField
+                        icon={<Image size={16} />}
+                        label="Avatar URL"
+                        value={user.avatarUrl}
+                      />
+                    </div>
                   </div>
-                  <div className="md:col-span-2">
-                    <FormField icon={<Image size={16} />} label="Avatar URL" value={user.avatarUrl} />
+                </CardContent>
+              </Card>
+
+              {/* Box bên phải tài khoản */}
+              <Card className="rounded-2xl border border-border bg-muted/60 shadow-none">
+                <CardHeader>
+                  <CardTitle>Account Information</CardTitle>
+                  <CardDescription>System controlled fields.</CardDescription>
+                </CardHeader>
+
+                <CardContent>
+                  <div className="space-y-4">
+                    <ReadOnlyItem
+                      icon={<Hash size={17} />}
+                      label="User ID"
+                      value={user.userId}
+                    />
+                    <ReadOnlyItem
+                      icon={<ShieldCheck size={17} />}
+                      label="Role"
+                      value={isClient ? "Client" : "AI Expert"}
+                    />
+                    <ReadOnlyItem
+                      icon={<BadgeCheck size={17} />}
+                      label="Status"
+                      value={user.status}
+                      active
+                    />
                   </div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-gray-100 bg-[#fbfcff] p-6">
-                <h3 className="mb-6 text-lg font-bold text-black">
-                  Account Information
-                </h3>
-
-                <div className="space-y-4">
-                  <ReadOnlyItem
-                    icon={<Hash size={17} />}
-                    label="User ID"
-                    value={user.userId}
-                  />
-
-                  <ReadOnlyItem
-                    icon={<ShieldCheck size={17} />}
-                    label="Role"
-                    value={user.role}
-                  />
-
-                  <ReadOnlyItem
-                    icon={<BadgeCheck size={17} />}
-                    label="Status"
-                    value={user.status}
-                    active
-                  />
-                </div>
-
-                <div className="mt-6 rounded-2xl bg-gradient-to-r from-[#eef4ff] to-[#f5efff] p-4">
-                  <p className="text-xs font-semibold text-gray-500">
-                    Account note
-                  </p>
-                  <p className="mt-1 text-sm text-gray-700">
-                    User ID, Role và Status nên để readonly vì đây là thông tin hệ thống quản lý.
-                  </p>
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             </div>
+
+            {isClient && (
+              <RoleSection
+                title="Client Information"
+                description="Company profile information for client users."
+              >
+                <FormField
+                  icon={<Building2 size={16} />}
+                  label="Company Name"
+                  value={user.companyName}
+                />
+                <FormField
+                  icon={<BriefcaseBusiness size={16} />}
+                  label="Industry"
+                  value={user.industry}
+                />
+                <div className="md:col-span-2">
+                  <FormField
+                    icon={<FileText size={16} />}
+                    label="Company Description"
+                    value={user.companyDescription}
+                  />
+                </div>
+              </RoleSection>
+            )}
+
+            {isExpert && (
+              <RoleSection
+                title="AI Expert Information"
+                description="Professional information for AI expert users."
+              >
+                <FormField
+                  icon={<Globe size={16} />}
+                  label="Portfolio"
+                  value={user.portfolio}
+                />
+                <FormField
+                  icon={<FolderCheck size={16} />}
+                  label="Completed Projects"
+                  value={String(user.completedProjects)}
+                />
+                <FormField
+                  icon={<Star size={16} />}
+                  label="Rating"
+                  value={String(user.rating)}
+                />
+                <FormField
+                  icon={<Clock size={16} />}
+                  label="Availability Status"
+                  value={user.availabilityStatus ? "Available" : "Unavailable"}
+                />
+              </RoleSection>
+            )}
 
             <div className="mt-8 flex justify-end gap-3">
               <Button
                 variant="outline"
-                className="h-10 rounded-xl border-2 border-gray-200 px-6 font-semibold text-gray-600 transition-all duration-300 hover:border-red-500 hover:bg-red-500 hover:text-white hover:shadow-[0_10px_25px_rgba(239,68,68,0.25)]"
+                className="h-10 rounded-xl px-6 font-semibold border-border hover:bg-destructive hover:text-destructive-foreground"
               >
                 Cancel
               </Button>
-              <Button className="h-10 rounded-xl bg-[#3f7df4] px-6 font-semibold hover:bg-[#2f69dd]">
+
+              <Button className="h-10 rounded-xl px-6 font-semibold">
                 Save Changes
               </Button>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </section>
     </main>
   )
@@ -214,29 +368,36 @@ export default function ProfilePage() {
 
 function IconBox({ children }: { children: React.ReactNode }) {
   return (
-    <div className="relative flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/80">
+    <Button
+      variant="ghost"
+      size="icon"
+      className="relative h-10 w-10 rounded-xl bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+    >
       {children}
-    </div>
+    </Button>
   )
 }
 
-function Badge({
+function RoleSection({
+  title,
+  description,
   children,
-  variant,
 }: {
+  title: string
+  description: string
   children: React.ReactNode
-  variant?: "success"
 }) {
   return (
-    <span
-      className={
-        variant === "success"
-          ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-600"
-          : "rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-blue-600"
-      }
-    >
-      {children}
-    </span>
+    <Card className="mt-8 rounded-2xl border border-border bg-muted/40 shadow-none">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <div className="grid gap-4 md:grid-cols-2">{children}</div>
+      </CardContent>
+    </Card>
   )
 }
 
@@ -250,19 +411,19 @@ function FormField({
   icon: React.ReactNode
 }) {
   return (
-    <div className="group rounded-2xl border-2 border-gray-200 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#3f7df4] hover:bg-[#fbfdff] hover:shadow-[0_14px_35px_rgba(63,125,244,0.18)]">
-      <label className="mb-2 block text-xs font-bold text-gray-600 transition-colors duration-300 group-hover:text-[#3f7df4]">
+    <div className="group rounded-2xl border border-border bg-muted/30 p-4 transition-all duration-300 hover:border-primary/50 hover:bg-muted/10 hover:shadow-sm">
+      <label className="mb-2 block text-xs font-bold text-muted-foreground group-hover:text-foreground">
         {label}
       </label>
 
       <div className="relative">
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 transition-all duration-300 group-hover:scale-110 group-hover:text-[#3f7df4]">
+        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/70 group-hover:text-foreground">
           {icon}
         </div>
 
         <Input
           defaultValue={value}
-          className="h-11 rounded-xl border-2 border-gray-200 bg-[#f8fafc] pl-10 text-sm font-medium text-gray-800 transition-all duration-300 focus-visible:ring-2 focus-visible:ring-[#3f7df4] focus-visible:border-[#3f7df4] group-hover:border-[#3f7df4] group-hover:bg-white"
+          className="h-11 rounded-xl border border-input bg-card pl-10 text-sm font-medium text-foreground focus-visible:ring-1 focus-visible:ring-ring"
         />
       </div>
     </div>
@@ -281,21 +442,21 @@ function ReadOnlyItem({
   active?: boolean
 }) {
   return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-gray-100 bg-white p-4 transition-all duration-300 hover:-translate-y-1 hover:border-[#3f7df4]/40 hover:bg-[#fbfdff] hover:shadow-[0_14px_35px_rgba(63,125,244,0.14)]">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef4ff] text-[#3f7df4] transition-all duration-300 group-hover:scale-110 group-hover:bg-[#3f7df4] group-hover:text-white">
+    <div className="group flex items-center gap-4 rounded-2xl border border-border bg-muted/50 p-4 transition-all duration-300 hover:border-border hover:bg-muted/20">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-foreground group-hover:bg-primary group-hover:text-primary-foreground">
         {icon}
       </div>
 
       <div>
-        <p className="text-xs font-semibold text-gray-400 transition-colors group-hover:text-[#3f7df4]">
+        <p className="text-xs font-semibold text-muted-foreground">
           {label}
         </p>
 
         <p
           className={
             active
-              ? "text-sm font-bold text-emerald-600"
-              : "text-sm font-bold text-gray-800"
+              ? "text-sm font-bold text-foreground opacity-90"
+              : "text-sm font-bold text-foreground"
           }
         >
           {value}

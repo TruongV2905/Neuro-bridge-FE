@@ -24,7 +24,7 @@ export function Modal({ open, onClose, title, children }: ModalProps) {
     return () => {
       window.removeEventListener("keydown", handleEsc)
     }
-  }, [open, onClose]) // 👈 nhớ thêm onClose
+  }, [open, onClose])
 
   if (!open) return null
 

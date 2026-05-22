@@ -9,7 +9,7 @@ export default function DashboardLayout({
     <div className="flex min-h-screen flex-col bg-slate-50">
       
       {/* Wrapper bọc Header để tạo khoảng cách (padding) cho nó nổi lên */}
-      <div className="pt-6 px-6 mb-6">
+      <div className="pt-6 px-6 mb-6">  
         <Header />
       </div>
 

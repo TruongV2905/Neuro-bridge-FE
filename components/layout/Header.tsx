@@ -16,14 +16,14 @@ export default function Header() {
   const pathname = usePathname();
 
   return (
-    <header className="  top-4 flex w-full  items-center justify-between rounded-full border border-border/80 bg-linear-to-r from-[#ffffff] via-[#b7f1ff] to-[#e5d1ff] px-6 py-3 text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.08)] backdrop-blur-md">
+    <header className="fixed left-1/2 top-4 z-100 flex w-[75%] -translate-x-1/2 items-center justify-between rounded-full border border-white/40 bg-linear-to-r to-white/40 via-[#4562f0]/40 from-[#d9ffbb]/40 bg-clip-padding px-6 py-3 text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-md">
       <Link href="/" className="flex items-center gap-2">
         <Image
-          src="/img/LogoFull.png"
+          src="/img/MainLogo.png"
           alt="Neuro Bridge Logo"
-          width={200}
-          height={50}
-          className="h-10 w-auto object-contain"
+          width={350}
+          height={70}
+          className="h-10 object-contain object-left"
           quality={100}
           priority
           onError={(e) => {
@@ -41,7 +41,7 @@ export default function Header() {
             <Link
               key={link.path}
               href={link.path}
-              className={`relative rounded-full px-3 py-1.5 text-sm font-medium transition-colors duration-200
+              className={`relative rounded-full px-3 py-1.5 text-sm font-medium text-white transition-colors duration-200
                 ${isActive ? "bg-primary/12 text-primary" : "text-foreground/70 hover:bg-muted hover:text-foreground"}`}
             >
               {link.label}

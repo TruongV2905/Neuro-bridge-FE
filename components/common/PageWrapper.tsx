@@ -12,9 +12,9 @@ export default function PageWrapper({
   children,
 }: Props) {
   return (
-    <div className="space-y-6">
+    <div className="p-6 md:p-8 space-y-6 w-full">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           {title}
         </h1>
 
@@ -25,7 +25,9 @@ export default function PageWrapper({
         )}
       </div>
 
-      {children}
+      <div className="w-full">
+        {children}
+      </div>
     </div>
   );
-}
+} 

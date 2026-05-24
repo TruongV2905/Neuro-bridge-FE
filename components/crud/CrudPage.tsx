@@ -75,18 +75,96 @@ export function CrudPage<T extends object>({
   const startItem = totalItems === 0 ? 0 : startIndex + 1
   const endItem = Math.min(endIndex, totalItems)
 
+  // return (
+  //   // Sử dụng PageWrapper bao bọc toàn bộ nội dung
+  //   <PageWrapper 
+  //     title={config.title} 
+  //     description={`Quản lý danh mục ${config.title.toLowerCase()}`}
+  //   >
+  //     <div className="space-y-6">
+  //       <CrudToolbar
+  //         // Đã bỏ title ở đây vì PageWrapper đã lo phần hiển thị tiêu đề
+  //         onCreate={handleCreate}
+  //       />
+        
+  //       <CrudModal<T>
+  //         open={isOpen}
+  //         onClose={() => setIsOpen(false)}
+  //         onSubmit={handleSubmit}
+  //         fields={config.fields}
+  //         formData={formData}
+  //         setFormData={setFormData}
+  //         isEdit={editingIndex !== null}
+  //       />
+
+  //       <DataTable
+  //         columns={config.columns}
+  //         data={paginatedData}
+  //         // Pagination info for toolbar
+  //         paginationInfo={{
+  //           startItem,
+  //           endItem,
+  //           totalItems,
+  //         }}
+  //         pageSize={pageSize}
+  //         pageSizeOptions={pageSizeOptions}
+  //         onPageSizeChange={(size) => {
+  //           setPageSize(size)
+  //           setCurrentPage(1)
+  //         }}
+  //         actions={[
+  //           {
+  //             type: "edit",
+  //             label: "Edit",
+  //             onClick: (row) => {
+  //               const index = data.indexOf(row)
+  //               handleEdit(row, index)
+  //             },
+  //           },
+  //           {
+  //             type: "delete",
+  //             label: "Delete",
+  //             onClick: (row) => {
+  //               const index = data.indexOf(row)
+  //               handleDelete(index)
+  //             },
+  //           },
+  //         ]}
+  //       />
+        
+  //       {config.table?.pagination && (
+  //         <TablePagination
+  //           currentPage={currentPage}
+  //           totalPages={totalPages}
+  //           pageSize={pageSize}
+  //           pageSizeOptions={pageSizeOptions}
+  //           totalItems={totalItems}
+  //           startItem={startItem}
+  //           endItem={endItem}
+  //           onPageChange={setCurrentPage}
+  //           onPageSizeChange={(size) => {
+  //             setPageSize(size)
+  //             setCurrentPage(1)
+  //           }}
+  //         />
+  //       )}
+  //     </div>
+  //   </PageWrapper>
+  // )
+  // Cập nhật lại phần return trong CrudPage.tsx
   return (
-    // Sử dụng PageWrapper bao bọc toàn bộ nội dung
     <PageWrapper 
       title={config.title} 
       description={`Quản lý danh mục ${config.title.toLowerCase()}`}
     >
-      <div className="space-y-6">
+      {/* Tăng khoảng cách (gap) để giao diện thở hơn */}
+      <div className="flex flex-col gap-6 mt-4">
         <CrudToolbar
-          // Đã bỏ title ở đây vì PageWrapper đã lo phần hiển thị tiêu đề
+          entityName={config.title} // Truyền tên để thanh search hiển thị đúng
           onCreate={handleCreate}
         />
         
+        {/* Modal form */}
         <CrudModal<T>
           open={isOpen}
           onClose={() => setIsOpen(false)}
@@ -100,12 +178,7 @@ export function CrudPage<T extends object>({
         <DataTable
           columns={config.columns}
           data={paginatedData}
-          // Pagination info for toolbar
-          paginationInfo={{
-            startItem,
-            endItem,
-            totalItems,
-          }}
+          paginationInfo={{ startItem, endItem, totalItems }}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}
           onPageSizeChange={(size) => {
@@ -133,20 +206,22 @@ export function CrudPage<T extends object>({
         />
         
         {config.table?.pagination && (
-          <TablePagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            pageSize={pageSize}
-            pageSizeOptions={pageSizeOptions}
-            totalItems={totalItems}
-            startItem={startItem}
-            endItem={endItem}
-            onPageChange={setCurrentPage}
-            onPageSizeChange={(size) => {
-              setPageSize(size)
-              setCurrentPage(1)
-            }}
-          />
+          <div className="pt-2">
+            <TablePagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              pageSizeOptions={pageSizeOptions}
+              totalItems={totalItems}
+              startItem={startItem}
+              endItem={endItem}
+              onPageChange={setCurrentPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size)
+                setCurrentPage(1)
+              }}
+            />
+          </div>
         )}
       </div>
     </PageWrapper>

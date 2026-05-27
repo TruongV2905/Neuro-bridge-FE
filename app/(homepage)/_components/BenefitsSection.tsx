@@ -14,7 +14,7 @@ export default function BenefitsSection({ benefits }: Readonly<BenefitsSectionPr
         alt=""
         fill
         sizes="100vw"
-        className="-z-10 object-cover opacity-30"
+        className="-z-10 object-cover opacity-30 -rotate-90"
       />
       <div className="absolute inset-0 -z-10 bg-[#161c2d]/45" />
       <div className="mx-auto grid max-w-[1360px] gap-16 xl:grid-cols-[1fr_360px]">

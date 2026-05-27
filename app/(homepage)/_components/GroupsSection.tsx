@@ -2,6 +2,8 @@ import Image from "next/image"
 import Link from "next/link"
 import type { HomepageGroup } from "@/types/homepage"
 import { GradientLabel } from "./HomepagePrimitives"
+import muiTen from "@/public/figma/homepage/duong-dan-anh-mui-ten.svg"
+
 
 interface GroupsSectionProps {
   groups: readonly HomepageGroup[]
@@ -35,7 +37,13 @@ export default function GroupsSection({ groups }: Readonly<GroupsSectionProps>) 
               <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/20 to-transparent" />
               <h3 className="relative z-10 max-w-[80%] text-xl font-extrabold sm:text-[28px]">{group.title}</h3>
               <span className="relative z-10 ml-auto bg-linear-to-r from-[#5470ff] to-[#fc38da] bg-clip-text text-4xl font-bold text-transparent">
-                &nearr;
+                <Image
+                  src={muiTen}
+                  alt=""
+                  aria-hidden="true"
+                  width={36}
+                  height={36}
+                />
               </span>
             </Link>
           ))}

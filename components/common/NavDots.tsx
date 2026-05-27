@@ -12,7 +12,7 @@ type NavDotsProps = {
 };
 
 const NavDots = ({ items }: NavDotsProps) => {
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(items[0]?.id ?? null);
 
   useEffect(() => {
     if (!items.length) return;
@@ -33,7 +33,8 @@ const NavDots = ({ items }: NavDotsProps) => {
       },
       {
         root: null,
-        threshold: 0.6,
+        rootMargin: "-42% 0px -42% 0px",
+        threshold: 0,
       }
     );
 
@@ -59,8 +60,9 @@ const NavDots = ({ items }: NavDotsProps) => {
         >
           <span
             className={`block h-4 w-4 rounded-full border transition-colors group-hover:bg-white ${
-              isActive ? "border-white bg-white" : "border-white/70 bg-white/30"
-            }`}
+              isActive
+                ? "border-[#5470FF] bg-[#5470FF] shadow-md shadow-[#5470FF]/30"
+                : "border-slate-300 bg-slate-200"            }`}
           />
         </a>
         );

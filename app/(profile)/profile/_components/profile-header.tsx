@@ -1,7 +1,7 @@
 import { Bell, MessageSquare, Mic, Search, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { IconBox } from "./icon-box"
-import { UserProfile } from "../types"
+import { UserProfile } from "../../../../types/profile-types"
 
 export function ProfileHeader({ user }: { user: UserProfile }) {
   return (

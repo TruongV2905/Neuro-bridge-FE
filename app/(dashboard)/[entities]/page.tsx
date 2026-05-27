@@ -5,10 +5,10 @@ import type { CrudConfig } from "@/types/crud"
 export default async function DynamicCrudPage({
   params,
 }: {
-  params: Promise<{ entities: string }>; 
+  params: Promise<{ entities: string }>;
 }) {
   const resolvedParams = await params;
-  const entityName = resolvedParams.entities; 
+  const entityName = resolvedParams.entities;
 
   if (!entityName || !(entityName in crudConfigs)) {
     return (

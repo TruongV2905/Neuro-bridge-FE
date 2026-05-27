@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Roboto, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppProvider from "@/providers/App";
+import Header from "@/components/layout/Header";
 
 const roboto = Roboto({
   variable: "--font-roboto",
@@ -29,6 +30,7 @@ export default function RootLayout({
       lang="en"
       className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
     >
+        <Header />
       <body className="min-h-screen font-sans">
         <AppProvider>{children}</AppProvider>
       </body>

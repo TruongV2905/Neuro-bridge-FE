@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 
-import logo from "@/public/img/LogoFull.png";
+import logo from "@/public/img/MainLogo.png";
 import googleLogo from "@/public/img/google-logo.png";
 
 import { Button } from "@/components/ui/button";

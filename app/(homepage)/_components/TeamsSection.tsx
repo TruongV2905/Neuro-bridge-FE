@@ -13,7 +13,7 @@ export default function BenefitsSection({ benefits }: Readonly<BenefitsSectionPr
         src="/figma/homepage/benefits-bg.jpg"
         alt=""
         fill
-        sizes="100vw"
+        sizes="(max-width: 768px) 100vw, 50vw"
         className="-z-10 object-cover opacity-30 -rotate-90"
       />
       <div className="absolute inset-0 -z-10 bg-[#161c2d]/45" />
@@ -23,7 +23,8 @@ export default function BenefitsSection({ benefits }: Readonly<BenefitsSectionPr
             <GradientLabel>BENEFITS</GradientLabel>
             <h2 className="mt-8 text-[clamp(2.25rem,3.2vw,3rem)] font-extrabold uppercase">What you will get</h2>
             <p className="mt-8 max-w-[540px] text-lg leading-[1.45] text-white/55 sm:text-[22px]">
-              Anything from rafting to hiking to train rides, we&apos;ve got your outdoor adventures covered.
+              From idea validation to deployment planning, Neuro Bridge helps you compare AI options
+              and choose the right expert with less guesswork.
             </p>
           </div>
           <div className="mt-14 grid gap-x-12 gap-y-10 md:grid-cols-2">
@@ -40,14 +41,14 @@ export default function BenefitsSection({ benefits }: Readonly<BenefitsSectionPr
             ))}
           </div>
         </div>
-        <aside data-reveal className="bg-[#c1c1c1]/85 px-9 py-14 text-white backdrop-blur-[2px]">
-          <GradientLabel>CALL TO CONTACT US</GradientLabel>
-          <p className="mt-8 text-5xl font-extrabold leading-none">+1 (800)<br />123-5500</p>
+        <aside data-reveal className="bg-[#0f172a]/85 px-9 py-14 text-white backdrop-blur-[2px]">
+          <GradientLabel>READY TO BUILD</GradientLabel>
+          <p className="mt-8 text-5xl font-extrabold leading-none">Start an<br />AI brief</p>
           <blockquote className="mt-10 text-xl font-bold leading-snug sm:text-[22px]">
-            &ldquo;Awesome afternoon, well worth it and we would definitely go again.&rdquo;
+            &ldquo;Turn unclear AI ideas into scoped projects, clear budgets, and expert-led delivery.&rdquo;
           </blockquote>
-          <GradientCtaLink href="/contact" className="mt-10 w-full">
-            Send message
+          <GradientCtaLink href="/experts" className="mt-10 w-full">
+            Contact us
           </GradientCtaLink>
         </aside>
       </div>

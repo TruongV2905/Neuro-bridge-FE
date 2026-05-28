@@ -7,88 +7,88 @@ import type {
 } from "@/types/homepage"
 
 export const aboutImages: HomepageGalleryImage[] = [
-  { src: "/figma/homepage/about-1.jpg", alt: "Guests climbing an adventure ropes course" },
-  { src: "/figma/homepage/about-2.jpg", alt: "Family enjoying an outdoor activity" },
-  { src: "/figma/homepage/about-3.jpg", alt: "Adventurer crossing a high rope bridge" },
+  { src: "/figma/homepage/about-1.jpg", alt: "AI solution discovery preview" },
+  { src: "/figma/homepage/about-2.jpg", alt: "Team reviewing automation ideas" },
+  { src: "/figma/homepage/about-3.jpg", alt: "AI expert project collaboration" },
 ]
 
 export const activities: HomepageActivity[] = [
   {
-    name: "AI Automation Workflow",
+    name: "Customer Support AI Agent",
     status: "Available",
-    type: "AI Automation",
-    successScore: 88,
+    type: "AI Agent",
+    successScore: 92,
     description:
-      "End-to-end workflow automation using AI to streamline business processes and reduce repetitive work.",
-    techStacks: ["Python", "Make.com", "Zapier", "OpenAI API"],
-    author: { name: "Alex Automation", checked: true },
-    budget: "From $1,500",
+      "A chatbot and ticket triage agent that answers common questions, summarizes issues, and routes urgent cases.",
+    techStacks: ["Next.js", "OpenAI API", "Supabase", "n8n"],
+    author: { name: "Maya Chen", checked: true },
+    budget: "From $1,200",
   },
   {
-    name: "AI Automation Workflow",
-    status: "Available",
-    type: "AI Automation",
-    successScore: 88,
+    name: "Document Intelligence Pipeline",
+    status: "Trending",
+    type: "NLP",
+    successScore: 89,
     description:
-      "End-to-end workflow automation using AI to streamline business processes and reduce repetitive work.",
-    techStacks: ["Python", "Make.com", "Zapier", "OpenAI API"],
-    author: { name: "Alex Automation", checked: true },
-    budget: "From $1,500",
+      "Extracts key data from contracts, invoices, and reports, then sends structured results into your workflow.",
+    techStacks: ["Python", "OCR", "LangChain", "Postgres"],
+    author: { name: "Daniel Vo", checked: true },
+    budget: "From $1,800",
   },
   {
-    name: "AI Automation Workflow",
+    name: "Sales Forecasting Model",
     status: "Available",
-    type: "AI Automation",
-    successScore: 88,
+    type: "Recommendation System",
+    successScore: 86,
     description:
-      "End-to-end workflow automation using AI to streamline business processes and reduce repetitive work.",
-    techStacks: ["Python", "Make.com", "Zapier", "OpenAI API"],
-    author: { name: "Alex Automation", checked: true },
-    budget: "From $1,500",
+      "Predicts demand, highlights high-value segments, and recommends next actions for revenue teams.",
+    techStacks: ["Python", "Pandas", "Scikit-learn", "Power BI"],
+    author: { name: "An Nguyen", checked: true },
+    budget: "From $2,000",
   },
 ]
 
 export const groups: HomepageGroup[] = [
-  { title: "Corporate Events & Team Building", image: "/figma/homepage/group-corporate.jpg" },
-  { title: "Junior groups", image: "/figma/homepage/group-junior.jpg" },
-  { title: "Family adventures", image: "/figma/homepage/group-family.jpg" },
-  { title: "Schools & colleges activities", image: "/figma/homepage/group-school.jpg" },
+  { title: "Business automation for operations teams", image: "/figma/homepage/group-corporate.jpg" },
+  { title: "AI learning paths for junior developers", image: "/figma/homepage/group-junior.jpg" },
+  { title: "Personal productivity agents", image: "/figma/homepage/group-family.jpg" },
+  { title: "AI labs for schools and colleges", image: "/figma/homepage/group-school.jpg" },
 ]
 
 export const benefits: HomepageBenefit[] = [
   {
     icon: "*",
-    title: "Improve your strength and endurance",
-    description: "Adventure courses are designed to be accessible while still challenging.",
+    title: "Validate ideas before you build",
+    description: "Compare real AI use cases and understand what is practical before investing in development.",
   },
   {
     icon: "+",
-    title: "Have fun and reduce stress",
-    description: "Spending time outdoors and in nature helps reduce stress and anxiety.",
+    title: "Reduce repetitive work",
+    description: "Use automation and AI agents to handle routine tasks while your team focuses on decisions.",
   },
   {
     icon: "?",
-    title: "Improved problem-solving skills",
-    description: "Activities require adventurers to think outside of the box.",
+    title: "Match with the right expert",
+    description: "Review skills, budgets, and delivery fit before starting an AI project.",
   },
   {
     icon: "+",
-    title: "Bond with friends and family",
-    description: "Adventures are sweeter when they are shared.",
+    title: "Ship faster with clear scope",
+    description: "Turn a broad AI request into milestones, deliverables, and realistic implementation plans.",
   },
 ]
 
 export const articles: HomepageArticle[] = [
   {
-    title: "Local pupils swing by Go Ape Normanby Hall",
+    title: "How AI agents help small teams answer customers faster",
     image: "/figma/homepage/blog-1.jpg",
   },
   {
-    title: "Planning a Microadventure with Alastair Humphreys",
+    title: "Choosing between automation, chatbots, and custom AI models",
     image: "/figma/homepage/blog-2.jpg",
   },
   {
-    title: "Reaching New Heights: The Benefits of High Ropes Courses",
+    title: "What to prepare before hiring an AI expert",
     image: "/figma/homepage/group-corporate.jpg",
   },
 ]

@@ -11,8 +11,8 @@ export default function BlogSection({ articles }: Readonly<BlogSectionProps>) {
     <section className="px-6 py-20 sm:py-24 lg:px-[7.5%]">
       <div className="mx-auto max-w-[1360px]">
         <div data-reveal>
-          <GradientLabel>BLOG</GradientLabel>
-          <h2 className="mt-8 text-[clamp(2.25rem,3.2vw,3rem)] font-extrabold uppercase">In the spotlight</h2>
+          <GradientLabel>INSIGHTS</GradientLabel>
+          <h2 className="mt-8 text-[clamp(2.25rem,3.2vw,3rem)] font-extrabold uppercase">AI in the spotlight</h2>
         </div>
         <div className="mt-14 grid gap-8 lg:grid-cols-3">
           {articles.map((article) => (
@@ -27,7 +27,7 @@ export default function BlogSection({ articles }: Readonly<BlogSectionProps>) {
                 />
               </div>
               <div className="px-7 pb-9 pt-7">
-                <p className="text-xs font-bold text-[#ff6e12]">COMPANY NEWS / ADMIN</p>
+                <p className="text-xs font-bold text-[#5470ff]">AI INSIGHTS / NEURO BRIDGE</p>
                 <h3 className="mt-4 text-xl font-extrabold leading-snug">{article.title}</h3>
               </div>
             </article>

@@ -1,9 +1,8 @@
 import type { ReactNode } from "react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import Image from "next/image"
 import { cn } from "@/lib/utils"
-import muiTen from "@/public/figma/homepage/duong-dan-anh-mui-ten.svg"
+import { ArrowBigRight } from "lucide-react"
 
 export function GradientLabel({ children }: Readonly<{ children: ReactNode }>) {
   return (
@@ -31,14 +30,8 @@ export function GradientCtaLink({ href, children, className }: Readonly<Gradient
       )}
     >
       <Link href={href}>
-        {children}{' '}
-        <Image
-          src={muiTen}
-          alt=""
-          aria-hidden="true"
-          width={16}
-          height={16}
-        />
+        {children}{" "}
+        <ArrowBigRight />
       </Link>
     </Button>
   )

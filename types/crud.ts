@@ -1,14 +1,10 @@
-import React from "react"
-
-/* ========================
-   FIELD SYSTEM (FORM)
-======================== */
+import type { ReactNode } from "react"
+import type { ZodType } from "zod"
 
 export type FieldType =
   | "text"
   | "textarea"
   | "select"
-  | "date"
   | "number"
   | "upload"
 
@@ -21,103 +17,73 @@ export interface FieldConfig {
   name: string
   label: string
   type: FieldType
-
   placeholder?: string
   required?: boolean
   disabled?: boolean
-
-  // select only
   options?: FieldOption[]
-
-  // validation (basic FE)
-  rules?: {
-    required?: boolean
-    message?: string
-    min?: number
-    max?: number
-    pattern?: RegExp
-  }
-
-  // layout (GRID)
-  span?: number // 1 - 12 (Tailwind grid)
+  span?: number
 }
-
-/* ========================
-   TABLE SYSTEM
-======================== */
 
 export type ColumnType =
   | "text"
   | "number"
-  | "date"
   | "badge"
   | "avatar"
   | "custom"
 
-export interface ColumnConfig<T = unknown> {
-  key: keyof T | string
-  label: string
-  type?: ColumnType
-
-  sortable?: boolean
-
-  // custom render (important)
-  render?: (value: unknown, record: T) => React.ReactNode
+export interface BadgeConfig {
+  label?: string
+  className?: string
 }
 
-/* ========================
-   ACTION SYSTEM
-======================== */
+export interface ColumnConfig<TData extends object = object> {
+  key: keyof TData | string
+  label: string
+  type?: ColumnType
+  sortable?: boolean
+  badgeMap?: Record<string, BadgeConfig>
+  render?: (value: unknown, record: TData) => ReactNode
+}
 
 export type ActionType = "view" | "edit" | "delete"
 
-export interface ActionConfig<T = unknown> {
+export interface ActionConfig<TData extends object = object> {
   type: ActionType
   label: string
-  onClick?: (record: T) => void
+  onClick?: (record: TData, rowIndex: number) => void
 }
-
-/* ========================
-   FILTER SYSTEM
-======================== */
 
 export interface FilterConfig {
   name: string
   label: string
   type: "select" | "text"
-
   options?: FieldOption[]
 }
-
-/* ========================
-   PAGINATION + SORT
-======================== */
 
 export interface TableConfig {
   pagination?: boolean
   pageSize?: number
   pageSizeOptions?: number[]
-
   sortable?: boolean
   searchable?: boolean
 }
 
-/* ========================
-   MAIN CRUD CONFIG
-======================== */
-
-export interface CrudConfig<T = unknown> {
+export interface CrudConfig<TData extends object = object> {
   entityName: string
   title: string
+  description?: string
 
-  columns: ColumnConfig<T>[]
-  fields: FieldConfig[]
+  /**
+   * Legacy config.
+   * Có thể giữ lại nếu sau này muốn build form tự động bằng FormBuilder.
+   * Với module-based dashboard, Form nên nằm trong modules/[entity]/forms.
+   */
+  schema?: ZodType<Record<string, unknown>>
+  fields?: FieldConfig[]
 
-  actions?: ActionConfig<T>[]
+  columns: ColumnConfig<TData>[]
+  actions?: ActionConfig<TData>[]
   filters?: FilterConfig[]
-
   table?: TableConfig
-
-  // mock data for now
-  data?: T[]
+  data?: TData[]
 }

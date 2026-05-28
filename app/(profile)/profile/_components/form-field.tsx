@@ -4,9 +4,10 @@ interface FormFieldProps {
   label: string
   value: string
   icon: React.ReactNode
+  onChange?: (value: string) => void
 }
 
-export function FormField({ label, value, icon }: FormFieldProps) {
+export function FormField({ label, value, icon, onChange }: FormFieldProps) {
   return (
     <div className="group relative rounded-2xl bg-border p-[1px] transition-all duration-500 hover:shadow-[0_0_20px_rgba(95,123,255,0.15)]">
       <div
@@ -29,7 +30,7 @@ export function FormField({ label, value, icon }: FormFieldProps) {
 
           <Input
             value={value}
-            readOnly
+            onChange={(e) => onChange?.(e.target.value)}
             title={value}
             className="h-11 cursor-default truncate rounded-xl border border-input/50 bg-card pl-10 pr-3 text-sm font-medium text-card-foreground transition-all duration-300 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring"
           />

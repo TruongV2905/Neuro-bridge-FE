@@ -31,6 +31,7 @@ import { ProfileHeader } from "./_components/profile-header"
 import { FormField } from "./_components/form-field"
 import { ReadOnlyItem } from "./_components/read-only-item"
 import { RoleSection } from "./_components/role-section"
+import { profile } from "console"
 
 const mockUser: UserProfile = {
   userId: "USR-0002",
@@ -42,16 +43,21 @@ const mockUser: UserProfile = {
   address: "Ho Chi Minh City, Vietnam",
   role: "CLIENT", // Để "CLIENT" để tự động bật khung Client Information phía dưới góc phải
   status: "ACTIVE",
-  portfolio: "https://portfolio.alexarawles.dev",
-  completedProjects: 24,
-  rating: 4.8,
-  availabilityStatus: true,
   companyName: "NeuroBridge Solutions Corp",
   industry: "Artificial Intelligence & SaaS",
-  companyDescription: "Providing cutting-edge AI collaboration tools and expert matching workflows globally."
+  companyDescription: "Providing cutting-edge AI collaboration tools and expert matching workflows globally.",
+  walletId: "WAL-0002",
+  bankName: "Vietcombank",
+  accountNumber: "0123456789",
+  accountHolderName: "THUONG NHI CA",
+  walletBalance: "2,500,000 VND",
+  totalWithdrawn: "500,000 VND",
+  walletStatus: "ACTIVE",
 }
 
 export default function ProfilePage() {
+  const [profile, setProfile] = useState<UserProfile>(mockUser)
+  
   const isClient = mockUser.role === "CLIENT"
   const isExpert = mockUser.role === "AI_EXPERT"
 
@@ -70,31 +76,44 @@ export default function ProfilePage() {
     }
   }
 
+  const updateProfile = (field: keyof UserProfile, value: string) => {
+    setProfile((prev) => ({
+      ...prev,
+      [field]: value,
+    }))
+  }
+
+  const handleCancel = () => {
+    setProfile(mockUser)
+    setAvatar(mockUser.avatarUrl)
+  }
+
+  const handleSave = () => {
+    console.log("Saved profile:", profile)
+  }
+
   return (
-    <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
-      <ProfileHeader user={{ ...mockUser, avatarUrl: avatar }} />
+    <main className="min-h-screen bg-background text-foreground transition-colors duration-300 ">
+
 
       {/* Banner Profile */}
-      <section className="relative overflow-hidden border-b border-border bg-gradient-to-r from-[#5f7bff] via-[#8b5cf6] to-[#ec4899] px-6 py-6">
+      {/* Banner Profile */}
+      <section className="
+          relative
+          overflow-hidden
+          border-b border-border
+          bg-gradient-to-r
+          from-[#5f7bff]
+          via-[#8b5cf6]
+          to-[#ec4899]
+          h-[100px]
+        ">
         {/* Overlay làm màu dịu hơn */}
         <div className="absolute inset-0 bg-black/10 dark:bg-black/25" />
 
         {/* Glow nhẹ */}
         <div className="absolute -top-20 right-10 h-40 w-40 rounded-full bg-white/20 blur-3xl" />
         <div className="absolute -bottom-24 left-10 h-44 w-44 rounded-full bg-pink-300/20 blur-3xl" />
-
-        <div className="relative z-10 flex flex-col gap-3">
-          <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md">
-            <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]" />
-            Profile Management
-          </div>
-
-          <div>
-            <p className="mt-1 text-sm text-white/75">
-              Manage your personal profile and workspace identity
-            </p>
-          </div>
-        </div>
       </section>
 
       {/* BỐ CỤC CHÍNH CHIA THÀNH 2 CỘT THEO ẢNH MẪU */}
@@ -176,26 +195,52 @@ export default function ProfilePage() {
 
                 {/* Hàng 1: Full Name và Email Address */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField icon={<User size={16} />} label="Full Name" value={mockUser.name} />
-                  <FormField icon={<Mail size={16} />} label="Email Address" value={mockUser.email} />
+                  <FormField icon={<User size={16} />} label="Full Name" value={profile.name} onChange={(value) => updateProfile("name", value)} />
+                  <FormField icon={<Mail size={16} />} label="Email Address" value={profile.email} onChange={(value) => updateProfile("email", value)} />
                 </div>
 
                 {/* Hàng 2: Phone Number và Address */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField icon={<Phone size={16} />} label="Phone Number" value={mockUser.phoneNumber} />
-                  <FormField icon={<MapPin size={16} />} label="Address" value={mockUser.address} />
+                  <FormField icon={<Phone size={16} />} label="Phone Number" value={profile.phoneNumber} onChange={(value) => updateProfile("phoneNumber", value)} />
+                  <FormField icon={<MapPin size={16} />} label="Address" value={profile.address} onChange={(value) => updateProfile("address", value)} />
                 </div>
               </div>
             </CardContent>
           </Card>
-          {/* Action Buttons */}
-            <div className=" bottom-4 z-20 flex justify-end pt-4">
-              <div className="flex w-full sm:w-auto items-center gap-3 rounded-2xl border border-border/60 bg-card/80 p-3 shadow-xl backdrop-blur-xl">
 
-                {/* Cancel */}
-                <Button
-                  variant="outline"
-                  className="
+          <Card className="mt-6 rounded-[2rem] border border-border bg-card shadow-md overflow-hidden">
+            <CardHeader className="bg-muted/30 border-b border-border/60 py-4 px-6">
+              <CardTitle className="text-base font-black text-card-foreground">
+                Wallet Information
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Bank account and wallet balance details.
+              </CardDescription>
+            </CardHeader>
+
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField icon={<Hash size={16} />} label="Wallet ID" value={(mockUser as any).walletId} />
+                <FormField icon={<Building2 size={16} />} label="Bank Name" value={(profile as any).bankName} onChange={(value) => updateProfile("bankName" as keyof UserProfile, value)} />
+
+                <FormField icon={<FileText size={16} />} label="Account Number" value={(profile as any).accountNumber} onChange={(value) => updateProfile("accountNumber" as keyof UserProfile, value)} />
+                <FormField icon={<User size={16} />} label="Account Holder Name" value={(profile as any).accountHolderName} onChange={(value) => updateProfile("accountHolderName" as keyof UserProfile, value)} />
+
+                <FormField icon={<BriefcaseBusiness size={16} />} label="Wallet Balance" value={(mockUser as any).walletBalance} />
+
+                <FormField icon={<Clock size={16} />} label="Total Withdrawn" value={(mockUser as any).totalWithdrawn} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className=" bottom-4 z-20 flex justify-end pt-4">
+            <div className="flex w-full sm:w-auto items-center gap-3 rounded-2xl border border-border/60 bg-card/80 p-3 shadow-xl backdrop-blur-xl">
+
+              {/* Cancel */}
+              <Button
+                variant="outline"
+                className="
                               h-11
                               rounded-xl
                               border-border
@@ -209,13 +254,13 @@ export default function ProfilePage() {
                               hover:bg-destructive/10
                               hover:text-destructive
                             "
-                >
-                  Cancel
-                </Button>
+              >
+                Cancel
+              </Button>
 
-                {/* Save */}
-                <Button
-                  className="
+              {/* Save */}
+              <Button
+                className="
                               h-11
                               min-w-[150px]
                               rounded-xl
@@ -233,12 +278,12 @@ export default function ProfilePage() {
                               hover:opacity-95
                               active:scale-[0.99]
                             "
-                >
-                  Save Changes
-                </Button>
+              >
+                Save Changes
+              </Button>
 
-              </div>
             </div>
+          </div>
         </div>
         {/* ================= CỘT PHẢI: ACCOUNT INFO & DYNAMIC ROLE INFO ================= */}
         <div className="space-y-6">

@@ -18,9 +18,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { userSchema, type UserSchema } from "../schemas/user.schema"
-import type { User } from "../types/user.type"
-import { UserGender, UserRole, UserStatus } from "../types/user.type"
+import { userSchema, type UserSchema } from "../../../schemas/user.schema"
+import type { User } from "../../../types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "../../../types/user/user.type"
 
 type UserFormMode = "create" | "edit"
 
@@ -50,8 +50,8 @@ const getDefaultValues = (
       defaultValues?.userId ??
       (mode === "create" ? generateMockUserId() : ""),
 
-    name: defaultValues?.name ?? "",
-    userName: defaultValues?.userName ?? "",
+    fullName: defaultValues?.fullName ?? "",
+    username: defaultValues?.username ?? "",
     email: defaultValues?.email ?? "",
 
     gender: defaultValues?.gender ?? undefined,
@@ -90,7 +90,7 @@ export function UserForm({
   return (
     <Card className="w-full">
       <form onSubmit={form.handleSubmit(handleSubmit)}>
-        <CardContent>
+        <CardContent className="pb-6">
           <FieldGroup>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Controller
@@ -115,7 +115,7 @@ export function UserForm({
               />
 
               <Controller
-                name="name"
+                name="fullName"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
@@ -135,7 +135,7 @@ export function UserForm({
               />
 
               <Controller
-                name="userName"
+                name="username"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
@@ -344,7 +344,7 @@ export function UserForm({
           </FieldGroup>
         </CardContent>
 
-        <CardFooter className="flex justify-end gap-4">
+        <CardFooter className="flex justify-end gap-3 border-t border-slate-100 px-6 pt-4">
           <Button
             type="button"
             variant="outline"

@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { UserGender, UserRole, UserStatus } from "../types/user.type"
+import { UserGender, UserRole, UserStatus } from "../types/user/user.type"
 
 const optionalUrlSchema = z
   .string()
@@ -25,12 +25,12 @@ const userStatusValues = Object.values(UserStatus) as [
 ]
 
 export const createUserSchema = z.object({
-  name: z
+  fullName: z
     .string()
-    .min(1, "Name is required")
-    .max(100, "Name must be less than 100 characters"),
+    .min(1, "Full name is required")
+    .max(100, "Full name must be less than 100 characters"),
 
-  userName: z
+  username: z
     .string()
     .min(1, "Username is required")
     .max(50, "Username must be less than 50 characters")

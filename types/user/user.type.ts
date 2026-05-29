@@ -20,8 +20,8 @@ export enum UserStatus {
 
 export interface User {
   userId: UserId
-  name: string
-  userName: string
+  fullName: string
+  username: string
   email: string
   gender?: UserGender
   avatarUrl?: string

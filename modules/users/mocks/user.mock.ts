@@ -1,11 +1,11 @@
-import type { User } from "../types/user.type"
-import { UserGender, UserRole, UserStatus } from "../types/user.type"
+import type { User } from "../../../types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "../../../types/user/user.type"
 
 export const mockUsers: User[] = [
   {
     userId: "UUID-001",
-    name: "Vo Anh L",
-    userName: "voanhl",
+    fullName: "Vo Anh L",
+    username: "voanhl",
     email: "vo.anh.l@gmail.com",
     gender: UserGender.MALE,
     avatarUrl: "https://github.com/shadcn.png",
@@ -18,8 +18,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-002",
-    name: "Le Hai L",
-    userName: "lehail",
+    fullName: "Le Hai L",
+    username: "lehail",
     email: "le.hai.l@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0912345678",
@@ -31,8 +31,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-003",
-    name: "Pham Thi M",
-    userName: "phamthim",
+    fullName: "Pham Thi M",
+    username: "phamthim",
     email: "pham.thi.m@gmail.com",
     gender: UserGender.FEMALE,
     phoneNumber: "0923456789",
@@ -44,8 +44,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-004",
-    name: "Nguyen Van A",
-    userName: "nguyenvana",
+    fullName: "Nguyen Van A",
+    username: "nguyenvana",
     email: "nguyen.van.a@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0934567890",
@@ -57,8 +57,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-005",
-    name: "Tran Thi B",
-    userName: "tranthib",
+    fullName: "Tran Thi B",
+    username: "tranthib",
     email: "tran.thi.b@gmail.com",
     gender: UserGender.FEMALE,
     avatarUrl: "https://github.com/shadcn.png",
@@ -71,8 +71,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-006",
-    name: "Le Nhat M",
-    userName: "lenhatm",
+    fullName: "Le Nhat M",
+    username: "lenhatm",
     email: "le.nhat.m@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0956789012",
@@ -84,8 +84,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-007",
-    name: "Pham Quoc K",
-    userName: "phamquock",
+    fullName: "Pham Quoc K",
+    username: "phamquock",
     email: "pham.quoc.k@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0967890123",
@@ -97,8 +97,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-008",
-    name: "Vuong Thu H",
-    userName: "vuongthuh",
+    fullName: "Vuong Thu H",
+    username: "vuongthuh",
     email: "vuong.thu.h@gmail.com",
     gender: UserGender.FEMALE,
     phoneNumber: "0978901234",
@@ -110,8 +110,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-009",
-    name: "Ngo Gia B",
-    userName: "ngogiab",
+    fullName: "Ngo Gia B",
+    username: "ngogiab",
     email: "ngo.gia.b@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0989012345",
@@ -123,8 +123,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-010",
-    name: "Bui Thanh T",
-    userName: "buithanht",
+    fullName: "Bui Thanh T",
+    username: "buithanht",
     email: "bui.thanh.t@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0990123456",
@@ -136,8 +136,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-011",
-    name: "Dang Hoang D",
-    userName: "danghoangd",
+    fullName: "Dang Hoang D",
+    username: "danghoangd",
     email: "dang.hoang.d@gmail.com",
     gender: UserGender.MALE,
     phoneNumber: "0902345678",
@@ -149,8 +149,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-012",
-    name: "Doan Tuyet N",
-    userName: "doantuyetn",
+    fullName: "Doan Tuyet N",
+    username: "doantuyetn",
     email: "doan.tuyet.n@gmail.com",
     gender: UserGender.FEMALE,
     phoneNumber: "0913456789",
@@ -162,8 +162,8 @@ export const mockUsers: User[] = [
   },
   {
     userId: "UUID-013",
-    name: "Hoang Bao Q",
-    userName: "hoangbaoq",
+    fullName: "Hoang Bao Q",
+    username: "hoangbaoq",
     email: "hoang.bao.q@gmail.com",
     gender: UserGender.OTHER,
     phoneNumber: "0924567890",

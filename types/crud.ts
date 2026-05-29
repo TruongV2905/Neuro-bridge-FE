@@ -42,7 +42,9 @@ export interface ColumnConfig<TData extends object = object> {
   type?: ColumnType
   sortable?: boolean
   badgeMap?: Record<string, BadgeConfig>
-  render?: (value: unknown, record: TData) => ReactNode
+  render?: (value: unknown, record: TData, rowIndex: number) => ReactNode
+  className?: string
+  headerClassName?: string
 }
 
 export type ActionType = "view" | "edit" | "delete"
@@ -86,4 +88,19 @@ export interface CrudConfig<TData extends object = object> {
   filters?: FilterConfig[]
   table?: TableConfig
   data?: TData[]
+}
+
+export type SortDirection = "asc" | "desc"
+
+export interface ColumnConfig<TData extends object = object> {
+  key: keyof TData | string
+  label: string
+  type?: ColumnType
+  sortable?: boolean
+  filterable?: boolean
+  filterOptions?: FieldOption[]
+  badgeMap?: Record<string, BadgeConfig>
+  render?: (value: unknown, record: TData, rowIndex: number) => ReactNode
+  className?: string
+  headerClassName?: string
 }

@@ -1,8 +1,8 @@
 import type { CrudConfig } from "@/types/crud"
-import type { User } from "../types/user.type"
-import { UserGender, UserRole, UserStatus } from "../types/user.type"
+import type { User } from "../../../types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "../../../types/user/user.type"
 import { mockUsers } from "../mocks/user.mock"
-import { userSchema } from "../schemas/user.schema"
+import { userSchema } from "../../../schemas/user.schema"
 import { userColumns } from "../table/user.column"
 
 export const userConfig: CrudConfig<User> = {
@@ -32,14 +32,14 @@ export const userConfig: CrudConfig<User> = {
       disabled: true,
     },
     {
-      name: "name",
+      name: "fullName",
       label: "Full Name",
       type: "text",
       placeholder: "Enter full name",
       span: 6,
     },
     {
-      name: "userName",
+      name: "username",
       label: "Username",
       type: "text",
       placeholder: "Enter username",

@@ -1,8 +1,25 @@
 // "use client"
 
-// import type { ColumnConfig, ActionConfig } from "@/types/crud"
+// import type { ReactNode } from "react"
+// import {
+//   ArrowDown,
+//   ArrowUp,
+//   ArrowUpDown,
+//   Filter,
+//   MoreHorizontal,
+// } from "lucide-react"
 
+// import type { ColumnConfig } from "@/types/crud"
+
+// import { Badge } from "@/components/ui/badge"
 // import { Button } from "@/components/ui/button"
+// import { Checkbox } from "@/components/ui/checkbox"
+// import {
+//   Dropdown,
+//   DropdownContent,
+//   DropdownItem,
+//   DropdownTrigger,
+// } from "@/components/ui/dropdown"
 // import {
 //   Table,
 //   TableBody,
@@ -12,12 +29,27 @@
 //   TableRow,
 // } from "@/components/ui/table"
 
-// import { Edit, Trash2 } from "lucide-react"
+// export type TableActionType = "edit" | "delete" | "view" | "custom"
 
-// interface DataTableProps<T> {
-//   columns: ColumnConfig<T>[]
-//   data: T[]
-//   actions?: ActionConfig<T>[]
+// export type TableAction<TData extends object> = {
+//   type: TableActionType
+//   label: string
+//   onClick?: (row: TData, rowIndex: number) => void
+//   icon?: ReactNode
+//   variant?: "default" | "outline" | "destructive" | "secondary" | "ghost"
+
+//   // sort/filter
+//   sortKey?: string | null
+//   sortDirection?: "asc" | "desc" | null
+//   filters?: Record<string, string>
+//   onSortChange?: (key: string) => void
+//   onFilterChange?: (key: string, value: string) => void
+// }
+
+// type DataTableProps<TData extends object> = {
+//   columns: ColumnConfig<TData>[]
+//   data: TData[]
+//   actions?: TableAction<TData>[]
 //   paginationInfo?: {
 //     startItem: number
 //     endItem: number
@@ -26,9 +58,10 @@
 //   pageSize?: number
 //   pageSizeOptions?: number[]
 //   onPageSizeChange?: (size: number) => void
+//   getRowKey?: (row: TData, index: number) => string | number
 // }
 
-// export function DataTable<T extends object>({
+// export function DataTable<TData extends object>({
 //   columns,
 //   data,
 //   actions,
@@ -36,12 +69,17 @@
 //   pageSize,
 //   pageSizeOptions,
 //   onPageSizeChange,
-// }: DataTableProps<T>) {
-//   const renderCell = (column: ColumnConfig<T>, row: T) => {
-//     const value = row[column.key as keyof T]
+//   getRowKey,
+// }: DataTableProps<TData>) {
+//   const renderCell = (
+//     column: ColumnConfig<TData>,
+//     row: TData,
+//     rowIndex: number,
+//   ) => {
+//     const value = row[column.key as keyof TData]
 
 //     if (column.render) {
-//       return column.render(value, row)
+//       return column.render(value, row, rowIndex)
 //     }
 
 //     if (column.type === "badge") {
@@ -49,75 +87,52 @@
 //       const badge = column.badgeMap?.[rawValue]
 
 //       return (
-//         <span
-//           className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-//             badge?.className || "bg-muted text-muted-foreground"
+//         <Badge
+//           variant="outline"
+//           className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+//             badge?.className ?? "border-transparent bg-muted text-muted-foreground"
 //           }`}
 //         >
-//           {badge?.label || rawValue}
-//         </span>
+//           {badge?.label ?? rawValue}
+//         </Badge>
 //       )
 //     }
 
-//     return String(value ?? "")
+//     if (value === null || value === undefined || value === "") {
+//       return <span className="text-muted-foreground">—</span>
+//     }
+
+//     return String(value)
 //   }
 
 //   return (
 //     <div className="space-y-4">
-//       <div className="flex items-center justify-between px-2">
-//         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-//           {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
-//             <>
-//               <span>Show</span>
-//               <select
-//                 value={pageSize}
-//                 onChange={(e) => onPageSizeChange(Number(e.target.value))}
-//                 className="h-8 rounded-md border border-input bg-background px-2 text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
-//               >
-//                 {pageSizeOptions.map((size) => (
-//                   <option key={size} value={size}>
-//                     {size}
-//                   </option>
-//                 ))}
-//               </select>
-//               <span>entries</span>
-//             </>
-//           )}
-//         </div>
-
-//         {paginationInfo && (
-//           <span className="text-sm font-medium text-muted-foreground">
-//             Showing{" "}
-//             <span className="text-foreground">
-//               {paginationInfo.startItem}
-//             </span>{" "}
-//             to{" "}
-//             <span className="text-foreground">
-//               {paginationInfo.endItem}
-//             </span>{" "}
-//             of{" "}
-//             <span className="text-foreground">
-//               {paginationInfo.totalItems}
-//             </span>
-//           </span>
-//         )}
-//       </div>
-
-//       <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+//       <div className="overflow-hidden rounded-xl border bg-card">
 //         <Table>
 //           <TableHeader>
-//             <TableRow className="border-b-primary/10 bg-primary/5 hover:bg-primary/5">
+//             <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
+//               <TableHead className="w-[44px]">
+//                 <Checkbox aria-label="Select all rows" />
+//               </TableHead>
+
 //               {columns.map((column) => (
 //                 <TableHead
 //                   key={String(column.key)}
-//                   className="h-12 font-semibold text-foreground"
+//                   className={`h-11 text-xs font-semibold text-foreground ${
+//                     column.headerClassName ?? ""
+//                   }`}
 //                 >
-//                   {column.label}
+//                   <div className="flex items-center gap-1">
+//                     {column.label}
+//                     {column.sortable && (
+//                       <span className="text-muted-foreground">↕</span>
+//                     )}
+//                   </div>
 //                 </TableHead>
 //               ))}
 
-//               {actions && (
-//                 <TableHead className="pr-6 text-right font-semibold text-foreground">
+//               {actions && actions.length > 0 && (
+//                 <TableHead className="w-[72px] text-right text-xs font-semibold text-foreground">
 //                   Actions
 //                 </TableHead>
 //               )}
@@ -128,53 +143,62 @@
 //             {data.length === 0 ? (
 //               <TableRow>
 //                 <TableCell
-//                   colSpan={columns.length + (actions ? 1 : 0)}
+//                   colSpan={columns.length + (actions?.length ? 2 : 1)}
 //                   className="h-24 text-center text-muted-foreground"
 //                 >
 //                   No results found.
 //                 </TableCell>
 //               </TableRow>
 //             ) : (
-//               data.map((row, index) => (
+//               data.map((row, rowIndex) => (
 //                 <TableRow
-//                   key={index}
-//                   className="transition-colors hover:bg-muted/50"
+//                   key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
+//                   className="border-b transition-colors hover:bg-muted/40"
 //                 >
+//                   <TableCell className="w-[44px]">
+//                     <Checkbox aria-label={`Select row ${rowIndex + 1}`} />
+//                   </TableCell>
+
 //                   {columns.map((column) => (
 //                     <TableCell
 //                       key={String(column.key)}
-//                       className="py-3"
+//                       className={`h-[58px] py-2 text-sm ${
+//                         column.className ?? ""
+//                       }`}
 //                     >
-//                       {renderCell(column, row)}
+//                       {renderCell(column, row, rowIndex)}
 //                     </TableCell>
 //                   ))}
 
-//                   {actions && (
-//                     <TableCell className="space-x-2 pr-4 text-right">
-//                       {actions.map((action) => (
-//                         <Button
-//                           key={action.type}
-//                           size="icon"
-//                           variant={
-//                             action.type === "delete"
-//                               ? "destructive"
-//                               : "outline"
-//                           }
-//                           className={
-//                             action.type === "edit"
-//                               ? "h-8 w-8 border-primary/20 hover:bg-primary hover:text-primary-foreground"
-//                               : "h-8 w-8"
-//                           }
-//                           onClick={() => action.onClick?.(row)}
-//                           title={action.label}
-//                         >
-//                           {action.type === "edit" ? (
-//                             <Edit className="h-4 w-4" />
-//                           ) : (
-//                             <Trash2 className="h-4 w-4" />
-//                           )}
-//                         </Button>
-//                       ))}
+//                   {actions && actions.length > 0 && (
+//                     <TableCell className="pr-4 text-right">
+//                       <Dropdown>
+//                         <DropdownTrigger asChild>
+//                           <Button
+//                             variant="ghost"
+//                             size="icon"
+//                             className="h-8 w-8"
+//                           >
+//                             <MoreHorizontal className="h-4 w-4" />
+//                           </Button>
+//                         </DropdownTrigger>
+
+//                         <DropdownContent align="end">
+//                           {actions.map((action) => (
+//                             <DropdownItem
+//                               key={action.type}
+//                               onClick={() => action.onClick?.(row, rowIndex)}
+//                               className={
+//                                 action.type === "delete"
+//                                   ? "text-destructive focus:text-destructive"
+//                                   : ""
+//                               }
+//                             >
+//                               {action.label}
+//                             </DropdownItem>
+//                           ))}
+//                         </DropdownContent>
+//                       </Dropdown>
 //                     </TableCell>
 //                   )}
 //                 </TableRow>
@@ -183,6 +207,43 @@
 //           </TableBody>
 //         </Table>
 //       </div>
+
+//       <div className="flex items-center justify-between px-1">
+//         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+//           {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
+//             <>
+//               <span>Show</span>
+
+//               <select
+//                 value={pageSize}
+//                 onChange={(event) =>
+//                   onPageSizeChange(Number(event.target.value))
+//                 }
+//                 className="h-8 rounded-md border border-input bg-background px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+//               >
+//                 {pageSizeOptions.map((size) => (
+//                   <option key={size} value={size}>
+//                     {size}
+//                   </option>
+//                 ))}
+//               </select>
+
+//               <span>entries</span>
+//             </>
+//           )}
+//         </div>
+
+//         {paginationInfo && (
+//           <span className="text-sm font-medium text-muted-foreground">
+//             Showing{" "}
+//             <span className="text-foreground">{paginationInfo.startItem}</span>{" "}
+//             to{" "}
+//             <span className="text-foreground">{paginationInfo.endItem}</span>{" "}
+//             of{" "}
+//             <span className="text-foreground">{paginationInfo.totalItems}</span>
+//           </span>
+//         )}
+//       </div>
 //     </div>
 //   )
 // }
@@ -190,11 +251,25 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { Edit, Trash2 } from "lucide-react"
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  ListFilter as Filter,
+  MoreHorizontal,
+} from "lucide-react"
 
 import type { ColumnConfig } from "@/types/crud"
 
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Dropdown,
+  DropdownContent,
+  DropdownItem,
+  DropdownTrigger,
+} from "@/components/ui/dropdown"
 import {
   Table,
   TableBody,
@@ -214,19 +289,29 @@ export type TableAction<TData extends object> = {
   variant?: "default" | "outline" | "destructive" | "secondary" | "ghost"
 }
 
+type SortDirection = "asc" | "desc"
+
 type DataTableProps<TData extends object> = {
   columns: ColumnConfig<TData>[]
   data: TData[]
   actions?: TableAction<TData>[]
+
   paginationInfo?: {
     startItem: number
     endItem: number
     totalItems: number
   }
+
   pageSize?: number
   pageSizeOptions?: number[]
   onPageSizeChange?: (size: number) => void
   getRowKey?: (row: TData, index: number) => string | number
+
+  sortKey?: string | null
+  sortDirection?: SortDirection | null
+  filters?: Record<string, string>
+  onSortChange?: (key: string) => void
+  onFilterChange?: (key: string, value: string) => void
 }
 
 export function DataTable<TData extends object>({
@@ -238,12 +323,22 @@ export function DataTable<TData extends object>({
   pageSizeOptions,
   onPageSizeChange,
   getRowKey,
+
+  sortKey,
+  sortDirection,
+  filters,
+  onSortChange,
+  onFilterChange,
 }: DataTableProps<TData>) {
-  const renderCell = (column: ColumnConfig<TData>, row: TData) => {
+  const renderCell = (
+    column: ColumnConfig<TData>,
+    row: TData,
+    rowIndex: number,
+  ) => {
     const value = row[column.key as keyof TData]
 
     if (column.render) {
-      return column.render(value, row)
+      return column.render(value, row, rowIndex)
     }
 
     if (column.type === "badge") {
@@ -251,50 +346,199 @@ export function DataTable<TData extends object>({
       const badge = column.badgeMap?.[rawValue]
 
       return (
-        <span
-          className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium ${
-            badge?.className ?? "bg-muted text-muted-foreground"
+        <Badge
+          variant="outline"
+          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            badge?.className ??
+            "border-transparent bg-muted text-muted-foreground"
           }`}
         >
           {badge?.label ?? rawValue}
-        </span>
+        </Badge>
       )
     }
 
-    return String(value ?? "")
+    if (value === null || value === undefined || value === "") {
+      return <span className="text-muted-foreground">—</span>
+    }
+
+    return String(value)
   }
 
-  const renderActionIcon = (action: TableAction<TData>) => {
-    if (action.icon) {
-      return action.icon
+  const renderSortIcon = (columnKey: string) => {
+    if (sortKey !== columnKey) {
+      return <ArrowUpDown className="h-3.5 w-3.5" />
     }
 
-    if (action.type === "edit") {
-      return <Edit className="h-4 w-4" />
+    if (sortDirection === "asc") {
+      return <ArrowUp className="h-3.5 w-3.5" />
     }
 
-    if (action.type === "delete") {
-      return <Trash2 className="h-4 w-4" />
-    }
-
-    return action.label
-  }
-
-  const resolveActionVariant = (action: TableAction<TData>) => {
-    if (action.variant) {
-      return action.variant
-    }
-
-    if (action.type === "delete") {
-      return "destructive"
-    }
-
-    return "outline"
+    return <ArrowDown className="h-3.5 w-3.5" />
   }
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between px-2">
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
+              <TableHead className="w-[44px]">
+                <Checkbox aria-label="Select all rows" />
+              </TableHead>
+
+              {columns.map((column) => {
+                const columnKey = String(column.key)
+                const isFiltered = Boolean(filters?.[columnKey])
+
+                return (
+                  <TableHead
+                    key={columnKey}
+                    className={`h-11 text-xs font-semibold text-foreground ${
+                      column.headerClassName ?? ""
+                    }`}
+                  >
+                    <div className="flex items-center gap-1">
+                      <span>{column.label}</span>
+
+                      {column.sortable && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                          onClick={() => onSortChange?.(columnKey)}
+                        >
+                          {renderSortIcon(columnKey)}
+                        </Button>
+                      )}
+
+                      {column.filterable && column.filterOptions && (
+                        <Dropdown>
+                          <DropdownTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className={`h-6 w-6 ${
+                                isFiltered
+                                  ? "text-primary"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <Filter className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownTrigger>
+
+                          <DropdownContent align="start">
+                            <DropdownItem
+                              onClick={() =>
+                                onFilterChange?.(columnKey, "all")
+                              }
+                            >
+                              All
+                            </DropdownItem>
+
+                            {column.filterOptions.map((option) => (
+                              <DropdownItem
+                                key={String(option.value)}
+                                onClick={() =>
+                                  onFilterChange?.(
+                                    columnKey,
+                                    String(option.value),
+                                  )
+                                }
+                              >
+                                {option.label}
+                              </DropdownItem>
+                            ))}
+                          </DropdownContent>
+                        </Dropdown>
+                      )}
+                    </div>
+                  </TableHead>
+                )
+              })}
+
+              {actions && actions.length > 0 && (
+                <TableHead className="w-[72px] text-right text-xs font-semibold text-foreground">
+                  Actions
+                </TableHead>
+              )}
+            </TableRow>
+          </TableHeader>
+
+          <TableBody>
+            {data.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length + (actions?.length ? 2 : 1)}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No results found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              data.map((row, rowIndex) => (
+                <TableRow
+                  key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
+                  className="border-b transition-colors hover:bg-muted/40"
+                >
+                  <TableCell className="w-[44px]">
+                    <Checkbox aria-label={`Select row ${rowIndex + 1}`} />
+                  </TableCell>
+
+                  {columns.map((column) => (
+                    <TableCell
+                      key={String(column.key)}
+                      className={`h-[58px] py-2 text-sm ${
+                        column.className ?? ""
+                      }`}
+                    >
+                      {renderCell(column, row, rowIndex)}
+                    </TableCell>
+                  ))}
+
+                  {actions && actions.length > 0 && (
+                    <TableCell className="pr-4 text-right">
+                      <Dropdown>
+                        <DropdownTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownTrigger>
+
+                        <DropdownContent align="end">
+                          {actions.map((action) => (
+                            <DropdownItem
+                              key={action.type}
+                              variant={
+                                action.type === "delete"
+                                  ? "destructive"
+                                  : "default"
+                              }
+                              onClick={() => action.onClick?.(row, rowIndex)}
+                            >
+                              {action.label}
+                            </DropdownItem>
+                          ))}
+                        </DropdownContent>
+                      </Dropdown>
+                    </TableCell>
+                  )}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
             <>
@@ -305,7 +549,7 @@ export function DataTable<TData extends object>({
                 onChange={(event) =>
                   onPageSizeChange(Number(event.target.value))
                 }
-                className="h-8 rounded-md border border-input bg-background px-2 text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                className="h-8 rounded-md border border-input bg-background px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {pageSizeOptions.map((size) => (
                   <option key={size} value={size}>
@@ -322,85 +566,13 @@ export function DataTable<TData extends object>({
         {paginationInfo && (
           <span className="text-sm font-medium text-muted-foreground">
             Showing{" "}
-            <span className="text-foreground">
-              {paginationInfo.startItem}
-            </span>{" "}
+            <span className="text-foreground">{paginationInfo.startItem}</span>{" "}
             to{" "}
             <span className="text-foreground">{paginationInfo.endItem}</span>{" "}
             of{" "}
             <span className="text-foreground">{paginationInfo.totalItems}</span>
           </span>
         )}
-      </div>
-
-      <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b-primary/10 bg-primary/5 hover:bg-primary/5">
-              {columns.map((column) => (
-                <TableHead
-                  key={String(column.key)}
-                  className="h-12 font-semibold text-foreground"
-                >
-                  {column.label}
-                </TableHead>
-              ))}
-
-              {actions && actions.length > 0 && (
-                <TableHead className="pr-6 text-right font-semibold text-foreground">
-                  Actions
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {data.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + (actions?.length ? 1 : 0)}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No results found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((row, rowIndex) => (
-                <TableRow
-                  key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
-                  className="transition-colors hover:bg-muted/50"
-                >
-                  {columns.map((column) => (
-                    <TableCell key={String(column.key)} className="py-3">
-                      {renderCell(column, row)}
-                    </TableCell>
-                  ))}
-
-                  {actions && actions.length > 0 && (
-                    <TableCell className="space-x-2 pr-4 text-right">
-                      {actions.map((action) => (
-                        <Button
-                          key={action.type}
-                          size="icon"
-                          variant={resolveActionVariant(action)}
-                          className={
-                            action.type === "edit"
-                              ? "h-8 w-8 border-primary/20 hover:bg-primary hover:text-primary-foreground"
-                              : "h-8 w-8"
-                          }
-                          onClick={() => action.onClick?.(row, rowIndex)}
-                          title={action.label}
-                        >
-                          {renderActionIcon(action)}
-                        </Button>
-                      ))}
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
       </div>
     </div>
   )

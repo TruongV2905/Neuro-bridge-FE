@@ -3,8 +3,8 @@ import type { ComponentType } from "react"
 import type { CrudConfig } from "@/types/crud"
 import { userConfig } from "@/modules/users/configs/user.config"
 import { UserForm } from "@/modules/users/forms/UserForm"
-import type { User } from "@/modules/users/types/user.type"
-import type { UserSchema } from "@/modules/users/schemas/user.schema"
+import type { User } from "@/types/user/user.type"
+import type { UserSchema } from "@/schemas/user.schema"
 
 export type DashboardFormMode = "create" | "edit"
 

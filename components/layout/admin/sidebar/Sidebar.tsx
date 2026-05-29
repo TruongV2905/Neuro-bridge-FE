@@ -10,7 +10,8 @@ import {
   Settings,
   HelpCircle,
   FolderOpen,
-  FileText
+  FileText,
+  LogOut
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
@@ -32,6 +33,13 @@ const adminNavItems = [
       { title: "Services", href: "#", icon: Cpu },
     ],
   },
+  {
+    category: "SETTINGS",
+    items: [
+      { title: "Settings", href: "#", icon: Settings },
+      { title: "Log Out", href: "#", icon: LogOut },
+    ],
+  }
 ];
 
 export function AdminSidebar() {

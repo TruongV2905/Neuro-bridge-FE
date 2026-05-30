@@ -18,7 +18,7 @@ function RegisterForm() {
 
   return (
     <div className="flex h-full w-full items-start justify-center bg-background pt-2 md:pt-4">
-      <div className="w-full max-w-[420px]">
+      <div className="w-full max-w-105">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="shrink-0">
             <Image

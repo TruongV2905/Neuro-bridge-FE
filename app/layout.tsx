@@ -30,7 +30,6 @@ export default function RootLayout({
       lang="en"
       className={`${roboto.variable} ${geistMono.variable} h-full antialiased`}
     >
-        <Header />
       <body className="min-h-screen font-sans">
         <AppProvider>{children}</AppProvider>
       </body>

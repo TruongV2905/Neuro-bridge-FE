@@ -12,7 +12,8 @@ const Testimonial = () => {
             src="/img/quote-img.png"
             alt="Quote"
             width={43}
-            height={31}
+            height={100}
+            style={{ height: 'auto', width: '100%' }}
           />
         </div>
 

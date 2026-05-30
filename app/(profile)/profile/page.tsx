@@ -42,10 +42,6 @@ const mockUser: UserProfile = {
   address: "Ho Chi Minh City, Vietnam",
   role: "CLIENT", // Để "CLIENT" để tự động bật khung Client Information phía dưới góc phải
   status: "ACTIVE",
-  portfolio: "https://portfolio.alexarawles.dev",
-  completedProjects: 24,
-  rating: 4.8,
-  availabilityStatus: true,
   companyName: "NeuroBridge Solutions Corp",
   industry: "Artificial Intelligence & SaaS",
   companyDescription: "Providing cutting-edge AI collaboration tools and expert matching workflows globally."

@@ -34,6 +34,7 @@ export default function RootLayout({
       className={`${manrope.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-screen font-sans">
+        <Header />
         <AppProvider>{children}</AppProvider>
       </body>
     </html>

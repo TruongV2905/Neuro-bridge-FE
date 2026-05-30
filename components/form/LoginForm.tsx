@@ -23,7 +23,7 @@ function LoginForm() {
             <Image
               src={logo}
               alt="Neuro Bridge logo"
-              className="h-full w-full object-contain"
+              className="h-13 w-full object-contain"
               priority
             />
           </div>

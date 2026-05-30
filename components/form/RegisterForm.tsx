@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 
-import logo from "@/public/img/LogoFull.png";
+import logo from "@/public/img/MainLogo.png";
 import googleLogo from "@/public/img/google-logo.png";
 
 import { Button } from "@/components/ui/button";
@@ -24,7 +24,7 @@ function RegisterForm() {
             <Image
               src={logo}
               alt="Neuro Bridge logo"
-              className="h-full w-full object-contain"
+              className="h-13 w-full object-contain"
               priority
             />
           </div>

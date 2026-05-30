@@ -1,4 +1,7 @@
+"use client"
+
 import * as React from "react"
+import Image from "next/image"
 import { Sparkles, Eye, Bookmark, MessageSquare, CheckCircle2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Card } from "@/components/ui/card"
@@ -168,9 +171,11 @@ export function AvailableAICard({
       {/* 6. Thông tin Tác giả (Author) */}
       <div className="flex items-center gap-2.5">
         {author.avatarUrl ? (
-          <img
+          <Image
             src={author.avatarUrl}
             alt={author.name}
+            width={36}
+            height={36}
             className="h-9 w-9 rounded-full object-cover ring-1 ring-[#8b5cf6]/30"
           />
         ) : (

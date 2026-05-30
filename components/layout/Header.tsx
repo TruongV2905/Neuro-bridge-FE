@@ -6,10 +6,11 @@ import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 const NAV_LINKS = [
-  { label: "AI Models", path: "/ai-models" },
+  { label: "Home", path: "/" },
+  { label: "AI Models", path: "/availableAI" },
   { label: "AI Experts", path: "/experts" },
-  { label: "Support", path: "/support" },
-  { label: "Contact", path: "/contact" },
+  { label: "Benefits", path: "/#benefits" },
+  { label: "Insights", path: "/#blog" },
 ];
 
 export default function Header() {

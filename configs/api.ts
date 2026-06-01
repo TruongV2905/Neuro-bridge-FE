@@ -33,7 +33,7 @@ const processQueue = (error: any, token: string | null = null) => {
 // 1. Request Interceptor
 api.interceptors.request.use(
   (config: any) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("accessToken");
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -74,7 +74,7 @@ api.interceptors.response.use(
 
           // Gọi API refresh token (Dùng axios instance mới để tránh loop interceptor)
           const { data } = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_URL}/identity/auth/refresh`,
             {
               token: refreshToken,
             },
@@ -83,7 +83,7 @@ api.interceptors.response.use(
           const { token: newToken, refreshToken: newRefreshToken } =
             data.result;
 
-          localStorage.setItem("token", newToken);
+          localStorage.setItem("accessToken", newToken);
           localStorage.setItem("refreshToken", newRefreshToken);
 
           processQueue(null, newToken);

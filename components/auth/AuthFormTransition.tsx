@@ -7,21 +7,43 @@ type AuthFormTransitionProps = {
   children: React.ReactNode;
 };
 
+const pageVariants = {
+  initial: {
+    opacity: 0,
+    y: 18,
+    scale: 0.98,
+    filter: "blur(8px)",
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    filter: "blur(0px)",
+  },
+  exit: {
+    opacity: 0,
+    y: -18,
+    scale: 0.98,
+    filter: "blur(8px)",
+  },
+};
+
 function AuthFormTransition({ children }: AuthFormTransitionProps) {
   const pathname = usePathname();
   const reduceMotion = useReducedMotion();
 
   return (
-    <div className="relative w-full min-h-[430px]">
+    <div className="relative h-full w-full overflow-hidden">
       <AnimatePresence mode="wait" initial={false}>
         <motion.div
           key={pathname}
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 14, scale: 0.995 }}
-          animate={reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
-          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -14, scale: 0.995 }}
+          variants={reduceMotion ? undefined : pageVariants}
+          initial={reduceMotion ? { opacity: 0 } : "initial"}
+          animate={reduceMotion ? { opacity: 1 } : "animate"}
+          exit={reduceMotion ? { opacity: 0 } : "exit"}
           transition={{
-            duration: 0.3,
-            ease: [0.22, 1, 0.36, 1],
+            duration: 0.62,
+            ease: [0.16, 1, 0.3, 1],
           }}
           className="absolute inset-0 w-full will-change-transform"
         >

@@ -33,3 +33,4 @@ export const uploadFiles = async (files: (File | null | undefined)[]) => {
   const urls = await Promise.all(realFiles.map(uploadFile));
   return urls;
 };
+ 

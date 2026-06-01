@@ -9,7 +9,7 @@
   --color-foreground: var(--foreground);
 
   /* FONT */
-  --font-sans: var(--font-manrope);
+  --font-sans: var(--font-roboto);
   --font-heading: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 
@@ -69,11 +69,11 @@
     #8b5cf6 65%,
     #ec4899 100%
   );
-    --primary: #5470ff;
+  --primary: #5470ff;
   --secondary: #fc38da;
   --background: #f6f1f1;
   --foreground: #161a30;
-/* ------------------------------- */
+  /* ------------------------------- */
 
   --primary-foreground: #ffffff;
 

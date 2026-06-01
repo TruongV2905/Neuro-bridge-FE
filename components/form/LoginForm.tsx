@@ -10,13 +10,57 @@ import googleLogo from "@/public/img/google-logo.png";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-
+import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { loginSchema, type LoginFormValues } from "@/schemas/loginSchema";
+import { useLoginMutation } from "@/services/authenticationService";
+import { toast } from "react-toastify";
+import { useDispatch } from "react-redux";
+import { login } from "@/redux/features/userSlice";
+import { useRouter } from "next/navigation";
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
+  const loginMutation = useLoginMutation();
+  const dispatch = useDispatch();
+  const router = useRouter();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
+
+  const onSubmit = (data: LoginFormValues) => {
+    console.log("Login data:", data);
+    loginMutation.mutate(
+      { data },
+      {
+        onSuccess: (response) => {
+          toast.success("Login successful! Welcome back.");
+          const { refreshToken, accessToken, ...userData } = response;
+          localStorage.setItem("accessToken", accessToken || "");
+          localStorage.setItem("refreshToken", refreshToken || "");
+          dispatch(login(userData));
+          router.push("/");
+        },
+        onError: (error) => {
+          console.error("Login failed:", error);
+          toast.error(
+            error?.response?.data?.message || "Login failed. Please try again.",
+          );
+        },
+      },
+    );
+  };
 
   return (
-    <div className="flex h-full w-full items-start justify-center bg-background pt-2 md:pt-4">
+    <div className="flex h-full w-full items-center justify-center bg-background">
       <div className="w-full max-w-105">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="shrink-0">
@@ -29,54 +73,81 @@ function LoginForm() {
           </div>
         </div>
 
-        <form
-          className="space-y-2.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            console.log("Login");
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="username" className="text-sm font-bold text-foreground">
-              Username
-            </Label>
-            <Input
-              id="username"
-              type="text"
-              placeholder="Enter your username"
-              className="h-10 rounded-full border border-background bg-white px-5 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-            />
-          </div>
+        <FieldGroup className="gap-2">
+          <Controller
+            name="email"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="email" className="text-sm font-light">
+                  Email
+                </FieldLabel>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-sm font-bold text-foreground">
-              Password
-            </Label>
+                <Input
+                  {...field}
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  aria-invalid={fieldState.invalid}
+                  className="h-13 rounded-full border border-background bg-white px-5 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
+                />
 
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter your password"
-                className="h-10 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-              />
-
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-foreground outline-none transition-none hover:bg-transparent"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" strokeWidth={2.5} />
-                ) : (
-                  <Eye className="h-5 w-5" strokeWidth={2.5} />
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
                 )}
-              </button>
-            </div>
-          </div>
+              </Field>
+            )}
+          />
 
-          <div className="flex justify-end pt-0.5">
+          <Controller
+            name="password"
+            control={control}
+            render={({ field, fieldState }) => (
+              <Field data-invalid={fieldState.invalid}>
+                <FieldLabel htmlFor="password" className="text-sm font-light">
+                  Password
+                </FieldLabel>
+
+                <div className="relative">
+                  <Input
+                    {...field}
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    aria-invalid={fieldState.invalid}
+                    className="h-13 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-foreground outline-none transition-none hover:bg-transparent"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff
+                        className="h-5 w-5"
+                        color={fieldState.invalid ? "#ef4444" : undefined}
+                        strokeWidth={2}
+                      />
+                    ) : (
+                      <Eye
+                        className="h-5 w-5"
+                        color={fieldState.invalid ? "#ef4444" : undefined}
+                        strokeWidth={2}
+                      />
+                    )}
+                  </button>
+                </div>
+
+                {fieldState.invalid && (
+                  <FieldError errors={[fieldState.error]} />
+                )}
+              </Field>
+            )}
+          />
+
+          <div className="flex justify-end">
             <button
               type="button"
               className="text-[11px] font-medium text-primary underline hover:text-[#3155df]"
@@ -86,34 +157,41 @@ function LoginForm() {
           </div>
 
           <Button
-            type="submit"
-            className="h-10 w-full rounded-xl bg-primary text-sm font-medium text-white shadow-md hover:bg-[#4562f0]"
+            type="button"
+            onClick={handleSubmit(onSubmit)}
+            className="h-12 w-full rounded-xl bg-primary text-sm font-medium text-white shadow-md hover:bg-[#4562f0]"
           >
             Login
           </Button>
 
           <div className="flex items-center justify-end gap-2 pt-0.5 text-[11px]">
-            <span className="font-semibold text-foreground">Don&apos;t have an account?</span>
-            <Link href="/register" className="font-semibold text-primary hover:text-[#3155df]">
+            <span className="font-light text-foreground">
+              Don&apos;t have an account?
+            </span>
+
+            <Link
+              href="/register"
+              className="font-semibold text-primary hover:text-[#3155df]"
+            >
               Sign Up
             </Link>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-foreground" />
+            <div className="h-[0.5px] flex-1 bg-foreground" />
             <span className="text-xs font-medium text-foreground">OR</span>
-            <div className="h-px flex-1 bg-foreground" />
+            <div className="h-[0.5px] flex-1 bg-foreground" />
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="h-10 w-full rounded-md border border-background bg-white text-sm font-semibold text-[#777] shadow-sm hover:bg-slate-50"
+            className="h-12 w-full rounded-xl border border-background bg-white text-sm font-semibold text-[#777] shadow-sm hover:bg-slate-50"
           >
             <Image src={googleLogo} alt="Google" width={24} height={24} />
             Continue with Google
           </Button>
-        </form>
+        </FieldGroup>
       </div>
     </div>
   );

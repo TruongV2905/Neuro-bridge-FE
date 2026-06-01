@@ -1,22 +1,12 @@
 import type { Metadata } from "next";
-import { Geist_Mono, Manrope, Space_Grotesk } from "next/font/google";
+import { Roboto } from "next/font/google";
 import "./globals.css";
 import AppProvider from "@/providers/App";
-import Header from "@/components/layout/Header";
 
-const manrope = Manrope({
-  variable: "--font-manrope",
+const roboto = Roboto({
+  variable: "--font-roboto",
   subsets: ["latin"],
-});
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "700"],
 });
 
 export const metadata: Metadata = {
@@ -30,12 +20,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${manrope.variable} ${spaceGrotesk.variable} ${geistMono.variable} h-full antialiased`}
-    >
+    <html lang="en" className={`${roboto.variable} h-full antialiased`}>
       <body className="min-h-screen font-sans">
-        <Header />
         <AppProvider>{children}</AppProvider>
       </body>
     </html>

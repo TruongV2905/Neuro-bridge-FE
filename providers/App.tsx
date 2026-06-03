@@ -21,7 +21,6 @@ export default function AppProvider({
       <PersistGate loading={null} persistor={persistor}>
         <QueryClientProvider client={queryClient}>
           {children}
-
           <ToastContainer
             position="top-right"
             autoClose={2500}

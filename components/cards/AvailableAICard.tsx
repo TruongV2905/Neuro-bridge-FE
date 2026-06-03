@@ -209,8 +209,11 @@ export function AvailableAICard({
       <div className="flex items-center gap-2.5">
         {author.avatarUrl ? (
           <Image
+          <Image
             src={author.avatarUrl}
             alt={author.name}
+            width={36}
+            height={36}
             className="h-9 w-9 rounded-full object-cover ring-1 ring-[#8b5cf6]/30"
           />
         ) : (
@@ -311,3 +314,4 @@ export function AvailableAICard({
     </Card>
   );
 }
+

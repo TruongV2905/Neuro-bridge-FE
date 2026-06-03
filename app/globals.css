@@ -10,7 +10,7 @@
 
   /* FONT */
   --font-sans: var(--font-roboto);
-  --font-heading: var(--font-roboto);
+  --font-heading: var(--font-space-grotesk);
   --font-mono: var(--font-geist-mono);
 
   --color-sidebar-ring: var(--sidebar-ring);
@@ -69,11 +69,11 @@
     #8b5cf6 65%,
     #ec4899 100%
   );
-    --primary: #5470ff;
+  --primary: #5470ff;
   --secondary: #fc38da;
   --background: #f6f1f1;
   --foreground: #161a30;
-/* ------------------------------- */
+  /* ------------------------------- */
 
   --primary-foreground: #ffffff;
 
@@ -166,10 +166,18 @@
 
   html {
     @apply font-sans;
+    scroll-behavior: smooth;
   }
 
   body {
     @apply bg-background text-foreground font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-heading;
   }
 
   button,

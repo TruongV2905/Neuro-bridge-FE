@@ -1,44 +1,40 @@
 # 🎛️ DASHBOARD UI MODULE DEVELOPMENT GUIDE
 
-The Frontend Dashboard UI is built with a reusable and scalable CRUD-based architecture.
+Frontend Dashboard UI được xây dựng theo kiến trúc CRUD có thể tái sử dụng và mở rộng.
 
-Each dashboard feature is developed as an independent module and then registered into the dynamic dashboard system. This approach helps the project remain consistent, maintainable, and easy to extend when new business modules are added.
+Mỗi tính năng trong dashboard được phát triển như một module độc lập, sau đó được đăng ký vào hệ thống dashboard động. Cách tiếp cận này giúp dự án luôn nhất quán, dễ bảo trì và dễ mở rộng khi thêm các module nghiệp vụ mới.
 
-Examples of dashboard modules include:
+Ví dụ về các dashboard module:
 
-* User Management
-* Course Management
-* Program Management
-* Program Registration Management
-* Consultant Management
-* Appointment Management
-* Report Management
+* Quản lý người dùng
+* Quản lý dịch vụ AI
+* Quản lý dự án
 
 ---
 
-## 🛠️ PART 1: Guide for Core Developers
+## 🛠️ PHẦN 1: Hướng dẫn dành cho Nhà phát triển chính
 
-### When Scaling or Adding a New Dashboard Module
+### Khi mở rộng hoặc thêm một Dashboard Module mới
 
-When the system grows and a new dashboard module needs to be added, follow the standardized development workflow below.
+Khi hệ thống phát triển và cần thêm một dashboard module mới, hãy tuân theo quy trình phát triển chuẩn hóa bên dưới.
 
-A dashboard module should be placed inside:
+Một dashboard module nên được đặt bên trong:
 
 ```txt
 src/modules/<module-name>/
 ```
 
-For example:
+Ví dụ:
 
 ```txt
 src/modules/users/
-src/modules/courses/
-src/modules/programs/
+src/modules/available-ai/
+src/modules/workspace/
 ```
 
-The module folder is responsible for UI configuration, table columns, forms, hooks, and module-level logic.
+Thư mục module chịu trách nhiệm quản lý cấu hình UI, cột bảng, form, hooks và logic cấp module.
 
-Recommended module structure:
+Cấu trúc module được khuyến nghị:
 
 ```txt
 src/modules/<module-name>/
@@ -49,9 +45,9 @@ src/modules/<module-name>/
 └── hooks/
 ```
 
-API services and validation schemas are placed outside the module folder to keep shared backend communication and validation logic centralized.
+API services và validation schemas được đặt bên ngoài thư mục module để giữ logic giao tiếp backend dùng chung và logic validation được quản lý tập trung.
 
-Recommended shared structure:
+Cấu trúc dùng chung được khuyến nghị:
 
 ```txt
 src/services/
@@ -63,13 +59,13 @@ src/schemas/
 
 ---
 
-## ⚠️ Important Development Rules
+## ⚠️ Quy tắc phát triển quan trọng
 
-When adding or updating a dashboard module, developers should only work inside the target module folder, the related service file, the related schema file, and the dashboard registry.
+Khi thêm hoặc cập nhật một dashboard module, developer chỉ nên làm việc bên trong thư mục module mục tiêu, file service liên quan, file schema liên quan và dashboard registry.
 
-Do **not** modify the shared dashboard core files unless the whole team agrees that the global dashboard behavior needs to change.
+Không chỉnh sửa các file core dùng chung của dashboard, trừ khi cả team thống nhất rằng hành vi tổng thể của dashboard cần thay đổi.
 
-The following files are considered shared dashboard infrastructure:
+Các file sau được xem là hạ tầng dashboard dùng chung:
 
 ```txt
 src/types/crud.ts
@@ -84,60 +80,54 @@ src/components/dashboard/table/TablePagination.tsx
 src/components/common/PageWrapper.tsx
 ```
 
-These files are reused by all dashboard modules.
-Changing them may affect every existing dashboard page.
+Các file này được tái sử dụng bởi toàn bộ dashboard module.
+Việc thay đổi chúng có thể ảnh hưởng đến mọi trang dashboard hiện có.
 
-All UI elements must use the existing shadcn-based component system from:
+Tất cả UI elements phải sử dụng hệ thống component hiện có dựa trên shadcn từ:
 
 ```txt
 src/components/ui
 ```
 
-Developers should reuse available UI components such as buttons, inputs, selects, dialogs, tables, badges, dropdown menus, textareas, checkboxes, and cards instead of creating duplicated UI components.
+Developer nên tái sử dụng các UI component có sẵn như button, input, select, dialog, table, badge, dropdown menu, textarea, checkbox và card thay vì tạo các UI component trùng lặp.
 
 ---
 
-# 📦 Standard Dashboard Module Workflow
+# 📦 Quy trình chuẩn cho Dashboard Module
 
-## Step 1: Define Module Types
+## Bước 1: Định nghĩa Module Types
 
-Create the type definition file for the module.
+Bước này được dùng để định nghĩa cấu trúc dữ liệu của module, bao gồm:
 
-This step is used to define the data structure of the module, including:
+Type chính của entity
+Giá trị enum
+Type cho API request
+Type cho API response
+Các type tùy chọn phục vụ hiển thị
 
-* Main entity type
-* Enum values
-* API request types
-* API response types
-* Optional display-related types
-
-The purpose of this step is to make the module type-safe and prevent duplicated or unclear data structures across services, forms, columns, configs, and hooks.
-
-Example location:
+Mục đích của bước này là giúp module type-safe và tránh việc cấu trúc dữ liệu bị trùng lặp hoặc không rõ ràng giữa services, forms, columns, configs và hooks.
 
 ```txt
-src/modules/<module-name>/types/<module>.type.ts
+src/types/<module-name>/<module>.type.ts
 ```
 
 ---
 
-## Step 2: Create API Service Layer
+## Bước 2: Tạo API Service Layer
 
-Create the API service file for the module.
+Tạo file API service cho module.
 
-Services are placed outside `src/modules` because they are part of the shared API communication layer.
-
-Example location:
+Services được đặt bên ngoài src/modules vì chúng thuộc lớp giao tiếp API dùng chung.
 
 ```txt
 src/services/<module>.service.ts
 ```
 
-The service layer is responsible for communicating with the backend API. It should contain all API-related functions such as fetching data, creating records, updating records, deleting records, banning accounts, activating accounts, or performing other module-specific actions.
+Service layer chịu trách nhiệm giao tiếp với backend API. File này nên chứa toàn bộ các hàm liên quan đến API như lấy dữ liệu, tạo bản ghi, cập nhật bản ghi, xóa bản ghi, khóa tài khoản, kích hoạt tài khoản hoặc thực hiện các hành động riêng của module.
 
-The service layer helps keep API logic separated from UI components.
+Service layer giúp tách biệt logic API khỏi UI components.
 
-Do **not** call APIs directly inside:
+Không gọi API trực tiếp bên trong:
 
 ```txt
 Page components
@@ -146,129 +136,119 @@ Form components
 Modal components
 ```
 
-All backend communication should go through the service layer.
+Toàn bộ giao tiếp backend nên đi qua service layer.
 
 ---
 
-## Step 3: Create Validation Schema
+## Bước 3: Tạo Validation Schema
 
-Create the validation schema for the module form.
+Tạo validation schema cho form của module.
 
-Schemas are placed outside `src/modules` because validation rules may be reused by multiple components, pages, or workflows.
-
-Example location:
+Schemas được đặt bên ngoài src/modules vì các quy tắc validation có thể được tái sử dụng bởi nhiều component, page hoặc workflow khác nhau.
 
 ```txt
 src/schemas/<module>.schema.ts
 ```
 
-The schema is used to validate create and update data before submitting it to the backend.
+Schema được dùng để validate dữ liệu create và update trước khi submit lên backend.
 
-The schema should define:
+Schema nên định nghĩa:
 
-* Required fields
-* Optional fields
-* Field length rules
-* Enum validation
-* Email or URL validation
-* Any business input constraints required by the module
+* Các field bắt buộc
+* Các field tùy chọn
+* Quy tắc độ dài field
+* Validation enum
+* Validation email hoặc URL
+* Bất kỳ ràng buộc input nghiệp vụ nào mà module yêu cầu
 
-The purpose of this step is to keep form validation centralized and prevent invalid payloads from being submitted to the API.
+Mục đích của bước này là giữ form validation được quản lý tập trung và ngăn payload không hợp lệ được submit lên API.
 
 ---
 
-## Step 4: Define Table Columns
+## Bước 4: Định nghĩa Table Columns
 
-Create the table column definition file for the module.
+Tạo file định nghĩa cột bảng cho module.
 
-This file describes how the module data should be displayed inside the reusable dashboard table.
-
-Example location:
+File này mô tả cách dữ liệu của module được hiển thị bên trong dashboard table có thể tái sử dụng.
 
 ```txt
 src/modules/<module-name>/columns/<module>.columns.tsx
 ```
 
-Column definitions may include:
+Column definitions có thể bao gồm:
 
-* Column labels
-* Display fields
-* Searchable columns
-* Sortable columns
-* Filterable columns
-* Custom cell rendering
-* Status or role display formatting
+* Nhãn cột
+* Field hiển thị
+* Cột có thể search
+* Cột có thể sort
+* Cột có thể filter
+* Render cell tùy chỉnh
+* Định dạng hiển thị status hoặc role
 
-The column file should only control table display behavior.
-Business logic should remain inside services, hooks, or module-specific utilities.
+File columns chỉ nên kiểm soát hành vi hiển thị của bảng.
+Business logic nên nằm trong services, hooks hoặc utilities riêng của module.
 
 ---
 
-## Step 5: Create Module Config
+## Bước 5: Tạo Module Config
 
-Create the module configuration file.
+Tạo file cấu hình module.
 
-The config file connects the module metadata with the reusable dashboard system.
-
-Example location:
+File config kết nối metadata của module với hệ thống dashboard có thể tái sử dụng.
 
 ```txt
 src/modules/<module-name>/configs/<module>.config.ts
 ```
 
-The module config usually defines:
+Module config thường định nghĩa:
 
-* Entity name
-* Page title
-* Page description
+* Tên entity
+* Tiêu đề trang
+* Mô tả trang
 * Table columns
-* Search settings
-* Pagination options
-* Filter options
-* Default table behavior
-* Module-level dashboard settings
+* Cấu hình search
+* Tùy chọn pagination
+* Tùy chọn filter
+* Hành vi mặc định của bảng
+* Cấu hình dashboard cấp module
 
-The purpose of this step is to allow the shared `CrudPage` to render the module correctly without changing the core dashboard components.
+Mục đích của bước này là cho phép CrudPage dùng chung render module một cách chính xác mà không cần thay đổi core dashboard components.
 
 ---
 
-## Step 6: Create Form Component
+## Bước 6: Tạo Form Component
 
-Create the form component for create and update actions.
-
-Example location:
+Tạo form component cho hành động create và update.
 
 ```txt
 src/modules/<module-name>/forms/<Module>Form.tsx
 ```
 
-The form component should:
+Form component nên:
 
-* Use shadcn UI components
-* Support create mode
-* Support edit mode
-* Receive default values when editing
-* Use the shared schema from `src/schemas`
-* Submit data through the provided submit handler
-* Display validation errors clearly
+* Sử dụng shadcn UI components
+* Hỗ trợ create mode
+* Hỗ trợ edit mode
+* Nhận default values khi chỉnh sửa
+* Sử dụng schema dùng chung từ src/schemas
+* Submit dữ liệu thông qua submit handler được truyền vào
+* Hiển thị lỗi validation rõ ràng
 
-The form should focus only on rendering and validating user input.
+Form chỉ nên tập trung vào việc render và validate input của người dùng.
 
-Do **not** place unrelated business logic or direct API calls inside the form unless the module has a specific reason to do so.
+Không đặt business logic không liên quan hoặc gọi API trực tiếp bên trong form, trừ khi module có lý do cụ thể để làm vậy.
 
 ---
 
-## Step 7: Create CRUD Hook
+## Bước 7: Tạo CRUD Hook
 
-Create a custom hook to manage the module’s CRUD workflow.
-
-Example location:
+Tạo custom hook để quản lý CRUD workflow của module.
 
 ```txt
 src/modules/<module-name>/hooks/use<Module>Crud.ts
 ```
 
-The CRUD hook should handle:
+CRUD hook nên xử lý:
 
 * Fetching data
 * Creating records
@@ -279,25 +259,23 @@ The CRUD hook should handle:
 * Calling service functions from `src/services`
 * Exposing handlers to the dashboard page
 
-This step keeps business logic outside of UI components and makes the module easier to maintain, debug, and reuse.
+Bước này giúp business logic nằm ngoài UI components và làm module dễ bảo trì, dễ debug và dễ tái sử dụng hơn.
 
 ---
 
-## Step 8: Register Module into Dashboard
+## Bước 8: Đăng ký Module vào Dashboard
 
-After completing the module, register it in the dashboard registry.
-
-Example location:
+Sau khi hoàn thành module, đăng ký module đó trong dashboard registry.
 
 ```txt
 src/modules/dashboard-register.ts
 ```
 
-The registry connects the module config and form component to the reusable dashboard system.
+Registry kết nối module config và form component với hệ thống dashboard có thể tái sử dụng.
 
-After registration, the module can be accessed through the dynamic dashboard route.
+Sau khi đăng ký, module có thể được truy cập thông qua dynamic dashboard route.
 
-Example route:
+Route ví dụ:
 
 ```txt
 /dashboard/<module-name>
@@ -307,15 +285,15 @@ For example:
 
 ```txt
 /dashboard/users
-/dashboard/courses
-/dashboard/programs
+/dashboard/available-ai
+/dashboard/workspace
 ```
 
-The purpose of this step is to expose the module to the dashboard without creating a separate page manually for every module.
+Mục đích của bước này là đưa module vào dashboard mà không cần tạo thủ công một page riêng cho từng module.
 
 ---
 
-# 🧩 PART 2: Guide for Teammates
+# 🧩 PHẦN 2: QUY TẮC CHUNG
 
 ## When Working With Existing Dashboard Modules
 
@@ -341,33 +319,33 @@ hooks/
 
 ---
 
-## 1. Do Not Modify Core Dashboard Components
+## 1. Không chỉnh sửa Core Dashboard Components
 
-Avoid editing shared dashboard files unless there is a confirmed requirement to change global dashboard behavior.
+Tránh chỉnh sửa các file dashboard dùng chung, trừ khi có yêu cầu đã được xác nhận để thay đổi hành vi tổng thể của dashboard.
 
-Shared files affect all dashboard modules, so changing them can easily break other pages.
+Các file dùng chung ảnh hưởng đến tất cả dashboard module, vì vậy việc thay đổi chúng có thể dễ dàng làm hỏng các trang khác.
 
 ---
 
-## 2. Work Inside the Target Module and Related Shared Files
+## 2. Làm việc bên trong Module mục tiêu và các file dùng chung liên quan
 
-Each module should be isolated and responsible for its own dashboard behavior.
+Mỗi module nên được tách biệt và chịu trách nhiệm cho hành vi dashboard riêng của nó.
 
 For example:
 
 ```txt
 src/modules/users/
-src/modules/courses/
-src/modules/programs/
+src/modules/available-ai/
+src/modules/workspace/
 ```
 
-API services should be placed in:
+API services nên được đặt trong:
 
 ```txt
 src/services/
 ```
 
-Validation schemas should be placed in:
+Validation schemas nên được đặt trong:
 
 ```txt
 src/schemas/
@@ -377,51 +355,9 @@ This keeps the project organized while still allowing services and schemas to be
 
 ---
 
-## 3. Use Existing shadcn UI Components
+## 3. Giữ Business Logic trong Hooks
 
-All forms, buttons, modals, inputs, selects, tables, dropdowns, badges, and other UI elements should use existing components from:
-
-```txt
-src/components/ui
-```
-
-Do not create duplicate UI components if an equivalent shadcn-based component already exists.
-
-This keeps the dashboard interface visually consistent across all modules.
-
----
-
-## 4. Keep API Logic in Services
-
-API-related logic must be placed inside the shared service layer.
-
-Example:
-
-```txt
-src/services/<module>.service.ts
-```
-
-This makes backend integration easier to update when API endpoints change.
-
----
-
-## 5. Keep Validation Logic in Schemas
-
-Validation rules must be placed inside the shared schema layer.
-
-Example:
-
-```txt
-src/schemas/<module>.schema.ts
-```
-
-This keeps form validation consistent and reusable.
-
----
-
-## 6. Keep Business Logic in Hooks
-
-CRUD workflow and module-specific business logic should be placed inside the module hook.
+CRUD workflow và business logic riêng của module nên được đặt bên trong module hook.
 
 Example:
 
@@ -429,13 +365,9 @@ Example:
 src/modules/<module-name>/hooks/use<Module>Crud.ts
 ```
 
-This helps keep UI components clean and focused on rendering.
+# ✅ Checklist cuối cùng trước khi đăng ký Module
 
----
-
-# ✅ Final Checklist Before Registering a Module
-
-Before registering a new dashboard module, make sure the following items are completed:
+Trước khi đăng ký một dashboard module mới, hãy đảm bảo các mục sau đã hoàn thành:
 
 ```txt
 [ ] Module types are defined.
@@ -453,9 +385,9 @@ Before registering a new dashboard module, make sure the following items are com
 
 ---
 
-# 🚀 Summary
+# 🚀 Tóm tắt 
 
-To add a new Dashboard UI module, always follow this workflow:
+Để thêm một Dashboard UI module mới, luôn tuân theo workflow sau:
 
 ```txt
 Step 1: types
@@ -468,7 +400,7 @@ Step 7: hooks/useXxxCrud
 Step 8: register into dashboard
 ```
 
-Recommended file locations:
+Vị trí file:
 
 ```txt
 src/modules/<module-name>/types/
@@ -480,5 +412,3 @@ src/modules/<module-name>/forms/
 src/modules/<module-name>/hooks/
 src/modules/dashboard-register.ts
 ```
-
-This standardized workflow ensures that the Dashboard UI remains clean, scalable, reusable, and consistent as the system continues to grow.

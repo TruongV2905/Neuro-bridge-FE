@@ -1,5 +1,5 @@
 import { z } from "zod"
-import { UserGender, UserRole, UserStatus } from "../types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "@/types/user/user.type"
 
 const optionalUrlSchema = z
   .string()
@@ -11,33 +11,28 @@ const optionalStringSchema = z.string().optional().or(z.literal(""))
 
 const userGenderValues = Object.values(UserGender) as [
   UserGender,
-  ...UserGender[]
+  ...UserGender[],
 ]
 
 const userRoleValues = Object.values(UserRole) as [
   UserRole,
-  ...UserRole[]
+  ...UserRole[],
 ]
 
 const userStatusValues = Object.values(UserStatus) as [
   UserStatus,
-  ...UserStatus[]
+  ...UserStatus[],
 ]
 
-export const createUserSchema = z.object({
+export const userSchema = z.object({
+  id: z.string().min(1, "User ID is required"),
+
+  code: z.string().min(1, "User code is required"),
+
   fullName: z
     .string()
     .min(1, "Full name is required")
     .max(100, "Full name must be less than 100 characters"),
-
-  username: z
-    .string()
-    .min(1, "Username is required")
-    .max(50, "Username must be less than 50 characters")
-    .regex(
-      /^[a-zA-Z0-9_]+$/,
-      "Username can only contain letters, numbers, and underscores"
-    ),
 
   email: z
     .string()
@@ -48,7 +43,7 @@ export const createUserSchema = z.object({
 
   avatarUrl: optionalUrlSchema,
 
-  phoneNumber: z
+  phone: z
     .string()
     .max(20, "Phone number must be less than 20 characters")
     .optional()
@@ -67,17 +62,8 @@ export const createUserSchema = z.object({
   status: z.enum(userStatusValues, {
     error: "Status is required",
   }),
-})
 
-export const updateUserSchema = createUserSchema.extend({
-  userId: z.string().min(1, "User ID is required"),
-})
-
-export const userSchema = updateUserSchema.extend({
   createdAt: optionalStringSchema,
-  updatedAt: optionalStringSchema,
 })
 
-export type CreateUserSchema = z.infer<typeof createUserSchema>
-export type UpdateUserSchema = z.infer<typeof updateUserSchema>
 export type UserSchema = z.infer<typeof userSchema>

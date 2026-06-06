@@ -1,70 +1,6 @@
-// import type { ColumnConfig } from "@/types/crud"
-// import type { User } from "../types/user.type"
-// import { UserRole, UserStatus } from "../types/user.type"
-
-// export const userColumns: ColumnConfig<User>[] = [
-//   {
-//     key: "userId",
-//     label: "User ID",
-//   },
-//   {
-//     key: "name",
-//     label: "Name",
-//   },
-//   {
-//     key: "userName",
-//     label: "Username",
-//   },
-//   {
-//     key: "email",
-//     label: "Email",
-//   },
-//   {
-//     key: "role",
-//     label: "Role",
-//     type: "badge",
-//     badgeMap: {
-//       [UserRole.ADMINISTRATOR]: {
-//         label: "Administrator",
-//         className: "bg-destructive text-destructive-foreground",
-//       },
-//       [UserRole.AI_EXPERT]: {
-//         label: "AI Expert",
-//         className: "bg-primary text-primary-foreground",
-//       },
-//       [UserRole.CLIENT]: {
-//         label: "Client",
-//         className: "bg-secondary text-secondary-foreground",
-//       },
-//     },
-//   },
-//   {
-//     key: "status",
-//     label: "Status",
-//     type: "badge",
-//     badgeMap: {
-//       [UserStatus.ACTIVE]: {
-//         label: "Active",
-//         className:
-//           "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-//       },
-//       [UserStatus.INACTIVE]: {
-//         label: "Inactive",
-//         className:
-//           "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400",
-//       },
-//       [UserStatus.BANNED]: {
-//         label: "Banned",
-//         className:
-//           "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-//       },
-//     },
-//   },
-// ]
-
 import type { ColumnConfig } from "@/types/crud"
-import type { User } from "../../../types/user/user.type"
-import { UserGender, UserRole, UserStatus } from "../../../types/user/user.type"
+import type { User } from "@/types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "@/types/user/user.type"
 import {
   Avatar,
   AvatarFallback,
@@ -116,7 +52,7 @@ export const userColumns: ColumnConfig<User>[] = [
             {user.fullName}
           </div>
           <div className="truncate text-xs text-muted-foreground">
-            @{user.username}
+            @{user.code}
           </div>
         </div>
       </div>
@@ -146,10 +82,10 @@ export const userColumns: ColumnConfig<User>[] = [
     },
   },
   {
-    key: "phoneNumber",
+    key: "phone",
     label: "Phone",
     className: "min-w-[150px] text-muted-foreground",
-    render: (_, user) => user.phoneNumber || "—",
+    render: (_, user) => user.phone || "—",
   },
   {
     key: "role",
@@ -157,7 +93,7 @@ export const userColumns: ColumnConfig<User>[] = [
     filterable: true,
     filterOptions: [
       { label: "Administrator", value: UserRole.ADMINISTRATOR },
-      { label: "AI Expert", value: UserRole.AI_EXPERT },
+      { label: "Expert", value: UserRole.EXPERT },
       { label: "Client", value: UserRole.CLIENT },
     ],
     type: "badge",
@@ -168,8 +104,8 @@ export const userColumns: ColumnConfig<User>[] = [
         className:
           "border-purple-200 bg-purple-50 text-purple-700 dark:border-purple-900 dark:bg-purple-950/40 dark:text-purple-300",
       },
-      [UserRole.AI_EXPERT]: {
-        label: "AI Expert",
+      [UserRole.EXPERT]: {
+        label: "Expert",
         className:
           "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-300",
       },

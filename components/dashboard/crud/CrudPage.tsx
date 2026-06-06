@@ -27,29 +27,94 @@
 //   Form: ComponentType<CrudFormProps<TData>>
 // }
 
+// type SortDirection = "asc" | "desc"
+
+// const getRecordValue = <TData extends object>(
+//   record: TData,
+//   key: string,
+// ): unknown => {
+//   return (record as Record<string, unknown>)[key]
+// }
+
+// const getSortableValue = <TData extends object>(
+//   record: TData,
+//   key: string,
+// ): string => {
+//   const recordMap = record as Record<string, unknown>
+
+//   /**
+//    * Cột "user" là cột custom, không tồn tại trực tiếp trong data.
+//    * Với User Management, mình sort theo fullName.
+//    */
+//   if (key === "user") {
+//     return String(recordMap.fullName ?? recordMap.name ?? "")
+//   }
+
+//   return String(recordMap[key] ?? "")
+// }
+
 // export function CrudPage<TData extends object>({
 //   config,
 //   Form,
 // }: CrudPageProps<TData>) {
 //   const [data, setData] = useState<TData[]>(config.data ?? [])
+
 //   const [editingIndex, setEditingIndex] = useState<number | null>(null)
 //   const [selectedRecord, setSelectedRecord] = useState<Partial<TData>>({})
 //   const [isOpen, setIsOpen] = useState(false)
+
+//   const [sortKey, setSortKey] = useState<string | null>(null)
+//   const [sortDirection, setSortDirection] = useState<SortDirection | null>(
+//     null,
+//   )
+//   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
 
 //   const pageSizeOptions = config.table?.pageSizeOptions ?? [10, 25, 50, 100]
 
 //   const [currentPage, setCurrentPage] = useState(1)
 //   const [pageSize, setPageSize] = useState(config.table?.pageSize ?? 10)
 
-//   const totalItems = data.length
+//   const processedData = useMemo(() => {
+//     let result = [...data]
+
+//     Object.entries(columnFilters).forEach(([key, value]) => {
+//       if (!value || value === "all") return
+
+//       result = result.filter((item) => {
+//         const itemValue = String(getRecordValue(item, key) ?? "")
+//         return itemValue === value
+//       })
+//     })
+
+//     if (sortKey && sortDirection) {
+//       result.sort((a, b) => {
+//         const aValue = getSortableValue(a, sortKey).toLowerCase()
+//         const bValue = getSortableValue(b, sortKey).toLowerCase()
+
+//         if (aValue < bValue) {
+//           return sortDirection === "asc" ? -1 : 1
+//         }
+
+//         if (aValue > bValue) {
+//           return sortDirection === "asc" ? 1 : -1
+//         }
+
+//         return 0
+//       })
+//     }
+
+//     return result
+//   }, [data, columnFilters, sortKey, sortDirection])
+
+//   const totalItems = processedData.length
 //   const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1)
 
 //   const startIndex = (currentPage - 1) * pageSize
 //   const endIndex = startIndex + pageSize
 
 //   const paginatedData = useMemo(() => {
-//     return data.slice(startIndex, endIndex)
-//   }, [data, startIndex, endIndex])
+//     return processedData.slice(startIndex, endIndex)
+//   }, [processedData, startIndex, endIndex])
 
 //   const startItem = totalItems === 0 ? 0 : startIndex + 1
 //   const endItem = Math.min(endIndex, totalItems)
@@ -85,7 +150,9 @@
 //   }
 
 //   const handleDelete = (absoluteIndex: number) => {
-//     setData((prev) => prev.filter((_, index) => index !== absoluteIndex))
+//     const targetRecord = processedData[absoluteIndex]
+
+//     setData((prev) => prev.filter((item) => item !== targetRecord))
 
 //     const newTotalItems = totalItems - 1
 //     const newTotalPages = Math.max(Math.ceil(newTotalItems / pageSize), 1)
@@ -93,6 +160,41 @@
 //     if (currentPage > newTotalPages) {
 //       setCurrentPage(newTotalPages)
 //     }
+//   }
+
+//   const handleSortChange = (key: string) => {
+//     setCurrentPage(1)
+
+//     if (sortKey !== key) {
+//       setSortKey(key)
+//       setSortDirection("asc")
+//       return
+//     }
+
+//     if (sortDirection === "asc") {
+//       setSortDirection("desc")
+//       return
+//     }
+
+//     setSortKey(null)
+//     setSortDirection(null)
+//   }
+
+//   const handleFilterChange = (key: string, value: string) => {
+//     setCurrentPage(1)
+
+//     setColumnFilters((prev) => {
+//       if (value === "all") {
+//         const next = { ...prev }
+//         delete next[key]
+//         return next
+//       }
+
+//       return {
+//         ...prev,
+//         [key]: value,
+//       }
+//     })
 //   }
 
 //   return (
@@ -125,19 +227,32 @@
 //             setPageSize(size)
 //             setCurrentPage(1)
 //           }}
+//           sortKey={sortKey}
+//           sortDirection={sortDirection}
+//           filters={columnFilters}
+//           onSortChange={handleSortChange}
+//           onFilterChange={handleFilterChange}
 //           actions={[
 //             {
 //               type: "edit",
 //               label: "Edit",
-//               onClick: (row, rowIndex) => {
-//                 handleEdit(row, startIndex + rowIndex)
+//               onClick: (row) => {
+//                 const absoluteIndex = processedData.findIndex(
+//                   (item) => item === row,
+//                 )
+
+//                 handleEdit(row, absoluteIndex)
 //               },
 //             },
 //             {
 //               type: "delete",
 //               label: "Delete",
-//               onClick: (_, rowIndex) => {
-//                 handleDelete(startIndex + rowIndex)
+//               onClick: (row) => {
+//                 const absoluteIndex = processedData.findIndex(
+//                   (item) => item === row,
+//                 )
+
+//                 handleDelete(absoluteIndex)
 //               },
 //             },
 //           ]}
@@ -170,164 +285,173 @@
 
 import { useMemo, useState } from "react"
 import type { ComponentType } from "react"
+import { Edit, Trash2 } from "lucide-react"
 
 import type { CrudConfig } from "@/types/crud"
 
 import PageWrapper from "@/components/common/PageWrapper"
-import { DataTable } from "@/components/dashboard/table/DataTable"
+import { DataTable, type TableAction } from "@/components/dashboard/table/DataTable"
 import { TablePagination } from "@/components/dashboard/table/TablePagination"
 import { CrudModal } from "./CrudModal"
 import { CrudToolbar } from "./CrudToolbar"
 
 export type CrudFormMode = "create" | "edit"
 
-export type CrudFormProps<TData extends object> = {
+export type CrudFormProps<
+  TData extends object,
+  TSubmit extends object = TData,
+> = {
   mode?: CrudFormMode
   defaultValues?: Partial<TData>
-  onSubmit?: (values: TData) => void | Promise<void>
+  onSubmit?: (values: TSubmit) => void | Promise<void>
   onCancel?: () => void
   submitLabel?: string
   isSubmitting?: boolean
 }
 
-type CrudPageProps<TData extends object> = {
+export type CrudSortDirection = "asc" | "desc"
+
+export type UseCrudParams = {
+  page: number
+  size: number
+  search: string
+  sortKey: string | null
+  sortDirection: CrudSortDirection | null
+  filters: Record<string, string>
+}
+
+export type UseCrudResult<
+  TData extends object,
+  TSubmit extends object = TData,
+> = {
+  data: TData[]
+  totalItems: number
+  totalPages: number
+  loading: boolean
+  error: string | null
+
+  refresh?: () => void | Promise<void>
+
+  getRowKey?: (row: TData, index: number) => string | number
+
+  createItem?: (values: TSubmit) => void | Promise<void>
+  updateItem?: (record: TData, values: TSubmit) => void | Promise<void>
+  deleteItem?: (record: TData) => void | Promise<void>
+
+  customActions?: TableAction<TData>[]
+}
+
+export type UseCrudHook<
+  TData extends object,
+  TSubmit extends object = TData,
+> = (params: UseCrudParams) => UseCrudResult<TData, TSubmit>
+
+type CrudPageProps<
+  TData extends object,
+  TSubmit extends object = TData,
+> = {
   config: CrudConfig<TData>
-  Form: ComponentType<CrudFormProps<TData>>
+  Form: ComponentType<CrudFormProps<TData, TSubmit>>
+  useCrud: UseCrudHook<TData, TSubmit>
 }
 
-type SortDirection = "asc" | "desc"
-
-const getRecordValue = <TData extends object>(
-  record: TData,
-  key: string,
-): unknown => {
-  return (record as Record<string, unknown>)[key]
-}
-
-const getSortableValue = <TData extends object>(
-  record: TData,
-  key: string,
-): string => {
-  const recordMap = record as Record<string, unknown>
-
-  /**
-   * Cột "user" là cột custom, không tồn tại trực tiếp trong data.
-   * Với User Management, mình sort theo fullName.
-   */
-  if (key === "user") {
-    return String(recordMap.fullName ?? recordMap.name ?? "")
-  }
-
-  return String(recordMap[key] ?? "")
-}
-
-export function CrudPage<TData extends object>({
+export function CrudPage<
+  TData extends object,
+  TSubmit extends object = TData,
+>({
   config,
   Form,
-}: CrudPageProps<TData>) {
-  const [data, setData] = useState<TData[]>(config.data ?? [])
-
-  const [editingIndex, setEditingIndex] = useState<number | null>(null)
-  const [selectedRecord, setSelectedRecord] = useState<Partial<TData>>({})
-  const [isOpen, setIsOpen] = useState(false)
-
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDirection, setSortDirection] = useState<SortDirection | null>(
-    null,
-  )
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
-
+  useCrud,
+}: CrudPageProps<TData, TSubmit>) {
   const pageSizeOptions = config.table?.pageSizeOptions ?? [10, 25, 50, 100]
 
   const [currentPage, setCurrentPage] = useState(1)
   const [pageSize, setPageSize] = useState(config.table?.pageSize ?? 10)
 
-  const processedData = useMemo(() => {
-    let result = [...data]
+  const [search, setSearch] = useState("")
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDirection, setSortDirection] = useState<CrudSortDirection | null>(
+    null,
+  )
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
 
-    Object.entries(columnFilters).forEach(([key, value]) => {
-      if (!value || value === "all") return
+  const [selectedRecord, setSelectedRecord] = useState<TData | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-      result = result.filter((item) => {
-        const itemValue = String(getRecordValue(item, key) ?? "")
-        return itemValue === value
-      })
-    })
+  const {
+    data,
+    totalItems,
+    totalPages,
+    loading,
+    error,
+    refresh,
+    getRowKey,
+    createItem,
+    updateItem,
+    deleteItem,
+    customActions = [],
+  } = useCrud({
+    page: currentPage,
+    size: pageSize,
+    search,
+    sortKey,
+    sortDirection,
+    filters: columnFilters,
+  })
 
-    if (sortKey && sortDirection) {
-      result.sort((a, b) => {
-        const aValue = getSortableValue(a, sortKey).toLowerCase()
-        const bValue = getSortableValue(b, sortKey).toLowerCase()
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
+  const endItem = Math.min(currentPage * pageSize, totalItems)
 
-        if (aValue < bValue) {
-          return sortDirection === "asc" ? -1 : 1
-        }
+  const canCreate = Boolean(createItem)
+  const canEdit = Boolean(updateItem)
+  const canDelete = Boolean(deleteItem)
 
-        if (aValue > bValue) {
-          return sortDirection === "asc" ? 1 : -1
-        }
+  const isEditMode = Boolean(selectedRecord)
 
-        return 0
-      })
-    }
+  const handleOpenCreate = () => {
+    if (!canCreate) return
 
-    return result
-  }, [data, columnFilters, sortKey, sortDirection])
-
-  const totalItems = processedData.length
-  const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1)
-
-  const startIndex = (currentPage - 1) * pageSize
-  const endIndex = startIndex + pageSize
-
-  const paginatedData = useMemo(() => {
-    return processedData.slice(startIndex, endIndex)
-  }, [processedData, startIndex, endIndex])
-
-  const startItem = totalItems === 0 ? 0 : startIndex + 1
-  const endItem = Math.min(endIndex, totalItems)
-
-  const resetModalState = () => {
-    setSelectedRecord({})
-    setEditingIndex(null)
-    setIsOpen(false)
+    setSelectedRecord(null)
+    setIsModalOpen(true)
   }
 
-  const handleSubmit = async (values: TData) => {
-    if (editingIndex !== null) {
-      setData((prev) =>
-        prev.map((item, index) => (index === editingIndex ? values : item)),
-      )
-    } else {
-      setData((prev) => [...prev, values])
-    }
+  const handleOpenEdit = (record: TData) => {
+    if (!canEdit) return
 
-    resetModalState()
-  }
-
-  const handleCreate = () => {
-    setSelectedRecord({})
-    setEditingIndex(null)
-    setIsOpen(true)
-  }
-
-  const handleEdit = (record: TData, absoluteIndex: number) => {
     setSelectedRecord(record)
-    setEditingIndex(absoluteIndex)
-    setIsOpen(true)
+    setIsModalOpen(true)
   }
 
-  const handleDelete = (absoluteIndex: number) => {
-    const targetRecord = processedData[absoluteIndex]
+  const handleCloseModal = () => {
+    setSelectedRecord(null)
+    setIsModalOpen(false)
+  }
 
-    setData((prev) => prev.filter((item) => item !== targetRecord))
+  const handleSubmit = async (values: TSubmit) => {
+    try {
+      setIsSubmitting(true)
 
-    const newTotalItems = totalItems - 1
-    const newTotalPages = Math.max(Math.ceil(newTotalItems / pageSize), 1)
+      if (selectedRecord && updateItem) {
+        await updateItem(selectedRecord, values)
+      } else if (!selectedRecord && createItem) {
+        await createItem(values)
+      }
 
-    if (currentPage > newTotalPages) {
-      setCurrentPage(newTotalPages)
+      handleCloseModal()
+    } finally {
+      setIsSubmitting(false)
     }
+  }
+
+  const handleDelete = async (record: TData) => {
+    if (!deleteItem) return
+
+    const confirmed = window.confirm("Are you sure you want to delete this item?")
+
+    if (!confirmed) return
+
+    await deleteItem(record)
   }
 
   const handleSortChange = (key: string) => {
@@ -365,6 +489,35 @@ export function CrudPage<TData extends object>({
     })
   }
 
+  const handleSearchChange = (value: string) => {
+    setSearch(value)
+    setCurrentPage(1)
+  }
+
+  const actions = useMemo<TableAction<TData>[]>(() => {
+    const baseActions: TableAction<TData>[] = []
+
+    if (canEdit) {
+      baseActions.push({
+        type: "edit",
+        label: "Edit",
+        icon: <Edit className="h-4 w-4" />,
+        onClick: (row) => handleOpenEdit(row),
+      })
+    }
+
+    if (canDelete) {
+      baseActions.push({
+        type: "delete",
+        label: "Delete",
+        icon: <Trash2 className="h-4 w-4" />,
+        onClick: (row) => handleDelete(row),
+      })
+    }
+
+    return [...baseActions, ...customActions]
+  }, [canEdit, canDelete, customActions])
+
   return (
     <PageWrapper
       title={config.title}
@@ -373,21 +526,36 @@ export function CrudPage<TData extends object>({
       }
     >
       <div className="mt-4 flex flex-col gap-6">
-        <CrudToolbar entityName={config.title} onCreate={handleCreate} />
+        <CrudToolbar
+          entityName={config.title}
+          searchValue={search}
+          onSearchChange={handleSearchChange}
+          onCreate={handleOpenCreate}
+          onRefresh={refresh}
+          isRefreshing={loading}
+          showCreate={canCreate}
+        />
 
-        <CrudModal<TData>
-          open={isOpen}
-          onClose={resetModalState}
+        <CrudModal<TData, TSubmit>
+          open={isModalOpen}
+          onClose={handleCloseModal}
           onSubmit={handleSubmit}
-          defaultValues={selectedRecord}
-          isEdit={editingIndex !== null}
+          defaultValues={selectedRecord ?? undefined}
+          isEdit={isEditMode}
           Form={Form}
           entityName={config.entityName}
+          isSubmitting={isSubmitting}
         />
+
+        {error && (
+          <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <DataTable
           columns={config.columns}
-          data={paginatedData}
+          data={data}
           paginationInfo={{ startItem, endItem, totalItems }}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}
@@ -400,30 +568,8 @@ export function CrudPage<TData extends object>({
           filters={columnFilters}
           onSortChange={handleSortChange}
           onFilterChange={handleFilterChange}
-          actions={[
-            {
-              type: "edit",
-              label: "Edit",
-              onClick: (row) => {
-                const absoluteIndex = processedData.findIndex(
-                  (item) => item === row,
-                )
-
-                handleEdit(row, absoluteIndex)
-              },
-            },
-            {
-              type: "delete",
-              label: "Delete",
-              onClick: (row) => {
-                const absoluteIndex = processedData.findIndex(
-                  (item) => item === row,
-                )
-
-                handleDelete(absoluteIndex)
-              },
-            },
-          ]}
+          getRowKey={getRowKey}
+          actions={actions}
         />
 
         {config.table?.pagination && (

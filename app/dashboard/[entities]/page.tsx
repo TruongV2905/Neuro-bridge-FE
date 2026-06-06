@@ -11,14 +11,13 @@ export default function DashboardEntityPage() {
   const params = useParams<{ entities: string }>()
 
   const entity = params.entities as DashboardEntity
-
   const dashboardModule = dashboardRegister[entity]
 
   if (!dashboardModule) {
     notFound()
   }
 
-  const { config, Form } = dashboardModule
+  const { config, Form, useCrud } = dashboardModule
 
-  return <CrudPage config={config} Form={Form} />
+  return <CrudPage config={config} Form={Form} useCrud={useCrud} />
 }

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Controller, useForm } from "react-hook-form"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import {
@@ -18,9 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { userSchema, type UserSchema } from "../../../schemas/user.schema"
-import type { User } from "../../../types/user/user.type"
-import { UserGender, UserRole, UserStatus } from "../../../types/user/user.type"
+
+import { userSchema, type UserSchema } from "@/schemas/user.schema"
+import type { User } from "@/types/user/user.type"
+import { UserGender, UserRole, UserStatus } from "@/types/user/user.type"
 
 type UserFormMode = "create" | "edit"
 
@@ -33,42 +35,28 @@ type UserFormProps = {
   isSubmitting?: boolean
 }
 
-const generateMockUserId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID()
-  }
-
-  return `UUID-${Date.now()}`
-}
-
-const getDefaultValues = (
-  mode: UserFormMode,
-  defaultValues?: Partial<User>
-): UserSchema => {
+const getDefaultValues = (defaultValues?: Partial<User>): UserSchema => {
   return {
-    userId:
-      defaultValues?.userId ??
-      (mode === "create" ? generateMockUserId() : ""),
+    id: defaultValues?.id ?? "",
+    code: defaultValues?.code ?? "",
 
     fullName: defaultValues?.fullName ?? "",
-    username: defaultValues?.username ?? "",
     email: defaultValues?.email ?? "",
 
     gender: defaultValues?.gender ?? undefined,
     avatarUrl: defaultValues?.avatarUrl ?? "",
-    phoneNumber: defaultValues?.phoneNumber ?? "",
+    phone: defaultValues?.phone ?? "",
     address: defaultValues?.address ?? "",
 
     role: defaultValues?.role ?? UserRole.CLIENT,
     status: defaultValues?.status ?? UserStatus.ACTIVE,
 
     createdAt: defaultValues?.createdAt ?? "",
-    updatedAt: defaultValues?.updatedAt ?? "",
   }
 }
 
 export function UserForm({
-  mode = "create",
+  mode = "edit",
   defaultValues,
   onSubmit,
   onCancel,
@@ -77,7 +65,7 @@ export function UserForm({
 }: UserFormProps) {
   const form = useForm<UserSchema>({
     resolver: zodResolver(userSchema),
-    defaultValues: getDefaultValues(mode, defaultValues),
+    defaultValues: getDefaultValues(defaultValues),
   })
 
   const handleSubmit = async (values: UserSchema) => {
@@ -88,13 +76,13 @@ export function UserForm({
     submitLabel ?? (mode === "create" ? "Create User" : "Save Changes")
 
   return (
-    <Card className="w-full">
+    <Card className="w-full border-0 shadow-none">
       <form onSubmit={form.handleSubmit(handleSubmit)}>
         <CardContent className="pb-6">
           <FieldGroup>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <Controller
-                name="userId"
+                name="id"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
@@ -104,7 +92,28 @@ export function UserForm({
                       {...field}
                       id={field.name}
                       disabled
-                      placeholder="Auto generated"
+                      placeholder="User ID"
+                    />
+
+                    {fieldState.invalid && (
+                      <FieldError errors={[fieldState.error]} />
+                    )}
+                  </Field>
+                )}
+              />
+
+              <Controller
+                name="code"
+                control={form.control}
+                render={({ field, fieldState }) => (
+                  <Field data-invalid={fieldState.invalid}>
+                    <FieldLabel htmlFor={field.name}>User Code</FieldLabel>
+
+                    <Input
+                      {...field}
+                      id={field.name}
+                      disabled
+                      placeholder="User code"
                     />
 
                     {fieldState.invalid && (
@@ -125,26 +134,6 @@ export function UserForm({
                       {...field}
                       id={field.name}
                       placeholder="Enter full name"
-                    />
-
-                    {fieldState.invalid && (
-                      <FieldError errors={[fieldState.error]} />
-                    )}
-                  </Field>
-                )}
-              />
-
-              <Controller
-                name="username"
-                control={form.control}
-                render={({ field, fieldState }) => (
-                  <Field data-invalid={fieldState.invalid}>
-                    <FieldLabel htmlFor={field.name}>Username</FieldLabel>
-
-                    <Input
-                      {...field}
-                      id={field.name}
-                      placeholder="Enter username"
                     />
 
                     {fieldState.invalid && (
@@ -230,7 +219,7 @@ export function UserForm({
               />
 
               <Controller
-                name="phoneNumber"
+                name="phone"
                 control={form.control}
                 render={({ field, fieldState }) => (
                   <Field data-invalid={fieldState.invalid}>
@@ -290,8 +279,8 @@ export function UserForm({
                         <SelectItem value={UserRole.ADMINISTRATOR}>
                           Administrator
                         </SelectItem>
-                        <SelectItem value={UserRole.AI_EXPERT}>
-                          AI Expert
+                        <SelectItem value={UserRole.EXPERT}>
+                          Expert
                         </SelectItem>
                         <SelectItem value={UserRole.CLIENT}>
                           Client
@@ -357,7 +346,7 @@ export function UserForm({
           <Button
             type="button"
             variant="secondary"
-            onClick={() => form.reset(getDefaultValues(mode, defaultValues))}
+            onClick={() => form.reset(getDefaultValues(defaultValues))}
             disabled={isSubmitting}
           >
             Reset

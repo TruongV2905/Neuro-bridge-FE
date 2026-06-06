@@ -1,9 +1,9 @@
 export type UserId = string
 
 export enum UserRole {
-  AI_EXPERT = "AI_EXPERT",
+  EXPERT = "EXPERT",
   CLIENT = "CLIENT",
-  ADMINISTRATOR = "ADMINISTRATOR",
+  ADMINISTRATOR = "ADMIN",
 }
 
 export enum UserGender {
@@ -19,16 +19,63 @@ export enum UserStatus {
 }
 
 export interface User {
-  userId: UserId
+  id: UserId
+  code: string
+
   fullName: string
-  username: string
   email: string
+
   gender?: UserGender
-  avatarUrl?: string
-  phoneNumber?: string
-  address?: string
-  role: UserRole
   status: UserStatus
+  address?: string
+  avatarUrl?: string
+  dateOfBirth?: string
+  role: UserRole
+  phone?: string
+
   createdAt?: string
-  updatedAt?: string
+
+  companyName?: string
+  industry?: string
+  companyDescription?: string
+  skillIds?: number[]
+}
+
+export type UserSortDirection = "ASCENDING" | "DESCENDING"
+
+export type UserFilterRequest = {
+  page: number
+  size: number
+  sortBy?: string
+  direction?: UserSortDirection
+  search?: string
+  filter?: {
+    role?: UserRole
+    status?: UserStatus
+    gender?: UserGender
+    address?: string
+    createdFrom?: string
+    createdTo?: string
+  }
+}
+
+export type UserListMetadata = {
+  page: number
+  size: number
+  currentElements: number
+  totalElements: number
+  totalPages: number
+  hasNext: boolean
+  hasPrevious: boolean
+}
+
+export type UserListResult = {
+  data: User[]
+  metadata: UserListMetadata
+}
+
+export type ApiResponse<T> = {
+  code: number
+  message: string
+  result: T
 }

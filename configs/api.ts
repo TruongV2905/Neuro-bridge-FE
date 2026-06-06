@@ -13,7 +13,7 @@ const authUtils = {
 };
 
 const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
   headers: {
     "Content-Type": "application/json",
   },
@@ -74,7 +74,7 @@ api.interceptors.response.use(
 
           // Gọi API refresh token (Dùng axios instance mới để tránh loop interceptor)
           const { data } = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_URL}/identity/auth/refresh`,
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/identity/auth/refresh`,
             {
               token: refreshToken,
             },

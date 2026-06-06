@@ -1,57 +1,75 @@
 # 🎛️ DASHBOARD UI MODULE DEVELOPMENT GUIDE
 
-The Frontend Dashboard UI is designed with a reusable and scalable CRUD architecture.
-Each dashboard feature is implemented as an independent module and then registered into the dynamic dashboard system.
+The Frontend Dashboard UI is built with a reusable and scalable CRUD-based architecture.
 
-This structure helps the project remain consistent, maintainable, and easy to scale when new business modules are added, such as `users`, `courses`, `programs`, `consultants`, `appointments`, or other management pages.
+Each dashboard feature is developed as an independent module and then registered into the dynamic dashboard system. This approach helps the project remain consistent, maintainable, and easy to extend when new business modules are added.
+
+Examples of dashboard modules include:
+
+* User Management
+* Course Management
+* Program Management
+* Program Registration Management
+* Consultant Management
+* Appointment Management
+* Report Management
 
 ---
 
 ## 🛠️ PART 1: Guide for Core Developers
 
-### When Adding a New Dashboard Module
+### When Scaling or Adding a New Dashboard Module
 
-When the system grows and a new dashboard module needs to be added, follow the standardized 8-step workflow below.
+When the system grows and a new dashboard module needs to be added, follow the standardized development workflow below.
 
-For example, when creating a new module named `users`, the module should be placed under:
+A dashboard module should be placed inside:
+
+```txt
+src/modules/<module-name>/
+```
+
+For example:
 
 ```txt
 src/modules/users/
+src/modules/courses/
+src/modules/programs/
 ```
 
-The recommended module structure is:
+The module folder is responsible for UI configuration, table columns, forms, hooks, and module-level logic.
+
+Recommended module structure:
 
 ```txt
 src/modules/<module-name>/
 ├── types/
-│   └── <module>.type.ts
-│
-├── services/
-│   └── <module>.service.ts
-│
-├── schemas/
-│   └── <module>.schema.ts
-│
 ├── columns/
-│   └── <module>.columns.tsx
-│
 ├── configs/
-│   └── <module>.config.ts
-│
 ├── forms/
-│   └── <Module>Form.tsx
-│
 └── hooks/
-    └── use<Module>Crud.ts
+```
+
+API services and validation schemas are placed outside the module folder to keep shared backend communication and validation logic centralized.
+
+Recommended shared structure:
+
+```txt
+src/services/
+└── <module>.service.ts
+
+src/schemas/
+└── <module>.schema.ts
 ```
 
 ---
 
 ## ⚠️ Important Development Rules
 
-When adding a new dashboard module, only create or update files inside the module folder and the dashboard registry.
+When adding or updating a dashboard module, developers should only work inside the target module folder, the related service file, the related schema file, and the dashboard registry.
 
-Do **not** modify the shared dashboard core files below:
+Do **not** modify the shared dashboard core files unless the whole team agrees that the global dashboard behavior needs to change.
+
+The following files are considered shared dashboard infrastructure:
 
 ```txt
 src/types/crud.ts
@@ -66,223 +84,123 @@ src/components/dashboard/table/TablePagination.tsx
 src/components/common/PageWrapper.tsx
 ```
 
-These files are part of the reusable dashboard infrastructure.
-Changing them may affect all existing dashboard modules.
+These files are reused by all dashboard modules.
+Changing them may affect every existing dashboard page.
 
-All UI components must use the existing shadcn-based component system located in:
+All UI elements must use the existing shadcn-based component system from:
 
 ```txt
 src/components/ui
 ```
 
-Commonly used UI components include:
+Developers should reuse available UI components such as buttons, inputs, selects, dialogs, tables, badges, dropdown menus, textareas, checkboxes, and cards instead of creating duplicated UI components.
+
+---
+
+# 📦 Standard Dashboard Module Workflow
+
+## Step 1: Define Module Types
+
+Create the type definition file for the module.
+
+This step is used to define the data structure of the module, including:
+
+* Main entity type
+* Enum values
+* API request types
+* API response types
+* Optional display-related types
+
+The purpose of this step is to make the module type-safe and prevent duplicated or unclear data structures across services, forms, columns, configs, and hooks.
+
+Example location:
 
 ```txt
-Button
-Input
-Select
-Dialog
-DropdownMenu
-Table
-Badge
-Card
-Form
-Textarea
-Checkbox
+src/modules/<module-name>/types/<module>.type.ts
 ```
 
 ---
 
-# 📦 Standard 8-Step Workflow
+## Step 2: Create API Service Layer
 
-## Step 1: Create Types
+Create the API service file for the module.
 
-Create the module type definition file.
+Services are placed outside `src/modules` because they are part of the shared API communication layer.
 
-Example:
-
-```txt
-src/modules/users/types/user.type.ts
-```
-
-This file defines the main entity, enum values, request payloads, and response types.
-
-Example:
-
-```ts
-export type UserRole = "ADMINISTRATOR" | "AI_EXPERT" | "CLIENT"
-
-export type UserStatus = "ACTIVE" | "INACTIVE" | "BANNED"
-
-export interface User {
-  userId: string
-  fullName: string
-  username: string
-  email: string
-  role: UserRole
-  status: UserStatus
-  createdAt?: string
-  updatedAt?: string
-}
-```
-
-Purpose of this step:
+Example location:
 
 ```txt
-Define a clear data contract for the module.
-Avoid using any or duplicated object structures.
-Ensure type safety across services, forms, columns, and configs.
+src/services/<module>.service.ts
 ```
+
+The service layer is responsible for communicating with the backend API. It should contain all API-related functions such as fetching data, creating records, updating records, deleting records, banning accounts, activating accounts, or performing other module-specific actions.
+
+The service layer helps keep API logic separated from UI components.
+
+Do **not** call APIs directly inside:
+
+```txt
+Page components
+Table components
+Form components
+Modal components
+```
+
+All backend communication should go through the service layer.
 
 ---
 
-## Step 2: Create API Service
-
-Create the service file used to communicate with the backend API.
-
-Example:
-
-```txt
-src/modules/users/services/user.service.ts
-```
-
-The service file should contain API functions such as:
-
-```ts
-getUsers()
-getUserById()
-createUser()
-updateUser()
-deleteUser()
-```
-
-Example:
-
-```ts
-import { api } from "@/services/api"
-import type { User } from "../types/user.type"
-
-export const userService = {
-  getUsers: async (): Promise<User[]> => {
-    const response = await api.get("/identity/user")
-    return response.data
-  },
-
-  createUser: async (payload: Partial<User>): Promise<User> => {
-    const response = await api.post("/identity/user", payload)
-    return response.data
-  },
-
-  updateUser: async (userId: string, payload: Partial<User>): Promise<User> => {
-    const response = await api.put(`/identity/user/${userId}`, payload)
-    return response.data
-  },
-}
-```
-
-Purpose of this step:
-
-```txt
-Keep API logic separated from UI components.
-Make backend endpoints easier to maintain.
-Allow hooks to reuse API methods cleanly.
-```
-
-Do **not** call APIs directly inside table, form, or page components.
-
----
-
-## Step 3: Create Schema
+## Step 3: Create Validation Schema
 
 Create the validation schema for the module form.
 
-Example:
+Schemas are placed outside `src/modules` because validation rules may be reused by multiple components, pages, or workflows.
+
+Example location:
 
 ```txt
-src/modules/users/schemas/user.schema.ts
+src/schemas/<module>.schema.ts
 ```
 
-Use Zod or the validation library currently used in the project.
+The schema is used to validate create and update data before submitting it to the backend.
 
-Example:
+The schema should define:
 
-```ts
-import { z } from "zod"
+* Required fields
+* Optional fields
+* Field length rules
+* Enum validation
+* Email or URL validation
+* Any business input constraints required by the module
 
-export const userSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
-  username: z.string().min(1, "Username is required"),
-  email: z.string().email("Invalid email address"),
-  role: z.enum(["ADMINISTRATOR", "AI_EXPERT", "CLIENT"]),
-  status: z.enum(["ACTIVE", "INACTIVE", "BANNED"]),
-})
-
-export type UserFormValues = z.infer<typeof userSchema>
-```
-
-Purpose of this step:
-
-```txt
-Validate form data before submitting to the API.
-Keep form rules centralized.
-Prevent invalid payloads from being sent to the backend.
-```
+The purpose of this step is to keep form validation centralized and prevent invalid payloads from being submitted to the API.
 
 ---
 
-## Step 4: Create Table Columns
+## Step 4: Define Table Columns
 
-Create the column definition file for the dashboard table.
+Create the table column definition file for the module.
 
-Example:
+This file describes how the module data should be displayed inside the reusable dashboard table.
 
-```txt
-src/modules/users/columns/user.columns.tsx
-```
-
-This file defines how the entity is displayed in the table.
-
-Example:
-
-```ts
-import type { ColumnConfig } from "@/types/crud"
-import type { User } from "../types/user.type"
-
-export const userColumns: ColumnConfig<User>[] = [
-  {
-    key: "fullName",
-    label: "User",
-    sortable: true,
-    searchable: true,
-  },
-  {
-    key: "email",
-    label: "Email",
-    sortable: true,
-    searchable: true,
-  },
-  {
-    key: "role",
-    label: "Role",
-    sortable: true,
-    filterable: true,
-  },
-  {
-    key: "status",
-    label: "Status",
-    sortable: true,
-    filterable: true,
-  },
-]
-```
-
-Purpose of this step:
+Example location:
 
 ```txt
-Control table display per module.
-Define searchable, sortable, and filterable columns.
-Keep table configuration outside the core DataTable component.
+src/modules/<module-name>/columns/<module>.columns.tsx
 ```
+
+Column definitions may include:
+
+* Column labels
+* Display fields
+* Searchable columns
+* Sortable columns
+* Filterable columns
+* Custom cell rendering
+* Status or role display formatting
+
+The column file should only control table display behavior.
+Business logic should remain inside services, hooks, or module-specific utilities.
 
 ---
 
@@ -290,218 +208,78 @@ Keep table configuration outside the core DataTable component.
 
 Create the module configuration file.
 
-Example:
+The config file connects the module metadata with the reusable dashboard system.
+
+Example location:
 
 ```txt
-src/modules/users/configs/user.config.ts
+src/modules/<module-name>/configs/<module>.config.ts
 ```
 
-The config file connects the module metadata, table columns, and dashboard behavior.
+The module config usually defines:
 
-Example:
+* Entity name
+* Page title
+* Page description
+* Table columns
+* Search settings
+* Pagination options
+* Filter options
+* Default table behavior
+* Module-level dashboard settings
 
-```ts
-import type { CrudConfig } from "@/types/crud"
-import type { User } from "../types/user.type"
-import { userColumns } from "../columns/user.columns"
-
-export const userConfig: CrudConfig<User> = {
-  entityName: "users",
-  title: "User Management",
-  description: "Manage users, roles, and account status.",
-  columns: userColumns,
-  searchableFields: ["fullName", "username", "email"],
-  pagination: {
-    enabled: true,
-    pageSize: 10,
-    pageSizeOptions: [10, 25, 50, 100],
-  },
-}
-```
-
-Purpose of this step:
-
-```txt
-Define module-level dashboard behavior.
-Provide metadata for the dashboard page.
-Connect columns and search configuration.
-```
+The purpose of this step is to allow the shared `CrudPage` to render the module correctly without changing the core dashboard components.
 
 ---
 
 ## Step 6: Create Form Component
 
-Create the form component used for create and update actions.
+Create the form component for create and update actions.
 
-Example:
-
-```txt
-src/modules/users/forms/UserForm.tsx
-```
-
-The form should use shadcn UI components and receive props from the reusable `CrudModal`.
-
-The form should support both create and edit mode.
-
-Example responsibilities:
+Example location:
 
 ```txt
-Render input fields.
-Load default values when editing.
-Validate form data using schema.
-Submit data through the provided onSubmit handler.
-Display validation errors clearly.
+src/modules/<module-name>/forms/<Module>Form.tsx
 ```
 
-Example:
+The form component should:
 
-```tsx
-"use client"
+* Use shadcn UI components
+* Support create mode
+* Support edit mode
+* Receive default values when editing
+* Use the shared schema from `src/schemas`
+* Submit data through the provided submit handler
+* Display validation errors clearly
 
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
+The form should focus only on rendering and validating user input.
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-
-import { userSchema, type UserFormValues } from "../schemas/user.schema"
-
-interface UserFormProps {
-  defaultValues?: Partial<UserFormValues>
-  onSubmit: (values: UserFormValues) => void
-  onCancel: () => void
-  isSubmitting?: boolean
-}
-
-export function UserForm({
-  defaultValues,
-  onSubmit,
-  onCancel,
-  isSubmitting,
-}: UserFormProps) {
-  const form = useForm<UserFormValues>({
-    resolver: zodResolver(userSchema),
-    defaultValues,
-  })
-
-  return (
-    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-      <Input
-        placeholder="Full name"
-        {...form.register("fullName")}
-      />
-
-      <Input
-        placeholder="Email"
-        {...form.register("email")}
-      />
-
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
-          Cancel
-        </Button>
-
-        <Button type="submit" disabled={isSubmitting}>
-          Save
-        </Button>
-      </div>
-    </form>
-  )
-}
-```
-
-Purpose of this step:
-
-```txt
-Keep create and update UI inside the module.
-Reuse shadcn components for consistent styling.
-Avoid modifying CrudModal or CrudPage.
-```
+Do **not** place unrelated business logic or direct API calls inside the form unless the module has a specific reason to do so.
 
 ---
 
 ## Step 7: Create CRUD Hook
 
-Create a custom hook to manage the module CRUD workflow.
+Create a custom hook to manage the module’s CRUD workflow.
 
-Example:
-
-```txt
-src/modules/users/hooks/useUserCrud.ts
-```
-
-The hook should handle API integration and business logic.
-
-Example responsibilities:
+Example location:
 
 ```txt
-Fetch data from API.
-Create new records.
-Update existing records.
-Delete or disable records.
-Manage loading state.
-Manage error state.
-Expose handlers to the dashboard page.
+src/modules/<module-name>/hooks/use<Module>Crud.ts
 ```
 
-Example:
+The CRUD hook should handle:
 
-```ts
-import { useEffect, useState } from "react"
-import type { User } from "../types/user.type"
-import { userService } from "../services/user.service"
+* Fetching data
+* Creating records
+* Updating records
+* Deleting or disabling records
+* Managing loading state
+* Managing error state
+* Calling service functions from `src/services`
+* Exposing handlers to the dashboard page
 
-export function useUserCrud() {
-  const [data, setData] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
-  const fetchUsers = async () => {
-    setIsLoading(true)
-
-    try {
-      const users = await userService.getUsers()
-      setData(users)
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleCreate = async (payload: Partial<User>) => {
-    const createdUser = await userService.createUser(payload)
-    setData((prev) => [createdUser, ...prev])
-  }
-
-  const handleUpdate = async (userId: string, payload: Partial<User>) => {
-    const updatedUser = await userService.updateUser(userId, payload)
-
-    setData((prev) =>
-      prev.map((user) =>
-        user.userId === userId ? updatedUser : user
-      )
-    )
-  }
-
-  useEffect(() => {
-    fetchUsers()
-  }, [])
-
-  return {
-    data,
-    isLoading,
-    fetchUsers,
-    handleCreate,
-    handleUpdate,
-  }
-}
-```
-
-Purpose of this step:
-
-```txt
-Keep business logic outside UI components.
-Make each module easier to maintain.
-Allow service logic to be reused cleanly.
-```
+This step keeps business logic outside of UI components and makes the module easier to maintain, debug, and reuse.
 
 ---
 
@@ -509,39 +287,31 @@ Allow service logic to be reused cleanly.
 
 After completing the module, register it in the dashboard registry.
 
-Example:
+Example location:
 
 ```txt
 src/modules/dashboard-register.ts
 ```
 
-Example:
+The registry connects the module config and form component to the reusable dashboard system.
 
-```ts
-import { userConfig } from "@/modules/users/configs/user.config"
-import { UserForm } from "@/modules/users/forms/UserForm"
+After registration, the module can be accessed through the dynamic dashboard route.
 
-export const dashboardRegister = {
-  users: {
-    config: userConfig,
-    Form: UserForm,
-  },
-}
+Example route:
+
+```txt
+/dashboard/<module-name>
 ```
 
-Once registered, the module can be accessed through the dynamic dashboard route:
+For example:
 
 ```txt
 /dashboard/users
+/dashboard/courses
+/dashboard/programs
 ```
 
-Purpose of this step:
-
-```txt
-Expose the module to the dashboard system.
-Enable dynamic routing for the module.
-Connect config and form to the reusable CrudPage.
-```
+The purpose of this step is to expose the module to the dashboard without creating a separate page manually for every module.
 
 ---
 
@@ -549,118 +319,136 @@ Connect config and form to the reusable CrudPage.
 
 ## When Working With Existing Dashboard Modules
 
-When pulling the project or working on an existing dashboard module, follow these rules:
+When working on an existing module, developers should follow the module-based structure and avoid changing shared dashboard infrastructure.
 
-## 1. Do Not Modify Core Dashboard Components
-
-Avoid editing these files unless the whole team agrees that the dashboard core behavior must change:
-
-```txt
-src/types/crud.ts
-src/components/dashboard/crud/CrudPage.tsx
-src/components/dashboard/crud/CrudToolbar.tsx
-src/components/dashboard/crud/CrudModal.tsx
-src/components/dashboard/table/DataTable.tsx
-src/components/dashboard/table/TablePagination.tsx
-src/components/common/PageWrapper.tsx
-```
-
-These files are shared by all dashboard modules.
-
----
-
-## 2. Work Only Inside the Target Module
-
-For example, when working on the `users` module, changes should usually be limited to:
+For example, when working on the `users` module, changes are usually located in:
 
 ```txt
 src/modules/users/
+src/services/user.service.ts
+src/schemas/user.schema.ts
 ```
 
-Typical files to update:
+Typical files inside a module include:
 
 ```txt
-types/user.type.ts
-services/user.service.ts
-schemas/user.schema.ts
-columns/user.columns.tsx
-configs/user.config.ts
-forms/UserForm.tsx
-hooks/useUserCrud.ts
+types/
+columns/
+configs/
+forms/
+hooks/
 ```
 
 ---
 
-## 3. Use shadcn UI Components
+## 1. Do Not Modify Core Dashboard Components
 
-Use existing UI components from:
+Avoid editing shared dashboard files unless there is a confirmed requirement to change global dashboard behavior.
+
+Shared files affect all dashboard modules, so changing them can easily break other pages.
+
+---
+
+## 2. Work Inside the Target Module and Related Shared Files
+
+Each module should be isolated and responsible for its own dashboard behavior.
+
+For example:
+
+```txt
+src/modules/users/
+src/modules/courses/
+src/modules/programs/
+```
+
+API services should be placed in:
+
+```txt
+src/services/
+```
+
+Validation schemas should be placed in:
+
+```txt
+src/schemas/
+```
+
+This keeps the project organized while still allowing services and schemas to be reused outside the dashboard when needed.
+
+---
+
+## 3. Use Existing shadcn UI Components
+
+All forms, buttons, modals, inputs, selects, tables, dropdowns, badges, and other UI elements should use existing components from:
 
 ```txt
 src/components/ui
 ```
 
-Do not create duplicate button, input, modal, select, or table components if the project already provides them.
+Do not create duplicate UI components if an equivalent shadcn-based component already exists.
 
-Example:
-
-```tsx
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Select } from "@/components/ui/select"
-import { Dialog } from "@/components/ui/dialog"
-```
+This keeps the dashboard interface visually consistent across all modules.
 
 ---
 
 ## 4. Keep API Logic in Services
 
-API calls should be placed in:
+API-related logic must be placed inside the shared service layer.
+
+Example:
 
 ```txt
-src/modules/<module-name>/services/
+src/services/<module>.service.ts
 ```
 
-Do not write API calls directly inside:
-
-```txt
-Form components
-Table components
-Page components
-Modal components
-```
-
-This keeps the code easier to debug and prevents UI components from becoming too complex.
+This makes backend integration easier to update when API endpoints change.
 
 ---
 
-## 5. Keep CRUD Logic in Hooks
+## 5. Keep Validation Logic in Schemas
 
-Business logic for fetching, creating, updating, deleting, banning, activating, or disabling records should be placed in:
+Validation rules must be placed inside the shared schema layer.
+
+Example:
+
+```txt
+src/schemas/<module>.schema.ts
+```
+
+This keeps form validation consistent and reusable.
+
+---
+
+## 6. Keep Business Logic in Hooks
+
+CRUD workflow and module-specific business logic should be placed inside the module hook.
+
+Example:
 
 ```txt
 src/modules/<module-name>/hooks/use<Module>Crud.ts
 ```
 
-This makes the module easier to test, reuse, and maintain.
+This helps keep UI components clean and focused on rendering.
 
 ---
 
 # ✅ Final Checklist Before Registering a Module
 
-Before registering a new module into the dashboard, make sure all items below are completed:
+Before registering a new dashboard module, make sure the following items are completed:
 
 ```txt
-[ ] Type definitions are created.
-[ ] API service functions are implemented.
-[ ] Validation schema is created.
+[ ] Module types are defined.
+[ ] API service layer is created in src/services.
+[ ] Validation schema is created in src/schemas.
 [ ] Table columns are configured.
 [ ] Module config is completed.
 [ ] Form component supports create and edit modes.
-[ ] CRUD hook handles API workflow.
+[ ] CRUD hook handles module workflow.
 [ ] shadcn UI components are used.
 [ ] No shared dashboard core file is modified.
 [ ] Module is registered in dashboard-register.ts.
-[ ] Dynamic route works correctly.
+[ ] Dynamic dashboard route works correctly.
 ```
 
 ---
@@ -680,4 +468,17 @@ Step 7: hooks/useXxxCrud
 Step 8: register into dashboard
 ```
 
-This standardized structure ensures that the Dashboard UI remains clean, scalable, reusable, and consistent across all modules in the system.
+Recommended file locations:
+
+```txt
+src/modules/<module-name>/types/
+src/services/<module>.service.ts
+src/schemas/<module>.schema.ts
+src/modules/<module-name>/columns/
+src/modules/<module-name>/configs/
+src/modules/<module-name>/forms/
+src/modules/<module-name>/hooks/
+src/modules/dashboard-register.ts
+```
+
+This standardized workflow ensures that the Dashboard UI remains clean, scalable, reusable, and consistent as the system continues to grow.

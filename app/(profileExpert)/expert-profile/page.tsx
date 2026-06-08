@@ -15,6 +15,7 @@ import { ExpertSidebarCard } from "./_components/expert-sidebar-card"
 import { ExpertWalletCard } from "./_components/expert-wallet-card"
 import { ExpertSkillCard } from "./_components/expert-skill-card"
 import { ExpertCertificateCard } from "./_components/expert-certificate-card"
+import { getUserByCode } from "@/services/user-api"
 
 import {
   getCertificates,
@@ -25,8 +26,11 @@ import {
   PortfolioApiItem,
 } from "@/services/portfolio-api"
 import { getSkills, SkillApiItem } from "@/services/skill-api"
+import Header from "@/components/layout/Header"
 
 export default function ProfileExpertPage() {
+  const [expertUser, setExpertUser] = useState<UserResponse | null>(null)
+  const [expertUserLoading, setExpertUserLoading] = useState(true)
   const [portfolios, setPortfolios] = useState<PortfolioApiItem[]>([])
   const [portfolioLoading, setPortfolioLoading] = useState(true)
 
@@ -40,10 +44,34 @@ export default function ProfileExpertPage() {
     (state: RootState) => state.user
   ) as UserResponse | null
 
-  const expertCode = currentUser?.code
-  const token = currentUser?.accessToken
+  const expertCode =
+    currentUser?.code ?? "EXP-TAAIEE8J88"
+
+  const token =
+    currentUser?.accessToken ||
+    localStorage.getItem("accessToken")
 
   const isOwnerExpert = currentUser?.role === "EXPERT"
+
+  useEffect(() => {
+    async function fetchExpertUser() {
+      try {
+        if (currentUser?.role === "EXPERT") {
+          setExpertUser(currentUser)
+          return
+        }
+
+        const data = await getUserByCode(expertCode, token)
+        setExpertUser(data)
+      } catch (error) {
+        console.error("Fetch expert user error:", error)
+      } finally {
+        setExpertUserLoading(false)
+      }
+    }
+
+    fetchExpertUser()
+  }, [currentUser, expertCode, token])
 
   useEffect(() => {
     async function fetchPortfolios() {
@@ -97,13 +125,34 @@ export default function ProfileExpertPage() {
 
   return (
     <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">
+      <Header />
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <section className="space-y-8">
-          <ExpertProfileHeader expert={expertProfile} />
+          {expertUserLoading ? (
+            <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
+              Loading expert profile...
+            </div>
+          ) : expertUser ? (
+            <ExpertProfileHeader
+              expert={expertUser}
+              skills={skills}
+              editable
+            />
+          ) : (
+            <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
+              Không tải được thông tin expert.
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             {expertProfile.stats.map((stat) => (
-              <ExpertStatsCard key={stat.label} stat={stat} />
+              <ExpertStatsCard
+                key={stat.label}
+                stat={{
+                  ...stat,
+                  icon: stat.icon as "rocket" | "award" | "zap",
+                }}
+              />
             ))}
           </div>
 

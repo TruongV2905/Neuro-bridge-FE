@@ -1,12 +1,21 @@
 import type { Metadata } from "next";
-import { Roboto } from "next/font/google";
+import { Archivo_Black, Roboto, Geist } from "next/font/google";
 import "./globals.css";
 import AppProvider from "@/providers/App";
+import "animate.css";
+import { cn } from "@/lib/utils";
+
+const geist = Geist({subsets:['latin'],variable:'--font-sans'});
 
 const roboto = Roboto({
   variable: "--font-roboto",
   subsets: ["latin"],
   weight: ["400", "500", "700"],
+});
+const archivoBlack = Archivo_Black({
+  variable: "--font-archivo-black",
+  subsets: ["latin"],
+  weight: "400",
 });
 
 export const metadata: Metadata = {
@@ -20,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${roboto.variable} h-full antialiased`}>
+    <html lang="en" className={cn("h-full", "antialiased", roboto.variable, archivoBlack.variable, "font-sans", geist.variable)}>
       <body className="min-h-screen font-sans">
         <AppProvider>{children}</AppProvider>
       </body>

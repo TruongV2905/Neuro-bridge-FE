@@ -1,25 +1,22 @@
-"use client"
+"use client";
 
-import type { ReactNode } from "react"
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ListFilter as Filter,
-  MoreHorizontal,
-} from "lucide-react"
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  type ColumnDef,
+  type SortingState,
+} from "@tanstack/react-table";
+import { MoreHorizontal } from "lucide-react";
+import { useMemo } from "react";
 
-import type { ColumnConfig } from "@/types/crud"
-
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Button } from "@/components/ui/button";
 import {
   Dropdown,
   DropdownContent,
   DropdownItem,
   DropdownTrigger,
-} from "@/components/ui/dropdown"
+} from "@/components/ui/dropdown";
 import {
   Table,
   TableBody,
@@ -27,43 +24,74 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 
-export type TableActionType = "edit" | "delete" | "view" | "custom"
+export type TableActionType = "edit" | "delete" | "view" | "custom";
 
 export type TableAction<TData extends object> = {
-  id?: string
-  type: TableActionType
-  label: string
-  onClick?: (row: TData, rowIndex: number) => void
-  icon?: ReactNode
-  variant?: "default" | "outline" | "destructive" | "secondary" | "ghost"
-}
+  id?: string;
+  type: TableActionType;
+  label: string;
+  onClick?: (row: TData, rowIndex: number) => void;
+  icon?: React.ReactNode;
+  variant?: "default" | "outline" | "destructive" | "secondary" | "ghost";
+  className?: string;
+  hidden?: (row: TData) => boolean;
+};
 
-type SortDirection = "asc" | "desc"
+type SortDirection = "ASCENDING" | "DESCENDING";
+
+type TableAlign = "left" | "center" | "right";
+
+type ColumnMeta = {
+  align?: TableAlign;
+};
 
 type DataTableProps<TData extends object> = {
-  columns: ColumnConfig<TData>[]
-  data: TData[]
-  actions?: TableAction<TData>[]
+  columns: ColumnDef<TData>[];
+  data: TData[];
+  actions?: TableAction<TData>[];
 
   paginationInfo?: {
-    startItem: number
-    endItem: number
-    totalItems: number
-  }
+    startItem: number;
+    endItem: number;
+    totalItems: number;
+  };
 
-  pageSize?: number
-  pageSizeOptions?: number[]
-  onPageSizeChange?: (size: number) => void
-  getRowKey?: (row: TData, index: number) => string | number
+  pageSize?: number;
+  pageSizeOptions?: number[];
+  onPageSizeChange?: (size: number) => void;
 
-  sortKey?: string | null
-  sortDirection?: SortDirection | null
-  filters?: Record<string, string>
-  onSortChange?: (key: string) => void
-  onFilterChange?: (key: string, value: string) => void
-}
+  sortBy?: string | null;
+  sortDirection?: SortDirection | null;
+  onSortChange?: (key: string) => void;
+};
+
+const textAlignClassMap: Record<TableAlign, string> = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+};
+
+const flexAlignClassMap: Record<TableAlign, string> = {
+  left: "justify-start",
+  center: "justify-center",
+  right: "justify-end",
+};
+
+const getColumnAlign = <TData extends object>(
+  columnDef: ColumnDef<TData>,
+): TableAlign => {
+  return (columnDef.meta as ColumnMeta | undefined)?.align ?? "center";
+};
 
 export function DataTable<TData extends object>({
   columns,
@@ -73,244 +101,138 @@ export function DataTable<TData extends object>({
   pageSize,
   pageSizeOptions,
   onPageSizeChange,
-  getRowKey,
-
-  sortKey,
+  sortBy,
   sortDirection,
-  filters,
   onSortChange,
-  onFilterChange,
 }: DataTableProps<TData>) {
-  const renderCell = (
-    column: ColumnConfig<TData>,
-    row: TData,
-    rowIndex: number,
-  ) => {
-    const value = row[column.key as keyof TData]
+  const sorting = useMemo<SortingState>(() => {
+    if (!sortBy || !sortDirection) return [];
 
-    if (column.render) {
-      return column.render(value, row, rowIndex)
+    return [
+      {
+        id: sortBy,
+        desc: sortDirection === "DESCENDING",
+      },
+    ];
+  }, [sortBy, sortDirection]);
+
+  const tableColumns = useMemo<ColumnDef<TData>[]>(() => {
+    if (!actions || actions.length === 0) {
+      return columns;
     }
 
-    if (column.type === "badge") {
-      const rawValue = String(value ?? "")
-      const badge = column.badgeMap?.[rawValue]
+    const actionColumn: ColumnDef<TData> = {
+      id: "actions",
+      header: "Actions",
+      cell: ({ row }) => {
+        const original = row.original;
+        const rowIndex = row.index;
 
-      return (
-        <Badge
-          variant="outline"
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
-            badge?.className ??
-            "border-transparent bg-muted text-muted-foreground"
-          }`}
-        >
-          {badge?.label ?? rawValue}
-        </Badge>
-      )
-    }
+        return (
+          <div className="flex justify-center">
+            <Dropdown>
+              <DropdownTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownTrigger>
 
-    if (value === null || value === undefined || value === "") {
-      return <span className="text-muted-foreground">—</span>
-    }
+              <DropdownContent align="end">
+                {actions
+                  .filter((action) => !action.hidden?.(original))
+                  .map((action) => (
+                    <DropdownItem
+                      key={action.id ?? `${action.type}-${action.label}`}
+                      variant={
+                        action.type === "delete" ||
+                        action.variant === "destructive"
+                          ? "destructive"
+                          : "default"
+                      }
+                      className={cn(action.className)}
+                      onClick={() => action.onClick?.(original, rowIndex)}
+                    >
+                      {action.icon && (
+                        <span
+                          className={
+                            "mr-2 inline-flex h-4 w-4 items-center justify-center"
+                          }
+                        >
+                          {action.icon}
+                        </span>
+                      )}
 
-    return String(value)
-  }
+                      {action.label}
+                    </DropdownItem>
+                  ))}
+              </DropdownContent>
+            </Dropdown>
+          </div>
+        );
+      },
+      enableSorting: false,
+      enableHiding: false,
+      meta: {
+        align: "center",
+      },
+    };
 
-  const renderSortIcon = (columnKey: string) => {
-    if (sortKey !== columnKey) {
-      return <ArrowUpDown className="h-3.5 w-3.5" />
-    }
+    return [...columns, actionColumn];
+  }, [columns, actions]);
 
-    if (sortDirection === "asc") {
-      return <ArrowUp className="h-3.5 w-3.5" />
-    }
+  const table = useReactTable({
+    data,
+    columns: tableColumns,
+    state: {
+      sorting,
+    },
+    manualSorting: true,
+    getCoreRowModel: getCoreRowModel(),
+    onSortingChange: (updater) => {
+      const nextSorting =
+        typeof updater === "function" ? updater(sorting) : updater;
 
-    return <ArrowDown className="h-3.5 w-3.5" />
-  }
+      const next = nextSorting[0];
+
+      if (!next) return;
+
+      onSortChange?.(next.id);
+    },
+  });
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-xl border bg-card">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-b bg-muted/30 hover:bg-muted/30">
-              <TableHead className="w-[44px]">
-                <Checkbox aria-label="Select all rows" />
-              </TableHead>
-
-              {columns.map((column) => {
-                const columnKey = String(column.key)
-                const isFiltered = Boolean(filters?.[columnKey])
-
-                return (
-                  <TableHead
-                    key={columnKey}
-                    className={`h-11 text-xs font-semibold text-foreground ${
-                      column.headerClassName ?? ""
-                    }`}
-                  >
-                    <div className="flex items-center gap-1">
-                      <span>{column.label}</span>
-
-                      {column.sortable && (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6 text-muted-foreground hover:text-foreground"
-                          onClick={() => onSortChange?.(columnKey)}
-                        >
-                          {renderSortIcon(columnKey)}
-                        </Button>
-                      )}
-
-                      {column.filterable && column.filterOptions && (
-                        <Dropdown>
-                          <DropdownTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className={`h-6 w-6 ${
-                                isFiltered
-                                  ? "text-primary"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              <Filter className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownTrigger>
-
-                          <DropdownContent align="start">
-                            <DropdownItem
-                              onClick={() =>
-                                onFilterChange?.(columnKey, "all")
-                              }
-                            >
-                              All
-                            </DropdownItem>
-
-                            {column.filterOptions.map((option) => (
-                              <DropdownItem
-                                key={String(option.value)}
-                                onClick={() =>
-                                  onFilterChange?.(
-                                    columnKey,
-                                    String(option.value),
-                                  )
-                                }
-                              >
-                                {option.label}
-                              </DropdownItem>
-                            ))}
-                          </DropdownContent>
-                        </Dropdown>
-                      )}
-                    </div>
-                  </TableHead>
-                )
-              })}
-
-              {actions && actions.length > 0 && (
-                <TableHead className="w-[72px] text-right text-xs font-semibold text-foreground">
-                  Actions
-                </TableHead>
-              )}
-            </TableRow>
-          </TableHeader>
-
-          <TableBody>
-            {data.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length + (actions?.length ? 2 : 1)}
-                  className="h-24 text-center text-muted-foreground"
-                >
-                  No results found.
-                </TableCell>
-              </TableRow>
-            ) : (
-              data.map((row, rowIndex) => (
-                <TableRow
-                  key={getRowKey ? getRowKey(row, rowIndex) : rowIndex}
-                  className="border-b transition-colors hover:bg-muted/40"
-                >
-                  <TableCell className="w-[44px]">
-                    <Checkbox aria-label={`Select row ${rowIndex + 1}`} />
-                  </TableCell>
-
-                  {columns.map((column) => (
-                    <TableCell
-                      key={String(column.key)}
-                      className={`h-[58px] py-2 text-sm ${
-                        column.className ?? ""
-                      }`}
-                    >
-                      {renderCell(column, row, rowIndex)}
-                    </TableCell>
-                  ))}
-
-                  {actions && actions.length > 0 && (
-                    <TableCell className="pr-4 text-right">
-                      <Dropdown>
-                        <DropdownTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8"
-                          >
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownTrigger>
-
-                        <DropdownContent align="end">
-                          {actions.map((action) => (
-                            <DropdownItem
-                              key={action.id ?? `${action.type}-${action.label}`}
-                              variant={
-                                action.type === "delete" || action.variant === "destructive"
-                                  ? "destructive"
-                                  : "default"
-                              }
-                              onClick={() => action.onClick?.(row, rowIndex)}
-                            >
-                              <span className="mr-2 inline-flex h-4 w-4 items-center justify-center">
-                                {action.icon}
-                              </span>
-                              {action.label}
-                            </DropdownItem>
-                          ))}
-                        </DropdownContent>
-                      </Dropdown>
-                    </TableCell>
-                  )}
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
-
       <div className="flex items-center justify-between px-1">
         <div className="flex items-center gap-2 text-sm font-medium text-foreground">
           {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
             <>
               <span>Show</span>
 
-              <select
-                value={pageSize}
-                onChange={(event) =>
-                  onPageSizeChange(Number(event.target.value))
-                }
-                className="h-8 rounded-md border border-input bg-background px-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              <Select
+                value={String(pageSize)}
+                onValueChange={(value) => onPageSizeChange(Number(value))}
               >
-                {pageSizeOptions.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
+                <SelectTrigger className="h-8 w-[72px] rounded-lg bg-background px-2 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+
+                <SelectContent align="start" className="min-w-[72px]">
+                  {pageSizeOptions.map((size) => (
+                    <SelectItem
+                      key={size}
+                      value={String(size)}
+                      className="text-sm"
+                    >
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
               <span>entries</span>
             </>
@@ -321,13 +243,97 @@ export function DataTable<TData extends object>({
           <span className="text-sm font-medium text-muted-foreground">
             Showing{" "}
             <span className="text-foreground">{paginationInfo.startItem}</span>{" "}
-            to{" "}
-            <span className="text-foreground">{paginationInfo.endItem}</span>{" "}
+            to <span className="text-foreground">{paginationInfo.endItem}</span>{" "}
             of{" "}
             <span className="text-foreground">{paginationInfo.totalItems}</span>
           </span>
         )}
       </div>
+
+      <div className="overflow-hidden rounded-xl border bg-card">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow
+                key={headerGroup.id}
+                className="border-b bg-muted/30 hover:bg-muted/30"
+              >
+                {headerGroup.headers.map((header) => {
+                  const align = getColumnAlign(header.column.columnDef);
+
+                  return (
+                    <TableHead
+                      key={header.id}
+                      className={`h-11 text-xs  text-background bg-primary ${textAlignClassMap[align]}`}
+                    >
+                      {header.isPlaceholder ? null : (
+                        <div
+                          className={
+                            header.column.getCanSort()
+                              ? `flex cursor-pointer select-none items-center gap-2 ${flexAlignClassMap[align]}`
+                              : `flex items-center gap-2 ${flexAlignClassMap[align]}`
+                          }
+                          onClick={header.column.getToggleSortingHandler()}
+                        >
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+
+                          {header.column.getCanSort() && (
+                            <span className="text-background font-light">
+                              {{
+                                asc: "↑",
+                                desc: "↓",
+                              }[header.column.getIsSorted() as string] ?? "↕"}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </TableHead>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+
+          <TableBody>
+            {table.getRowModel().rows.length === 0 ? (
+              <TableRow>
+                <TableCell
+                  colSpan={tableColumns.length}
+                  className="h-24 text-center text-muted-foreground"
+                >
+                  No results found.
+                </TableCell>
+              </TableRow>
+            ) : (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  className="border-b transition-colors hover:bg-muted/40"
+                >
+                  {row.getVisibleCells().map((cell) => {
+                    const align = getColumnAlign(cell.column.columnDef);
+
+                    return (
+                      <TableCell
+                        key={cell.id}
+                        className={`h-[58px] py-2 text-sm ${textAlignClassMap[align]}`}
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    );
+                  })}
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
+      </div>
     </div>
-  )
+  );
 }

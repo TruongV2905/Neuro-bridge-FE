@@ -24,11 +24,7 @@ function LoginForm() {
   const loginMutation = useLoginMutation();
   const dispatch = useDispatch();
   const router = useRouter();
-  const {
-    control,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
+  const { control, handleSubmit } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
       email: "",
@@ -43,7 +39,7 @@ function LoginForm() {
       {
         onSuccess: (response) => {
           toast.success("Login successful! Welcome back.");
-          const { refreshToken, accessToken, ...userData } = response;
+          const { refreshToken, accessToken, ...userData } = response.result;
           localStorage.setItem("accessToken", accessToken || "");
           localStorage.setItem("refreshToken", refreshToken || "");
           dispatch(login(userData));

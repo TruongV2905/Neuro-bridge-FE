@@ -1,37 +1,36 @@
-"use client"
+"use client";
 
-import { useEffect } from "react"
-import { Controller, useForm, type Resolver } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import type { ZodType } from "zod"
+import { useEffect } from "react";
+import { Controller, useForm, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import type { ZodType } from "zod";
 
-import type { FieldConfig } from "@/types/crud"
+import type { FieldConfig } from "@/types/dasboard";
 
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectTrigger,
   SelectContent,
   SelectItem,
   SelectValue,
-} from "@/components/ui/select"
+} from "@/components/ui/select";
 
 import {
   Field,
   FieldError,
   FieldGroup,
   FieldLabel,
-} from "@/components/ui/field"
-
+} from "@/components/ui/field";
 
 interface Props {
-  fields: FieldConfig[]
-  schema: ZodType<Record<string, unknown>>
-  defaultValues: Record<string, unknown>
-  onSubmit: (values: Record<string, unknown>) => void
-  onCancel?: () => void
-  submitLabel?: string
+  fields: FieldConfig[];
+  schema: ZodType<Record<string, unknown>>;
+  defaultValues: Record<string, unknown>;
+  onSubmit: (values: Record<string, unknown>) => void;
+  onCancel?: () => void;
+  submitLabel?: string;
 }
 
 const spanClassMap: Record<number, string> = {
@@ -47,7 +46,7 @@ const spanClassMap: Record<number, string> = {
   10: "md:col-span-10",
   11: "md:col-span-11",
   12: "md:col-span-12",
-}
+};
 
 export function FormBuilder({
   fields,
@@ -60,18 +59,18 @@ export function FormBuilder({
   const form = useForm<Record<string, unknown>>({
     resolver: zodResolver(schema as never) as Resolver<Record<string, unknown>>,
     defaultValues,
-  })
+  });
 
   useEffect(() => {
-    form.reset(defaultValues)
-  }, [defaultValues, form])
+    form.reset(defaultValues);
+  }, [defaultValues, form]);
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
       <FieldGroup>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-12">
           {fields.map((config) => {
-            const span = config.span || 12
+            const span = config.span || 12;
 
             return (
               <Controller
@@ -109,7 +108,7 @@ export function FormBuilder({
                           field.onChange(
                             e.target.value === ""
                               ? undefined
-                              : Number(e.target.value)
+                              : Number(e.target.value),
                           )
                         }
                         onBlur={field.onBlur}
@@ -137,8 +136,7 @@ export function FormBuilder({
                         <SelectTrigger id={config.name} className="w-full">
                           <SelectValue
                             placeholder={
-                              config.placeholder ||
-                              `Select ${config.label}`
+                              config.placeholder || `Select ${config.label}`
                             }
                           />
                         </SelectTrigger>
@@ -162,7 +160,7 @@ export function FormBuilder({
                   </Field>
                 )}
               />
-            )
+            );
           })}
         </div>
       </FieldGroup>
@@ -177,5 +175,5 @@ export function FormBuilder({
         <Button type="submit">{submitLabel}</Button>
       </div>
     </form>
-  )
+  );
 }

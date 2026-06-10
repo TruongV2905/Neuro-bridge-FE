@@ -1,24 +1,36 @@
-import type { ReactNode } from "react"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
-import { ArrowBigRight } from "lucide-react"
+import type { ReactNode } from "react";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { ArrowBigRight } from "lucide-react";
 
-export function GradientLabel({ children }: Readonly<{ children: ReactNode }>) {
+export function GradientLabel({
+  children,
+  className,
+}: Readonly<{ children: ReactNode; className?: string }>) {
   return (
-    <p className="bg-linear-to-r from-[#5470ff] to-[#fc38da] bg-clip-text text-xs font-extrabold tracking-[0.04em] text-transparent sm:text-sm">
+    <p
+      className={cn(
+        "bg-linear-to-r from-[#5470ff] to-[#fc38da] bg-clip-text  font-extrabold tracking-[0.04em] font-display text-3xl text-[#e5e7eb]/60",
+        className,
+      )}
+    >
       {children}
     </p>
-  )
+  );
 }
 
 interface GradientCtaLinkProps {
-  href: string
-  children: ReactNode
-  className?: string
+  href: string;
+  children: ReactNode;
+  className?: string;
 }
 
-export function GradientCtaLink({ href, children, className }: Readonly<GradientCtaLinkProps>) {
+export function GradientCtaLink({
+  href,
+  children,
+  className,
+}: Readonly<GradientCtaLinkProps>) {
   return (
     <Button
       asChild
@@ -30,9 +42,8 @@ export function GradientCtaLink({ href, children, className }: Readonly<Gradient
       )}
     >
       <Link href={href}>
-        {children}{" "}
-        <ArrowBigRight />
+        {children} <ArrowBigRight />
       </Link>
     </Button>
-  )
+  );
 }

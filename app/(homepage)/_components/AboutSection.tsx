@@ -1,58 +1,104 @@
-import Image from "next/image"
-import type { HomepageGalleryImage } from "@/types/homepage"
-import { GradientCtaLink, GradientLabel } from "./HomepagePrimitives"
+"use client";
+
+import Image from "next/image";
+import { useRef } from "react";
+import { useInView } from "framer-motion";
+
+import type { HomepageGalleryImage } from "@/types/homepage";
+import { GradientCtaLink, GradientLabel } from "./HomepagePrimitives";
+import { Marquee3D } from "@/components/Marquee3D";
 
 interface AboutSectionProps {
-  images: readonly HomepageGalleryImage[]
+  images: readonly HomepageGalleryImage[];
 }
 
 export default function AboutSection({ images }: Readonly<AboutSectionProps>) {
+  const sectionRef = useRef(null);
+
+  const isInView = useInView(sectionRef, {
+    once: false,
+    amount: 0.3,
+  });
+
   return (
-    <section className="relative px-6 py-20 sm:py-28 lg:px-[7.5%]">
-      <div className="pointer-events-none absolute left-[4%] top-24 hidden text-[116px] font-extrabold leading-[0.9] text-[#e5e7eb]/60 lg:block">
+    <section
+      ref={sectionRef}
+      className="relative bg-foreground mx-auto pt-40 pb-20 text-background "
+    >
+      <div
+        className={`pointer-events-none font-display absolute left-[4%] top-[19.5%] hidden text-[116px] font-extrabold leading-[0.9]  text-primary/60  lg:block ${
+          isInView ? "animate__animated animate__fadeInLeft" : "opacity-0"
+        }`}
+      >
         ABOUT
       </div>
-      <div className="relative mx-auto grid max-w-[1360px] gap-14 lg:grid-cols-[1fr_1.08fr] lg:gap-20">
-        <div data-reveal>
-          <GradientLabel>ABOUT</GradientLabel>
-          <h2 className="mt-10 max-w-[570px] text-[clamp(2.25rem,3.2vw,3rem)] font-extrabold uppercase leading-[0.98]">
+
+      <div className="relative mx-auto grid max-w-[1360px] gap-14 grid-cols-[1fr_1.08fr]">
+        <div>
+          <GradientLabel
+            className={
+              isInView ? "animate__animated animate__backInLeft" : "opacity-0"
+            }
+          >
+            ABOUT
+          </GradientLabel>
+
+          <h2
+            className={` max-w-[570px] text-4xl font-bold uppercase  ${
+              isInView
+                ? "animate__animated animate__fadeInUp animate__delay-0.1s"
+                : "opacity-0"
+            }`}
+          >
             We help teams find the right AI solution faster
           </h2>
-          <p className="mt-10 max-w-[560px] text-lg leading-[1.5] text-[#6b6b61] sm:text-[22px]">
-            Neuro Bridge brings AI experts, model demos, and automation use cases into one place so
-            teams can move from idea to working solution without starting from zero.
+
+          <p
+            className={`mt-2 ml-3 max-w-[560px] text-md text-gray-400 ${
+              isInView
+                ? "animate__animated animate__fadeInUp animate__delay-0.1s"
+                : "opacity-0"
+            }`}
+          >
+            Neuro Bridge brings AI experts, model demos, and automation use
+            cases into one place so teams can move from idea to working solution
+            without starting from zero.
           </p>
-          <div className="mt-12 flex max-w-[530px] items-start gap-5">
-            <span className="flex size-20 shrink-0 items-center justify-center rounded-full bg-[#eef2ff] text-[42px] font-bold text-[#5470ff]">
+
+          <div
+            className={`mt-5 flex max-w-[530px] items-start gap-3 ${
+              isInView
+                ? "animate__animated animate__fadeInUp animate__delay-0.2s"
+                : "opacity-0"
+            }`}
+          >
+            <span className="flex size-15 shrink-0 items-center justify-center rounded-full bg-linear-to-r from-[#5470ff] to-[#fc38da] text-2xl font-bold text-background">
               AI
             </span>
+
             <div>
-              <h3 className="text-lg font-extrabold uppercase sm:text-xl">Verified AI workflows and expert support</h3>
-              <p className="mt-3 text-base leading-relaxed text-[#6b6b61] sm:text-lg">
-                Browse automation, computer vision, NLP, and AI agent solutions with clear budgets
-                and delivery profiles.
+              <h3 className="text-xl font-bold uppercase">
+                Verified AI workflows and expert support
+              </h3>
+
+              <p className="mt-3 text-md leading-relaxed text-gray-400">
+                Browse automation, computer vision, NLP, and AI agent solutions
+                with clear budgets and delivery profiles.
               </p>
             </div>
           </div>
         </div>
-        <div data-reveal className="pt-3 lg:pt-16">
-          <h3 className="mb-8 text-xl font-extrabold uppercase sm:text-2xl">Built for AI project discovery</h3>
-          <div className="grid grid-cols-3 gap-4 sm:gap-6">
-            {images.map((image) => (
-              <div key={image.src} className="relative aspect-[0.84] overflow-hidden">
-                <Image
-                  src={image.src}
-                  alt={image.alt}
-                  fill
-                  sizes="(max-width: 1024px) 30vw, 210px"
-                  className="object-cover"
-                />
-              </div>
-            ))}
-          </div>
-          <GradientCtaLink href="/experts" className="mt-10">Find an expert</GradientCtaLink>
+
+        <div
+          className={` ${
+            isInView
+              ? "animate__animated animate__fadeInRight animate__delay-0.1s"
+              : "opacity-0"
+          }`}
+        >
+          <Marquee3D />
         </div>
       </div>
     </section>
-  )
+  );
 }

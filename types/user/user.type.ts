@@ -1,4 +1,4 @@
-export type UserId = string
+import { Metadata, PageRequest } from "../common.starter";
 
 export enum UserRole {
   EXPERT = "EXPERT",
@@ -19,63 +19,57 @@ export enum UserStatus {
 }
 
 export interface User {
-  id: UserId
-  code: string
-
-  fullName: string
-  email: string
-
-  gender?: UserGender
-  status: UserStatus
-  address?: string
-  avatarUrl?: string
-  dateOfBirth?: string
-  role: UserRole
-  phone?: string
-
-  createdAt?: string
-
-  companyName?: string
-  industry?: string
-  companyDescription?: string
-  skillIds?: number[]
+  id: string;
+  code: string;
+  fullName: string;
+  email: string;
+  gender?: UserGender;
+  status: UserStatus;
+  address?: string;
+  avatarUrl?: string;
+  dateOfBirth?: string;
+  role: UserRole;
+  phone?: string;
+  createdAt?: string;
+  companyName?: string;
+  industry?: string;
+  companyDescription?: string;
+  skillIds?: number[];
 }
 
-export type UserSortDirection = "ASCENDING" | "DESCENDING"
+export type UserSortDirection = "ASCENDING" | "DESCENDING";
 
-export type UserFilterRequest = {
-  page: number
-  size: number
-  sortBy?: string
-  direction?: UserSortDirection
-  search?: string
+export type UserFilterRequest = PageRequest & {
   filter?: {
-    role?: UserRole
-    status?: UserStatus
-    gender?: UserGender
-    address?: string
-    createdFrom?: string
-    createdTo?: string
-  }
-}
+    role?: UserRole;
+    status?: UserStatus;
+    gender?: UserGender;
+    address?: string;
+    createdFrom?: string;
+    createdTo?: string;
+  };
+};
 
-export type UserListMetadata = {
-  page: number
-  size: number
-  currentElements: number
-  totalElements: number
-  totalPages: number
-  hasNext: boolean
-  hasPrevious: boolean
-}
+export interface UserResponse {
+  code: string;
+  fullName: string;
+  gender: UserGender | null;
+  status: UserStatus;
+  address: string | null;
+  avatarUrl: string | null;
+  dateOfBirth: string | null; // LocalDate
+  role: UserRole;
+  phone: string | null;
+  email: string;
+  accessToken: string | null;
+  refreshToken: string | null;
+  createdAt: string; // LocalDateTime
 
-export type UserListResult = {
-  data: User[]
-  metadata: UserListMetadata
-}
+  // client
+  companyName?: string | null;
+  industry?: string | null;
+  companyDescription?: string | null;
 
-export type ApiResponse<T> = {
-  code: number
-  message: string
-  result: T
+  // expert
+  skillIds?: number[] | null;
 }

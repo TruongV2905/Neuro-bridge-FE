@@ -8,7 +8,7 @@ import type {
   UseQueryOptions,
 } from "@tanstack/react-query";
 import api from "../configs/api";
-import { APIResponse } from "@/types/ApiResponse";
+import { APIResponse } from "@/types/common.starter";
 
 type ApiError = AxiosError<APIResponse<null>>;
 type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
@@ -50,28 +50,39 @@ export const createQueryHook = <TData = unknown>(
   return function useCustomQuery(
     params?: Params,
     options?: Omit<
-      UseQueryOptions<TData, ApiError, TData, QueryKey>,
+      UseQueryOptions<
+        APIResponse<TData>,
+        ApiError,
+        APIResponse<TData>,
+        QueryKey
+      >,
       "queryKey" | "queryFn"
     >,
   ) {
     const baseKey = toQueryKey(queryKey);
 
-    return useQuery<TData, ApiError, TData, QueryKey>({
-      queryKey: params ? [...baseKey, params] : baseKey,
+    return useQuery<APIResponse<TData>, ApiError, APIResponse<TData>, QueryKey>(
+      {
+        queryKey: params ? [...baseKey, params] : baseKey,
 
-      queryFn: async () => {
-        const { finalUrl, remainingParams } = resolveUrl(url, params);
+        queryFn: async () => {
+          const { finalUrl, remainingParams } = resolveUrl(url, params);
 
-        const { data } = await api.get<APIResponse<TData>>(finalUrl, {
-          params: remainingParams,
-        });
+          const { data } = await api.get<APIResponse<TData>>(finalUrl, {
+            params: remainingParams,
+          });
 
-        return data.result;
+          return {
+            result: data.result,
+            message: data.message,
+            code: data.code,
+          };
+        },
+
+        retry: 0,
+        ...options,
       },
-
-      retry: 0,
-      ...options,
-    });
+    );
   };
 };
 
@@ -84,7 +95,7 @@ type CreateMutationHookConfig<TResponse, TVariables> = {
   isMultipart?: boolean;
   options?: Omit<
     UseMutationOptions<
-      TResponse,
+      APIResponse<TResponse>,
       ApiError,
       MutationPayload<TVariables>,
       unknown
@@ -104,19 +115,24 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
     const queryClient = useQueryClient();
 
     return useMutation<
-      TResponse,
+      APIResponse<TResponse>,
       ApiError,
       MutationPayload<TVariables>,
       unknown
     >({
       ...options,
-      mutationFn: async ({ pathParams, data }) => {
-        const { finalUrl } = resolveUrl(url, pathParams);
 
+      mutationFn: async ({ pathParams, data }) => {
+        const { finalUrl, remainingParams } = resolveUrl(url, pathParams);
+        console.log("pathParams:", pathParams);
+        console.log("data:", data);
+        console.log("finalUrl:", finalUrl);
+        console.log("remainingParams:", remainingParams);
         const config: AxiosRequestConfig = {
           method,
           url: finalUrl,
           data,
+          params: remainingParams,
           headers: isMultipart
             ? { "Content-Type": "multipart/form-data" }
             : undefined,
@@ -124,7 +140,11 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
 
         const res = await api<APIResponse<TResponse>>(config);
 
-        return res.data.result;
+        return {
+          result: res.data.result,
+          message: res.data.message,
+          code: res.data.code,
+        };
       },
 
       onSuccess: async (data, variables, onMutateResult, context) => {
@@ -141,7 +161,7 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
             ),
           );
         }
-      
+
         options?.onSuccess?.(data, variables, onMutateResult, context);
       },
 
@@ -152,9 +172,46 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
       onSettled: (data, error, variables, onMutateResult, context) => {
         options?.onSettled?.(data, error, variables, onMutateResult, context);
       },
-
- 
     });
+  };
+};
+
+export const createPostQueryHook = <TData = unknown, TVariables = unknown>(
+  queryKey: string | QueryKey,
+  url: string,
+) => {
+  return function useCustomPostQuery(
+    body: TVariables,
+    options?: Omit<
+      UseQueryOptions<
+        APIResponse<TData>,
+        ApiError,
+        APIResponse<TData>,
+        QueryKey
+      >,
+      "queryKey" | "queryFn"
+    >,
+  ) {
+    const baseKey = toQueryKey(queryKey);
+
+    return useQuery<APIResponse<TData>, ApiError, APIResponse<TData>, QueryKey>(
+      {
+        queryKey: [...baseKey, body],
+
+        queryFn: async () => {
+          const res = await api.post<APIResponse<TData>>(url, body);
+
+          return {
+            result: res.data.result,
+            message: res.data.message,
+            code: res.data.code,
+          };
+        },
+
+        retry: 0,
+        ...options,
+      },
+    );
   };
 };
 

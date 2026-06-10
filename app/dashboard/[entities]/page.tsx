@@ -1,23 +1,24 @@
-"use client"
+"use client";
 
-import { notFound, useParams } from "next/navigation"
-import { CrudPage } from "@/components/dashboard/crud/CrudPage"
+import { notFound, useParams } from "next/navigation";
+
+import { CrudPage } from "@/components/dashboard/crud/CrudPage";
 import {
   dashboardRegister,
   type DashboardEntity,
-} from "@/modules/dashboard-register"
+} from "@/modules/dashboard-register";
 
 export default function DashboardEntityPage() {
-  const params = useParams<{ entities: string }>()
+  const params = useParams<{ entities: string }>();
 
-  const entity = params.entities as DashboardEntity
-  const dashboardModule = dashboardRegister[entity]
+  const entity = params.entities as DashboardEntity;
+  const dashboardModule = dashboardRegister[entity];
 
   if (!dashboardModule) {
-    notFound()
+    notFound();
   }
 
-  const { config, Form, useCrud } = dashboardModule
+  const { config, useCrud } = dashboardModule;
 
-  return <CrudPage config={config} Form={Form} useCrud={useCrud} />
+  return <CrudPage config={config} useCrud={useCrud} />;
 }

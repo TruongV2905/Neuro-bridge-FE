@@ -1,30 +1,27 @@
-import type { ComponentType } from "react"
+import type { FieldValues } from "react-hook-form";
 
-import type { CrudConfig } from "@/types/crud"
-import type { CrudFormProps, UseCrudHook } from "@/components/dashboard/crud/CrudPage"
+import type { CrudConfig } from "@/types/dasboard";
+import type { UseCrudHook } from "@/components/dashboard/crud/CrudPage";
 
-import { userConfig } from "@/modules/users/configs/user.config"
-import { UserForm } from "@/modules/users/forms/UserForm"
-import { useUserCrud } from "@/modules/users/hooks/useUserCrud"
+import { userConfig } from "@/modules/users/user.config";
+import { useUserCrud } from "@/modules/users/useUserCrud";
 
-import type { User } from "@/types/user/user.type"
-import type { UserSchema } from "@/schemas/user.schema"
+import type { User } from "@/types/user/user.type";
+import type { UserSchema } from "@/schemas/user.schema";
 
 export type DashboardCrudModule<
   TData extends object,
-  TSubmit extends object = TData,
+  TSubmit extends FieldValues = FieldValues,
 > = {
-  config: CrudConfig<TData>
-  Form: ComponentType<CrudFormProps<TData, TSubmit>>
-  useCrud: UseCrudHook<TData, TSubmit>
-}
+  config: CrudConfig<TData, TSubmit>;
+  useCrud: UseCrudHook<TData, TSubmit>;
+};
 
 export const dashboardRegister = {
   users: {
     config: userConfig,
-    Form: UserForm,
     useCrud: useUserCrud,
   } satisfies DashboardCrudModule<User, UserSchema>,
-} as const
+} as const;
 
-export type DashboardEntity = keyof typeof dashboardRegister
+export type DashboardEntity = keyof typeof dashboardRegister;

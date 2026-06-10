@@ -1,383 +1,108 @@
-// "use client"
+"use client";
 
-// import { useMemo, useState } from "react"
-// import type { ComponentType } from "react"
+import { useMemo, useState } from "react";
+import type { DefaultValues, FieldValues, Resolver } from "react-hook-form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Edit, Trash2 } from "lucide-react";
 
-// import type { CrudConfig } from "@/types/crud"
+import { useDebounce } from "@/hooks/useDebounce";
+import type { CrudConfig } from "@/types/dasboard";
+import type {
+  PageRequest,
+} from "@/types/common.starter";
 
-// import PageWrapper from "@/components/common/PageWrapper"
-// import { DataTable } from "@/components/dashboard/table/DataTable"
-// import { TablePagination } from "@/components/dashboard/table/TablePagination"
-// import { CrudModal } from "./CrudModal"
-// import { CrudToolbar } from "./CrudToolbar"
+import PageWrapper from "@/components/common/PageWrapper";
+import {
+  DataTable,
+  type TableAction,
+} from "@/components/dashboard/table/DataTable";
+import { TablePagination } from "@/components/dashboard/table/TablePagination";
 
-// export type CrudFormMode = "create" | "edit"
+import { CrudModal } from "./CrudModal";
+import { CrudToolbar } from "./CrudToolbar";
+import { ConfirmActionDialog } from "./ConfirmActionDialog";
 
-// export type CrudFormProps<TData extends object> = {
-//   mode?: CrudFormMode
-//   defaultValues?: Partial<TData>
-//   onSubmit?: (values: TData) => void | Promise<void>
-//   onCancel?: () => void
-//   submitLabel?: string
-//   isSubmitting?: boolean
-// }
+export type ApiSortDirection = "ASCENDING" | "DESCENDING";
 
-// type CrudPageProps<TData extends object> = {
-//   config: CrudConfig<TData>
-//   Form: ComponentType<CrudFormProps<TData>>
-// }
-
-// type SortDirection = "asc" | "desc"
-
-// const getRecordValue = <TData extends object>(
-//   record: TData,
-//   key: string,
-// ): unknown => {
-//   return (record as Record<string, unknown>)[key]
-// }
-
-// const getSortableValue = <TData extends object>(
-//   record: TData,
-//   key: string,
-// ): string => {
-//   const recordMap = record as Record<string, unknown>
-
-//   /**
-//    * Cột "user" là cột custom, không tồn tại trực tiếp trong data.
-//    * Với User Management, mình sort theo fullName.
-//    */
-//   if (key === "user") {
-//     return String(recordMap.fullName ?? recordMap.name ?? "")
-//   }
-
-//   return String(recordMap[key] ?? "")
-// }
-
-// export function CrudPage<TData extends object>({
-//   config,
-//   Form,
-// }: CrudPageProps<TData>) {
-//   const [data, setData] = useState<TData[]>(config.data ?? [])
-
-//   const [editingIndex, setEditingIndex] = useState<number | null>(null)
-//   const [selectedRecord, setSelectedRecord] = useState<Partial<TData>>({})
-//   const [isOpen, setIsOpen] = useState(false)
-
-//   const [sortKey, setSortKey] = useState<string | null>(null)
-//   const [sortDirection, setSortDirection] = useState<SortDirection | null>(
-//     null,
-//   )
-//   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
-
-//   const pageSizeOptions = config.table?.pageSizeOptions ?? [10, 25, 50, 100]
-
-//   const [currentPage, setCurrentPage] = useState(1)
-//   const [pageSize, setPageSize] = useState(config.table?.pageSize ?? 10)
-
-//   const processedData = useMemo(() => {
-//     let result = [...data]
-
-//     Object.entries(columnFilters).forEach(([key, value]) => {
-//       if (!value || value === "all") return
-
-//       result = result.filter((item) => {
-//         const itemValue = String(getRecordValue(item, key) ?? "")
-//         return itemValue === value
-//       })
-//     })
-
-//     if (sortKey && sortDirection) {
-//       result.sort((a, b) => {
-//         const aValue = getSortableValue(a, sortKey).toLowerCase()
-//         const bValue = getSortableValue(b, sortKey).toLowerCase()
-
-//         if (aValue < bValue) {
-//           return sortDirection === "asc" ? -1 : 1
-//         }
-
-//         if (aValue > bValue) {
-//           return sortDirection === "asc" ? 1 : -1
-//         }
-
-//         return 0
-//       })
-//     }
-
-//     return result
-//   }, [data, columnFilters, sortKey, sortDirection])
-
-//   const totalItems = processedData.length
-//   const totalPages = Math.max(Math.ceil(totalItems / pageSize), 1)
-
-//   const startIndex = (currentPage - 1) * pageSize
-//   const endIndex = startIndex + pageSize
-
-//   const paginatedData = useMemo(() => {
-//     return processedData.slice(startIndex, endIndex)
-//   }, [processedData, startIndex, endIndex])
-
-//   const startItem = totalItems === 0 ? 0 : startIndex + 1
-//   const endItem = Math.min(endIndex, totalItems)
-
-//   const resetModalState = () => {
-//     setSelectedRecord({})
-//     setEditingIndex(null)
-//     setIsOpen(false)
-//   }
-
-//   const handleSubmit = async (values: TData) => {
-//     if (editingIndex !== null) {
-//       setData((prev) =>
-//         prev.map((item, index) => (index === editingIndex ? values : item)),
-//       )
-//     } else {
-//       setData((prev) => [...prev, values])
-//     }
-
-//     resetModalState()
-//   }
-
-//   const handleCreate = () => {
-//     setSelectedRecord({})
-//     setEditingIndex(null)
-//     setIsOpen(true)
-//   }
-
-//   const handleEdit = (record: TData, absoluteIndex: number) => {
-//     setSelectedRecord(record)
-//     setEditingIndex(absoluteIndex)
-//     setIsOpen(true)
-//   }
-
-//   const handleDelete = (absoluteIndex: number) => {
-//     const targetRecord = processedData[absoluteIndex]
-
-//     setData((prev) => prev.filter((item) => item !== targetRecord))
-
-//     const newTotalItems = totalItems - 1
-//     const newTotalPages = Math.max(Math.ceil(newTotalItems / pageSize), 1)
-
-//     if (currentPage > newTotalPages) {
-//       setCurrentPage(newTotalPages)
-//     }
-//   }
-
-//   const handleSortChange = (key: string) => {
-//     setCurrentPage(1)
-
-//     if (sortKey !== key) {
-//       setSortKey(key)
-//       setSortDirection("asc")
-//       return
-//     }
-
-//     if (sortDirection === "asc") {
-//       setSortDirection("desc")
-//       return
-//     }
-
-//     setSortKey(null)
-//     setSortDirection(null)
-//   }
-
-//   const handleFilterChange = (key: string, value: string) => {
-//     setCurrentPage(1)
-
-//     setColumnFilters((prev) => {
-//       if (value === "all") {
-//         const next = { ...prev }
-//         delete next[key]
-//         return next
-//       }
-
-//       return {
-//         ...prev,
-//         [key]: value,
-//       }
-//     })
-//   }
-
-//   return (
-//     <PageWrapper
-//       title={config.title}
-//       description={
-//         config.description ?? `Quản lý danh mục ${config.title.toLowerCase()}`
-//       }
-//     >
-//       <div className="mt-4 flex flex-col gap-6">
-//         <CrudToolbar entityName={config.title} onCreate={handleCreate} />
-
-//         <CrudModal<TData>
-//           open={isOpen}
-//           onClose={resetModalState}
-//           onSubmit={handleSubmit}
-//           defaultValues={selectedRecord}
-//           isEdit={editingIndex !== null}
-//           Form={Form}
-//           entityName={config.entityName}
-//         />
-
-//         <DataTable
-//           columns={config.columns}
-//           data={paginatedData}
-//           paginationInfo={{ startItem, endItem, totalItems }}
-//           pageSize={pageSize}
-//           pageSizeOptions={pageSizeOptions}
-//           onPageSizeChange={(size) => {
-//             setPageSize(size)
-//             setCurrentPage(1)
-//           }}
-//           sortKey={sortKey}
-//           sortDirection={sortDirection}
-//           filters={columnFilters}
-//           onSortChange={handleSortChange}
-//           onFilterChange={handleFilterChange}
-//           actions={[
-//             {
-//               type: "edit",
-//               label: "Edit",
-//               onClick: (row) => {
-//                 const absoluteIndex = processedData.findIndex(
-//                   (item) => item === row,
-//                 )
-
-//                 handleEdit(row, absoluteIndex)
-//               },
-//             },
-//             {
-//               type: "delete",
-//               label: "Delete",
-//               onClick: (row) => {
-//                 const absoluteIndex = processedData.findIndex(
-//                   (item) => item === row,
-//                 )
-
-//                 handleDelete(absoluteIndex)
-//               },
-//             },
-//           ]}
-//         />
-
-//         {config.table?.pagination && (
-//           <div className="pt-2">
-//             <TablePagination
-//               currentPage={currentPage}
-//               totalPages={totalPages}
-//               pageSize={pageSize}
-//               pageSizeOptions={pageSizeOptions}
-//               totalItems={totalItems}
-//               startItem={startItem}
-//               endItem={endItem}
-//               onPageChange={setCurrentPage}
-//               onPageSizeChange={(size) => {
-//                 setPageSize(size)
-//                 setCurrentPage(1)
-//               }}
-//             />
-//           </div>
-//         )}
-//       </div>
-//     </PageWrapper>
-//   )
-// }
-
-"use client"
-
-import { useMemo, useState } from "react"
-import type { ComponentType } from "react"
-import { Edit, Trash2 } from "lucide-react"
-
-import type { CrudConfig } from "@/types/crud"
-
-import PageWrapper from "@/components/common/PageWrapper"
-import { DataTable, type TableAction } from "@/components/dashboard/table/DataTable"
-import { TablePagination } from "@/components/dashboard/table/TablePagination"
-import { CrudModal } from "./CrudModal"
-import { CrudToolbar } from "./CrudToolbar"
-
-export type CrudFormMode = "create" | "edit"
-
-export type CrudFormProps<
-  TData extends object,
-  TSubmit extends object = TData,
-> = {
-  mode?: CrudFormMode
-  defaultValues?: Partial<TData>
-  onSubmit?: (values: TSubmit) => void | Promise<void>
-  onCancel?: () => void
-  submitLabel?: string
-  isSubmitting?: boolean
-}
-
-export type CrudSortDirection = "asc" | "desc"
-
-export type UseCrudParams = {
-  page: number
-  size: number
-  search: string
-  sortKey: string | null
-  sortDirection: CrudSortDirection | null
-  filters: Record<string, string>
-}
-
+export type UseCrudParams<TFilter extends object = Record<string, unknown>> =
+  PageRequest & {
+    filters?: Partial<TFilter>;
+  };
+type FilterKey<TFilter extends object> = Extract<keyof TFilter, string>;
 export type UseCrudResult<
   TData extends object,
-  TSubmit extends object = TData,
+  TSubmit extends FieldValues = FieldValues,
 > = {
-  data: TData[]
-  totalItems: number
-  totalPages: number
-  loading: boolean
-  error: string | null
+  data: TData[];
+  totalItems: number;
+  totalPages: number;
+  loading: boolean;
+  error: string | null;
+  refresh?: () => void | Promise<void>;
+  exportItems?: () => void | Promise<void>;
+  createItem?: (values: TSubmit) => void | Promise<void>;
+  updateItem?: (record: TData, values: TSubmit) => void | Promise<void>;
+  deleteItem?: (record: TData) => void | Promise<void>;
 
-  refresh?: () => void | Promise<void>
-
-  getRowKey?: (row: TData, index: number) => string | number
-
-  createItem?: (values: TSubmit) => void | Promise<void>
-  updateItem?: (record: TData, values: TSubmit) => void | Promise<void>
-  deleteItem?: (record: TData) => void | Promise<void>
-
-  customActions?: TableAction<TData>[]
-}
+  customActions?: TableAction<TData>[];
+};
 
 export type UseCrudHook<
   TData extends object,
-  TSubmit extends object = TData,
-> = (params: UseCrudParams) => UseCrudResult<TData, TSubmit>
+  TSubmit extends FieldValues = FieldValues,
+  TFilter extends object = Record<string, unknown>,
+> = (params: UseCrudParams<TFilter>) => UseCrudResult<TData, TSubmit>;
 
 type CrudPageProps<
   TData extends object,
-  TSubmit extends object = TData,
+  TSubmit extends FieldValues = FieldValues,
+  TFilter extends object = Record<string, unknown>,
 > = {
-  config: CrudConfig<TData>
-  Form: ComponentType<CrudFormProps<TData, TSubmit>>
-  useCrud: UseCrudHook<TData, TSubmit>
-}
+  config: CrudConfig<TData, TSubmit, TFilter>;
+  useCrud: UseCrudHook<TData, TSubmit, TFilter>;
+  createDefaultValues?: Partial<TSubmit>;
+  mapRecordToFormValues?: (record: TData) => Partial<TSubmit>;
+};
 
 export function CrudPage<
   TData extends object,
-  TSubmit extends object = TData,
+  TSubmit extends FieldValues = FieldValues,
+  TFilter extends object = Record<string, unknown>,
 >({
   config,
-  Form,
   useCrud,
-}: CrudPageProps<TData, TSubmit>) {
-  const pageSizeOptions = config.table?.pageSizeOptions ?? [10, 25, 50, 100]
+  createDefaultValues,
+  mapRecordToFormValues,
+}: CrudPageProps<TData, TSubmit, TFilter>) {
+  const pageSizeOptions = config.table?.pageSizeOptions ?? [10, 25, 50, 100];
 
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageSize, setPageSize] = useState(config.table?.pageSize ?? 10)
+  const form = useForm<TSubmit>({
+    resolver: config.schema
+      ? (zodResolver(config.schema as never) as Resolver<TSubmit>)
+      : undefined,
+    defaultValues: (createDefaultValues ?? {}) as DefaultValues<TSubmit>,
+  });
 
-  const [search, setSearch] = useState("")
-  const [sortKey, setSortKey] = useState<string | null>(null)
-  const [sortDirection, setSortDirection] = useState<CrudSortDirection | null>(
-    null,
-  )
-  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({})
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(config.table?.pageSize ?? 10);
 
-  const [selectedRecord, setSelectedRecord] = useState<TData | null>(null)
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  const [sortBy, setSortBy] = useState<string | undefined>(undefined);
+  const [sortDirection, setSortDirection] = useState<
+    ApiSortDirection | undefined
+  >(undefined);
+
+  const [filters, setFilters] = useState<Partial<TFilter>>({});
+
+  const [selectedRecord, setSelectedRecord] = useState<TData | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     data,
@@ -386,116 +111,152 @@ export function CrudPage<
     loading,
     error,
     refresh,
-    getRowKey,
+    exportItems,
     createItem,
     updateItem,
     deleteItem,
     customActions = [],
   } = useCrud({
-    page: currentPage,
+    page: currentPage - 1,
     size: pageSize,
-    search,
-    sortKey,
+    search: debouncedSearch,
+    sortBy,
     sortDirection,
-    filters: columnFilters,
-  })
+    filters,
+  });
+  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endItem = Math.min(currentPage * pageSize, totalItems);
 
-  const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1
-  const endItem = Math.min(currentPage * pageSize, totalItems)
+  const canCreate = Boolean(createItem);
+  const canEdit = Boolean(updateItem);
+  const canDelete = Boolean(deleteItem);
 
-  const canCreate = Boolean(createItem)
-  const canEdit = Boolean(updateItem)
-  const canDelete = Boolean(deleteItem)
-
-  const isEditMode = Boolean(selectedRecord)
+  const isEditMode = isModalOpen && Boolean(selectedRecord);
 
   const handleOpenCreate = () => {
-    if (!canCreate) return
+    if (!canCreate) return;
 
-    setSelectedRecord(null)
-    setIsModalOpen(true)
-  }
+    setSelectedRecord(null);
+    form.reset((createDefaultValues ?? {}) as DefaultValues<TSubmit>);
+    setIsModalOpen(true);
+  };
 
   const handleOpenEdit = (record: TData) => {
-    if (!canEdit) return
+    if (!canEdit) return;
 
-    setSelectedRecord(record)
-    setIsModalOpen(true)
-  }
+    setSelectedRecord(record);
+
+    const values = mapRecordToFormValues
+      ? mapRecordToFormValues(record)
+      : (record as unknown as Partial<TSubmit>);
+
+    form.reset(values as DefaultValues<TSubmit>);
+    setIsModalOpen(true);
+  };
 
   const handleCloseModal = () => {
-    setSelectedRecord(null)
-    setIsModalOpen(false)
-  }
+    setSelectedRecord(null);
+    setIsModalOpen(false);
+    form.reset((createDefaultValues ?? {}) as DefaultValues<TSubmit>);
+  };
 
   const handleSubmit = async (values: TSubmit) => {
     try {
-      setIsSubmitting(true)
+      setIsSubmitting(true);
 
       if (selectedRecord && updateItem) {
-        await updateItem(selectedRecord, values)
+        await updateItem(selectedRecord, values);
       } else if (!selectedRecord && createItem) {
-        await createItem(values)
+        await createItem(values);
       }
 
-      handleCloseModal()
+      handleCloseModal();
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const handleDelete = async (record: TData) => {
-    if (!deleteItem) return
+  const handleDelete = (record: TData) => {
+    if (!deleteItem) return;
 
-    const confirmed = window.confirm("Are you sure you want to delete this item?")
+    setSelectedRecord(record);
+    setIsDeleteDialogOpen(true);
+  };
 
-    if (!confirmed) return
+  const handleConfirmDelete = async () => {
+    if (!deleteItem || !selectedRecord) return;
 
-    await deleteItem(record)
-  }
+    try {
+      setIsDeleting(true);
+
+      await deleteItem(selectedRecord);
+
+      setIsDeleteDialogOpen(false);
+      setSelectedRecord(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSortChange = (key: string) => {
-    setCurrentPage(1)
+    setCurrentPage(1);
 
-    if (sortKey !== key) {
-      setSortKey(key)
-      setSortDirection("asc")
-      return
+    if (sortBy !== key) {
+      setSortBy(key);
+      setSortDirection("ASCENDING");
+      return;
     }
 
-    if (sortDirection === "asc") {
-      setSortDirection("desc")
-      return
+    if (sortDirection === "ASCENDING") {
+      setSortDirection("DESCENDING");
+      return;
     }
 
-    setSortKey(null)
-    setSortDirection(null)
-  }
-
-  const handleFilterChange = (key: string, value: string) => {
-    setCurrentPage(1)
-
-    setColumnFilters((prev) => {
-      if (value === "all") {
-        const next = { ...prev }
-        delete next[key]
-        return next
-      }
-
-      return {
-        ...prev,
-        [key]: value,
-      }
-    })
-  }
+    setSortBy(undefined);
+    setSortDirection(undefined);
+  };
 
   const handleSearchChange = (value: string) => {
-    setSearch(value)
-    setCurrentPage(1)
-  }
+    setSearchInput(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (name: FilterKey<TFilter>, value: unknown) => {
+    setCurrentPage(1);
+
+    setFilters((prev) => {
+      const next = { ...prev } as Partial<Record<FilterKey<TFilter>, unknown>>;
+
+      const shouldRemove =
+        value === undefined ||
+        value === null ||
+        value === "" ||
+        value === "all" ||
+        (Array.isArray(value) && value.length === 0);
+
+      if (shouldRemove) {
+        delete next[name];
+        return next as Partial<TFilter>;
+      }
+
+      next[name] = value;
+
+      return next as Partial<TFilter>;
+    });
+  };
+
+  const handleClearFilters = () => {
+    setCurrentPage(1);
+    setFilters({});
+  };
+
+  const handlePageSizeChange = (size: number) => {
+    setPageSize(size);
+    setCurrentPage(1);
+  };
 
   const actions = useMemo<TableAction<TData>[]>(() => {
-    const baseActions: TableAction<TData>[] = []
+    const baseActions: TableAction<TData>[] = [];
 
     if (canEdit) {
       baseActions.push({
@@ -503,7 +264,7 @@ export function CrudPage<
         label: "Edit",
         icon: <Edit className="h-4 w-4" />,
         onClick: (row) => handleOpenEdit(row),
-      })
+      });
     }
 
     if (canDelete) {
@@ -511,12 +272,13 @@ export function CrudPage<
         type: "delete",
         label: "Delete",
         icon: <Trash2 className="h-4 w-4" />,
+        variant: "destructive",
         onClick: (row) => handleDelete(row),
-      })
+      });
     }
 
-    return [...baseActions, ...customActions]
-  }, [canEdit, canDelete, customActions])
+    return [...baseActions, ...customActions];
+  }, [canEdit, canDelete, customActions]);
 
   return (
     <PageWrapper
@@ -526,25 +288,48 @@ export function CrudPage<
       }
     >
       <div className="mt-4 flex flex-col gap-6">
-        <CrudToolbar
+        <CrudToolbar<TFilter>
           entityName={config.title}
-          searchValue={search}
+          searchValue={searchInput}
           onSearchChange={handleSearchChange}
+          filters={config.filters}
+          filterValues={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
           onCreate={handleOpenCreate}
           onRefresh={refresh}
+          onExport={exportItems}
           isRefreshing={loading}
           showCreate={canCreate}
         />
 
-        <CrudModal<TData, TSubmit>
+        <CrudModal<TSubmit>
           open={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={handleSubmit}
-          defaultValues={selectedRecord ?? undefined}
           isEdit={isEditMode}
-          Form={Form}
+          form={form}
+          fields={config.fields ?? []}
           entityName={config.entityName}
           isSubmitting={isSubmitting}
+        />
+
+        <ConfirmActionDialog
+          open={isDeleteDialogOpen}
+          onOpenChange={(open) => {
+            setIsDeleteDialogOpen(open);
+
+            if (!open) {
+              setSelectedRecord(null);
+            }
+          }}
+          title="Delete item"
+          description="Are you sure you want to delete this item? This action cannot be undone."
+          confirmText="Delete"
+          cancelText="Cancel"
+          variant="danger"
+          loading={isDeleting}
+          onConfirm={handleConfirmDelete}
         />
 
         {error && (
@@ -556,20 +341,14 @@ export function CrudPage<
         <DataTable
           columns={config.columns}
           data={data}
+          actions={actions}
           paginationInfo={{ startItem, endItem, totalItems }}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}
-          onPageSizeChange={(size) => {
-            setPageSize(size)
-            setCurrentPage(1)
-          }}
-          sortKey={sortKey}
+          onPageSizeChange={handlePageSizeChange}
+          sortBy={sortBy}
           sortDirection={sortDirection}
-          filters={columnFilters}
           onSortChange={handleSortChange}
-          onFilterChange={handleFilterChange}
-          getRowKey={getRowKey}
-          actions={actions}
         />
 
         {config.table?.pagination && (
@@ -583,14 +362,11 @@ export function CrudPage<
               startItem={startItem}
               endItem={endItem}
               onPageChange={setCurrentPage}
-              onPageSizeChange={(size) => {
-                setPageSize(size)
-                setCurrentPage(1)
-              }}
+              onPageSizeChange={handlePageSizeChange}
             />
           </div>
         )}
       </div>
     </PageWrapper>
-  )
+  );
 }

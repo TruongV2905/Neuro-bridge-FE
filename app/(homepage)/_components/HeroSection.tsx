@@ -1,18 +1,26 @@
-import Image from "next/image"
+"use client";
+
+import Image from "next/image";
+import { useRef } from "react";
+import { useInView } from "framer-motion";
+
+import bannerLogo from "@/public/img/bannerLogo.png";
 
 export default function HeroSection() {
+  const sectionRef = useRef(null);
+
+  const isInView = useInView(sectionRef, {
+    once: false,
+    amount: 0.3,
+  });
+
   return (
-    <section className="homepage-hero relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0d17] px-6 text-center text-white sm:min-h-[910px]">
-      <Image
-        src="/figma/homepage/hero-bg.jpg"
-        alt=""
-        fill
-        priority
-        sizes="100vw"
-        className="hero-media object-cover opacity-60"
-      />
+    <section
+      ref={sectionRef}
+      className="homepage-hero relative flex min-h-svh items-center justify-center overflow-hidden bg-[#0a0d17] px-6 text-center text-white sm:min-h-[910px]"
+    >
       <video
-        className="absolute inset-0 h-full w-full object-cover opacity-25 mix-blend-screen"
+        className="absolute inset-0 h-full w-full object-cover opacity-35 mix-blend-screen"
         autoPlay
         muted
         loop
@@ -20,21 +28,40 @@ export default function HeroSection() {
         preload="metadata"
         aria-hidden="true"
       >
-        <source src="/video/homepage-bg.mp4" type="video/mp4" />
+        <source src="/video/cta-bg.mp4" type="video/mp4" />
       </video>
-      <div className="absolute inset-0 bg-[#0a0d17]/35" />
+
+      <div className="absolute inset-x-0 bottom-0 z-[1] h-48 bg-gradient-to-t from-[var(--foreground)] via-[var(--foreground)]/80 via-20% via-[var(--foreground)]/40 via-50% to-transparent" />
+
       <div className="relative z-10 mx-auto w-full max-w-[980px]">
-        <h1 className="overflow-hidden text-[clamp(2.75rem,8vw,7.25rem)] font-extrabold uppercase leading-[0.88]">
-          <span className="hero-title-line block">Neuro</span>
-          <span className="hero-title-line block">Bridge</span>
-        </h1>
-        <p className="hero-copy mx-auto mt-12 max-w-[760px] text-base font-bold sm:text-[22px]">
-          Connect with AI experts, ready-made models, and automation workflows built for real business problems.
+        <Image
+          src={bannerLogo}
+          alt="Neuro Bridge Logo"
+          width={900}
+          height={100}
+          className={
+            isInView
+              ? "mx-auto animate__animated animate__zoomIn animate__delay-0.5s"
+              : "mx-auto opacity-0"
+          }
+        />
+        <p
+          className={`hero-copy mx-auto max-w-[860px] text-gray-200 text-md  ${
+            isInView ? "animate__animated animate__fadeInUp" : "opacity-0"
+          }`}
+        >
+          Connect with AI experts, ready-made models, and automation workflows
+          built for real business problems.
         </p>
-        <p className="hero-copy mt-5 text-sm font-medium text-white/90 sm:text-lg">
+
+        <p
+          className={`hero-copy text-md  text-gray-400 ${
+            isInView ? "animate__animated animate__fadeInUp " : "opacity-0"
+          }`}
+        >
           AI marketplace and project delivery platform
         </p>
       </div>
     </section>
-  )
+  );
 }

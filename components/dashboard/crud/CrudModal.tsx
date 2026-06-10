@@ -1,93 +1,80 @@
-// "use client"
+"use client";
 
-// import type { ComponentType } from "react"
+import type { FieldValues, UseFormReturn } from "react-hook-form";
 
-// import { Modal } from "@/components/ui/modal"
-// import type { CrudFormProps } from "./CrudPage"
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
-// type CrudModalProps<TData extends object> = {
-//   open: boolean
-//   onClose: () => void
-//   onSubmit: (values: TData) => void
-//   defaultValues?: Partial<TData>
-//   isEdit: boolean
-//   Form: ComponentType<CrudFormProps<TData>>
-//   entityName?: string
-// }
+import { Button } from "@/components/ui/button";
 
-// export function CrudModal<TData extends object>({
-//   open,
-//   onClose,
-//   onSubmit,
-//   defaultValues,
-//   isEdit,
-//   Form,
-//   entityName,
-// }: CrudModalProps<TData>) {
-//   const mode = isEdit ? "edit" : "create"
-//   return (
-//     <Modal open={open} onClose={onClose} title={`${isEdit ? "Edit" : "Create"} ${entityName ?? ""}`}>
-//       <Form
-//         mode={mode}
-//         defaultValues={defaultValues}
-//         onSubmit={onSubmit}
-//         onCancel={onClose}
-//         submitLabel={isEdit ? "Save Changes" : "Create"}
-//       />
-//     </Modal>
-//   )
-// }
+import type { FieldConfig } from "@/types/dasboard";
+import DataForm from "@/components/form/DataForm";
 
-"use client"
+type CrudModalProps<TSubmit extends FieldValues> = {
+  open: boolean;
+  onClose: () => void;
+  onSubmit: (values: TSubmit) => void | Promise<void>;
+  isEdit: boolean;
+  form: UseFormReturn<TSubmit>;
+  fields: FieldConfig<TSubmit>[];
+  entityName?: string;
+  isSubmitting?: boolean;
+};
 
-import type { ComponentType } from "react"
-
-import { Modal } from "@/components/ui/modal"
-import type { CrudFormProps } from "./CrudPage"
-
-type CrudModalProps<
-  TData extends object,
-  TSubmit extends object = TData,
-> = {
-  open: boolean
-  onClose: () => void
-  onSubmit: (values: TSubmit) => void | Promise<void>
-  defaultValues?: Partial<TData>
-  isEdit: boolean
-  Form: ComponentType<CrudFormProps<TData, TSubmit>>
-  entityName?: string
-  isSubmitting?: boolean
-}
-
-export function CrudModal<
-  TData extends object,
-  TSubmit extends object = TData,
->({
+export function CrudModal<TSubmit extends FieldValues>({
   open,
   onClose,
   onSubmit,
-  defaultValues,
   isEdit,
-  Form,
+  form,
+  fields,
   entityName,
   isSubmitting = false,
-}: CrudModalProps<TData, TSubmit>) {
-  const mode = isEdit ? "edit" : "create"
+}: CrudModalProps<TSubmit>) {
+  const handleSubmit = form.handleSubmit((values) => {
+    onSubmit(values);
+  });
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      onClose={onClose}
-      title={`${isEdit ? "Edit" : "Create"} ${entityName ?? ""}`}
+      onOpenChange={(value) => {
+        if (!value) onClose();
+      }}
     >
-      <Form
-        mode={mode}
-        defaultValues={defaultValues}
-        onSubmit={onSubmit}
-        onCancel={onClose}
-        submitLabel={isEdit ? "Save Changes" : "Create"}
-        isSubmitting={isSubmitting}
-      />
-    </Modal>
-  )
+      <DialogContent className="sm:max-w-150">
+        <DialogHeader>
+          <DialogTitle>
+            {isEdit ? "Edit" : "Create"} {entityName ?? ""}
+          </DialogTitle>
+        </DialogHeader>
+
+        <DataForm form={form} fields={fields} isSubmitting={isSubmitting} />
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isSubmitting}
+          >
+            Cancel
+          </Button>
+
+          <Button type="button" disabled={isSubmitting} onClick={handleSubmit}>
+            {isSubmitting
+              ? "Submitting..."
+              : isEdit
+                ? "Save Changes"
+                : "Create"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }

@@ -74,4 +74,48 @@ export const expertProfile = {
     totalEarned: 25700000,
     totalWithdrawn: 13200000,
   },
+
+  skillsDetail: [
+  {
+    id: 1,
+    skillName: "Deep Learning & Neural Networks",
+    skillDescription:
+      "Thành thạo thiết kế và huấn luyện các kiến trúc mạng nơ-ron như CNN, RNN, Transformer bằng PyTorch và TensorFlow.",
+  },
+  {
+    id: 2,
+    skillName: "AI Automation",
+    skillDescription:
+      "Xây dựng workflow tự động hóa bằng AI, LangChain, OpenAI API và các hệ thống tích hợp.",
+  },
+  {
+    id: 3,
+    skillName: "Full-stack Development",
+    skillDescription:
+      "Phát triển frontend, backend, API và database cho các hệ thống web hiện đại.",
+  },
+],
+
+certificates: [
+  {
+    certificateId: "CERT-001",
+    certificateName: "TensorFlow Developer Certificate",
+    issuingOrganization: "Google",
+    issueDate: "2025-06-20",
+    expirationDate: "2028-06-20",
+    credentialId: "TF-DEV-2025-001",
+    certificateImageUrl: "",
+    createdAt: "2025-06-20",
+  },
+  {
+    certificateId: "CERT-002",
+    certificateName: "AWS Certified Cloud Practitioner",
+    issuingOrganization: "Amazon Web Services",
+    issueDate: "2025-08-15",
+    expirationDate: "2028-08-15",
+    credentialId: "AWS-CCP-2025-002",
+    certificateImageUrl: "",
+    createdAt: "2025-08-15",
+  },
+],
 }

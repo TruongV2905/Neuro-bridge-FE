@@ -13,7 +13,7 @@ import {
   type UserFilterRequest,
 } from "@/types/user/user.type";
 import type { UserSchema } from "@/schemas/user.schema";
-import { useFilterUsers, useUpdateUserStatus } from "@/services/userService";
+import { useFilterUsers, useUpdateUserStatus } from "@/services/user.service";
 
 export const useUserCrud: UseCrudHook<User, UserSchema> = (
   params: UseCrudParams,

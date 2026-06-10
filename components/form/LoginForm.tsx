@@ -14,7 +14,7 @@ import { Field, FieldError, FieldGroup, FieldLabel } from "../ui/field";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { loginSchema, type LoginFormValues } from "@/schemas/loginSchema";
-import { useLoginMutation } from "@/services/authenticationService";
+import { useLoginMutation } from "@/services/authentication.service";
 import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { login } from "@/redux/features/userSlice";

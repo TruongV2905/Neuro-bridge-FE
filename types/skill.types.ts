@@ -10,6 +10,6 @@ export interface SkillRequest {
 }
 
 export interface SkillForExpertRequest {
-  skillId: number[];
+  skillIds: number[];
   code: string;
 }

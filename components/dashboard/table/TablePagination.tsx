@@ -3,17 +3,7 @@ import { Button } from "@/components/ui/button";
 interface TablePaginationProps {
   currentPage: number;
   totalPages: number;
-
-  pageSize: number;
-  pageSizeOptions: number[];
-
-  totalItems: number;
-
-  startItem: number;
-  endItem: number;
-
   onPageChange: (page: number) => void;
-  onPageSizeChange: (size: number) => void;
 }
 
 export function TablePagination({

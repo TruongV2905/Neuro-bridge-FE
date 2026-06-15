@@ -1,4 +1,4 @@
-import { Metadata, PageRequest } from "../common.starter";
+import { PageRequest } from "../common.starter";
 
 export enum UserRole {
   EXPERT = "EXPERT",

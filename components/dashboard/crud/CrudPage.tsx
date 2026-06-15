@@ -356,13 +356,7 @@ export function CrudPage<
             <TablePagination
               currentPage={currentPage}
               totalPages={totalPages}
-              pageSize={pageSize}
-              pageSizeOptions={pageSizeOptions}
-              totalItems={totalItems}
-              startItem={startItem}
-              endItem={endItem}
               onPageChange={setCurrentPage}
-              onPageSizeChange={handlePageSizeChange}
             />
           </div>
         )}

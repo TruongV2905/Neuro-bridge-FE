@@ -2,7 +2,6 @@ import type { CrudConfig } from "@/types/dasboard";
 import type { User } from "@/types/user/user.type";
 import { UserSchema, userSchema } from "@/schemas/user.schema";
 import { userColumns } from "./user.column";
-import { userFields } from "./user.form";
 import { userFilters } from "./user.filter";
 
 export const userConfig: CrudConfig<User, UserSchema> = {
@@ -20,5 +19,4 @@ export const userConfig: CrudConfig<User, UserSchema> = {
   },
   columns: userColumns,
   filters: userFilters,
-  fields: userFields,
 };

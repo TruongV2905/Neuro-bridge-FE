@@ -1,7 +1,7 @@
 import { ExternalLink } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { PortfolioApiItem } from "@/services/portfolio-api"
+import { PortfolioApiItem } from "@/services/portfolio.service"
 
 export function ExpertPortfolioCard({ item }: { item: PortfolioApiItem }) {
   return (

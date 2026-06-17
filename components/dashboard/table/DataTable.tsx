@@ -40,11 +40,16 @@ export type TableAction<TData extends object> = {
   id?: string;
   type: TableActionType;
   label: string;
-  onClick?: (row: TData, rowIndex: number) => void;
+  actionKey?: string;
+
+  onClick?: (row: TData, rowIndex: number) => void | Promise<void>;
+
   icon?: React.ReactNode;
   variant?: "default" | "outline" | "destructive" | "secondary" | "ghost";
   className?: string;
-  hidden?: (row: TData) => boolean;
+
+  hidden?: boolean | ((row: TData) => boolean);
+  disabled?: boolean | ((row: TData) => boolean);
 };
 
 type SortDirection = "ASCENDING" | "DESCENDING";
@@ -72,7 +77,10 @@ type DataTableProps<TData extends object> = {
 
   sortBy?: string | null;
   sortDirection?: SortDirection | null;
-  onSortChange?: (key: string) => void;
+  onSortChange?: (
+    sortBy?: string,
+    sortDirection?: "ASCENDING" | "DESCENDING",
+  ) => void;
 };
 
 const textAlignClassMap: Record<TableAlign, string> = {
@@ -93,10 +101,32 @@ const getColumnAlign = <TData extends object>(
   return (columnDef.meta as ColumnMeta | undefined)?.align ?? "center";
 };
 
+const isActionHidden = <TData extends object>(
+  action: TableAction<TData>,
+  row: TData,
+) => {
+  if (typeof action.hidden === "function") {
+    return action.hidden(row);
+  }
+
+  return Boolean(action.hidden);
+};
+
+const isActionDisabled = <TData extends object>(
+  action: TableAction<TData>,
+  row: TData,
+) => {
+  if (typeof action.disabled === "function") {
+    return action.disabled(row);
+  }
+
+  return Boolean(action.disabled);
+};
+
 export function DataTable<TData extends object>({
   columns,
   data,
-  actions,
+  actions = [],
   paginationInfo,
   pageSize,
   pageSizeOptions,
@@ -117,7 +147,7 @@ export function DataTable<TData extends object>({
   }, [sortBy, sortDirection]);
 
   const tableColumns = useMemo<ColumnDef<TData>[]>(() => {
-    if (!actions || actions.length === 0) {
+    if (actions.length === 0) {
       return columns;
     }
 
@@ -127,6 +157,14 @@ export function DataTable<TData extends object>({
       cell: ({ row }) => {
         const original = row.original;
         const rowIndex = row.index;
+
+        const visibleActions = actions.filter(
+          (action) => !isActionHidden(action, original),
+        );
+
+        if (visibleActions.length === 0) {
+          return null;
+        }
 
         return (
           <div className="flex justify-center">
@@ -143,9 +181,10 @@ export function DataTable<TData extends object>({
               </DropdownTrigger>
 
               <DropdownContent align="end">
-                {actions
-                  .filter((action) => !action.hidden?.(original))
-                  .map((action) => (
+                {visibleActions.map((action) => {
+                  const disabled = isActionDisabled(action, original);
+
+                  return (
                     <DropdownItem
                       key={action.id ?? `${action.type}-${action.label}`}
                       variant={
@@ -155,21 +194,23 @@ export function DataTable<TData extends object>({
                           : "default"
                       }
                       className={cn(action.className)}
-                      onClick={() => action.onClick?.(original, rowIndex)}
+                      disabled={disabled}
+                      onClick={() => {
+                        if (disabled) return;
+
+                        void action.onClick?.(original, rowIndex);
+                      }}
                     >
                       {action.icon && (
-                        <span
-                          className={
-                            "mr-2 inline-flex h-4 w-4 items-center justify-center"
-                          }
-                        >
+                        <span className="mr-2 inline-flex h-4 w-4 items-center justify-center">
                           {action.icon}
                         </span>
                       )}
 
                       {action.label}
                     </DropdownItem>
-                  ))}
+                  );
+                })}
               </DropdownContent>
             </Dropdown>
           </div>
@@ -193,15 +234,19 @@ export function DataTable<TData extends object>({
     },
     manualSorting: true,
     getCoreRowModel: getCoreRowModel(),
+
     onSortingChange: (updater) => {
       const nextSorting =
         typeof updater === "function" ? updater(sorting) : updater;
 
       const next = nextSorting[0];
 
-      if (!next) return;
+      if (!next) {
+        onSortChange?.(undefined, undefined);
+        return;
+      }
 
-      onSortChange?.(next.id);
+      onSortChange?.(next.id, next.desc ? "DESCENDING" : "ASCENDING");
     },
   });
 
@@ -264,7 +309,7 @@ export function DataTable<TData extends object>({
                   return (
                     <TableHead
                       key={header.id}
-                      className={`h-11 text-xs  text-background bg-primary ${textAlignClassMap[align]}`}
+                      className={`h-11 bg-primary text-xs text-background ${textAlignClassMap[align]}`}
                     >
                       {header.isPlaceholder ? null : (
                         <div
@@ -273,7 +318,11 @@ export function DataTable<TData extends object>({
                               ? `flex cursor-pointer select-none items-center gap-2 ${flexAlignClassMap[align]}`
                               : `flex items-center gap-2 ${flexAlignClassMap[align]}`
                           }
-                          onClick={header.column.getToggleSortingHandler()}
+                          onClick={
+                            header.column.getCanSort()
+                              ? header.column.getToggleSortingHandler()
+                              : undefined
+                          }
                         >
                           {flexRender(
                             header.column.columnDef.header,
@@ -281,11 +330,12 @@ export function DataTable<TData extends object>({
                           )}
 
                           {header.column.getCanSort() && (
-                            <span className="text-background font-light">
-                              {{
-                                asc: "↑",
-                                desc: "↓",
-                              }[header.column.getIsSorted() as string] ?? "↕"}
+                            <span className="font-light text-background">
+                              {header.column.getIsSorted() === "asc"
+                                ? "↑"
+                                : header.column.getIsSorted() === "desc"
+                                  ? "↓"
+                                  : "↕"}
                             </span>
                           )}
                         </div>

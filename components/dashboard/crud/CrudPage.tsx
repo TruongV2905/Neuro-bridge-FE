@@ -4,13 +4,10 @@ import { useMemo, useState } from "react";
 import type { DefaultValues, FieldValues, Resolver } from "react-hook-form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Edit, Trash2 } from "lucide-react";
+import { Edit, Eye, Trash2 } from "lucide-react";
 
 import { useDebounce } from "@/hooks/useDebounce";
-import type { CrudConfig } from "@/types/dasboard";
-import type {
-  PageRequest,
-} from "@/types/common.starter";
+import type { CrudConfig, UseCrudHook } from "@/types/dasboard";
 
 import PageWrapper from "@/components/common/PageWrapper";
 import {
@@ -22,37 +19,11 @@ import { TablePagination } from "@/components/dashboard/table/TablePagination";
 import { CrudModal } from "./CrudModal";
 import { CrudToolbar } from "./CrudToolbar";
 import { ConfirmActionDialog } from "./ConfirmActionDialog";
+import { CrudViewModal } from "./CrudViewModal";
 
 export type ApiSortDirection = "ASCENDING" | "DESCENDING";
 
-export type UseCrudParams<TFilter extends object = Record<string, unknown>> =
-  PageRequest & {
-    filters?: Partial<TFilter>;
-  };
 type FilterKey<TFilter extends object> = Extract<keyof TFilter, string>;
-export type UseCrudResult<
-  TData extends object,
-  TSubmit extends FieldValues = FieldValues,
-> = {
-  data: TData[];
-  totalItems: number;
-  totalPages: number;
-  loading: boolean;
-  error: string | null;
-  refresh?: () => void | Promise<void>;
-  exportItems?: () => void | Promise<void>;
-  createItem?: (values: TSubmit) => void | Promise<void>;
-  updateItem?: (record: TData, values: TSubmit) => void | Promise<void>;
-  deleteItem?: (record: TData) => void | Promise<void>;
-
-  customActions?: TableAction<TData>[];
-};
-
-export type UseCrudHook<
-  TData extends object,
-  TSubmit extends FieldValues = FieldValues,
-  TFilter extends object = Record<string, unknown>,
-> = (params: UseCrudParams<TFilter>) => UseCrudResult<TData, TSubmit>;
 
 type CrudPageProps<
   TData extends object,
@@ -98,8 +69,12 @@ export function CrudPage<
   const [filters, setFilters] = useState<Partial<TFilter>>({});
 
   const [selectedRecord, setSelectedRecord] = useState<TData | null>(null);
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [viewRecord, setViewRecord] = useState<TData | null>(null);
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -112,10 +87,11 @@ export function CrudPage<
     error,
     refresh,
     exportItems,
+    importItems,
     createItem,
     updateItem,
     deleteItem,
-    customActions = [],
+    handlers = {},
   } = useCrud({
     page: currentPage - 1,
     size: pageSize,
@@ -124,15 +100,22 @@ export function CrudPage<
     sortDirection,
     filters,
   });
+
   const startItem = totalItems === 0 ? 0 : (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, totalItems);
 
-  const canCreate = Boolean(createItem);
-  const canEdit = Boolean(updateItem);
-  const canDelete = Boolean(deleteItem);
+  const canCreate = Boolean(config.actions?.create && createItem);
+  const canEdit = Boolean(config.actions?.edit && updateItem);
+  const canDelete = Boolean(config.actions?.delete && deleteItem);
+  const canView = Boolean(config.actions?.view && config.view);
 
   const isEditMode = isModalOpen && Boolean(selectedRecord);
+  const tableData = config.useMockData ? (config.mockData ?? []) : data;
 
+  const tableTotalItems = config.useMockData ? tableData.length : totalItems;
+  const tableTotalPages = config.useMockData
+    ? Math.max(1, Math.ceil(tableData.length / pageSize))
+    : totalPages;
   const handleOpenCreate = () => {
     if (!canCreate) return;
 
@@ -158,6 +141,18 @@ export function CrudPage<
     setSelectedRecord(null);
     setIsModalOpen(false);
     form.reset((createDefaultValues ?? {}) as DefaultValues<TSubmit>);
+  };
+
+  const handleOpenView = (record: TData) => {
+    if (!canView) return;
+
+    setViewRecord(record);
+    setIsViewOpen(true);
+  };
+
+  const handleCloseView = () => {
+    setViewRecord(null);
+    setIsViewOpen(false);
   };
 
   const handleSubmit = async (values: TSubmit) => {
@@ -198,22 +193,13 @@ export function CrudPage<
     }
   };
 
-  const handleSortChange = (key: string) => {
+  const handleSortChange = (
+    key?: string,
+    direction?: "ASCENDING" | "DESCENDING",
+  ) => {
     setCurrentPage(1);
-
-    if (sortBy !== key) {
-      setSortBy(key);
-      setSortDirection("ASCENDING");
-      return;
-    }
-
-    if (sortDirection === "ASCENDING") {
-      setSortDirection("DESCENDING");
-      return;
-    }
-
-    setSortBy(undefined);
-    setSortDirection(undefined);
+    setSortBy(key);
+    setSortDirection(direction);
   };
 
   const handleSearchChange = (value: string) => {
@@ -255,14 +241,43 @@ export function CrudPage<
     setCurrentPage(1);
   };
 
+  const moduleCustomActions = useMemo<TableAction<TData>[]>(() => {
+    return (config.customActions ?? []).map((action) => {
+      if (!action.actionKey) {
+        return action;
+      }
+
+      return {
+        ...action,
+        onClick: async (row, rowIndex) => {
+          const handler = handlers[action.actionKey!];
+
+          await handler?.(row);
+          await action.onClick?.(row, rowIndex);
+        },
+      };
+    });
+  }, [config.customActions, handlers]);
+
   const actions = useMemo<TableAction<TData>[]>(() => {
     const baseActions: TableAction<TData>[] = [];
+
+    if (canView) {
+      baseActions.push({
+        type: "view",
+        label: "View",
+        icon: <Eye className="h-4 w-4" />,
+        hidden: (row) => config.actions?.canView?.(row) === false,
+        onClick: (row) => handleOpenView(row),
+      });
+    }
 
     if (canEdit) {
       baseActions.push({
         type: "edit",
         label: "Edit",
         icon: <Edit className="h-4 w-4" />,
+        hidden: (row) => config.actions?.canEdit?.(row) === false,
         onClick: (row) => handleOpenEdit(row),
       });
     }
@@ -273,12 +288,13 @@ export function CrudPage<
         label: "Delete",
         icon: <Trash2 className="h-4 w-4" />,
         variant: "destructive",
+        hidden: (row) => config.actions?.canDelete?.(row) === false,
         onClick: (row) => handleDelete(row),
       });
     }
 
-    return [...baseActions, ...customActions];
-  }, [canEdit, canDelete, customActions]);
+    return [...baseActions, ...moduleCustomActions];
+  }, [canView, canEdit, canDelete, moduleCustomActions, config.actions]);
 
   return (
     <PageWrapper
@@ -299,7 +315,9 @@ export function CrudPage<
           onCreate={handleOpenCreate}
           onRefresh={refresh}
           onExport={exportItems}
+          onImport={importItems}
           isRefreshing={loading}
+          isImporting={loading}
           showCreate={canCreate}
         />
 
@@ -307,11 +325,19 @@ export function CrudPage<
           open={isModalOpen}
           onClose={handleCloseModal}
           onSubmit={handleSubmit}
-          isEdit={isEditMode}
+          mode={isEditMode ? "edit" : "create"}
           form={form}
           fields={config.fields ?? []}
           entityName={config.entityName}
           isSubmitting={isSubmitting}
+        />
+
+        <CrudViewModal<TData>
+          open={isViewOpen}
+          onClose={handleCloseView}
+          record={viewRecord}
+          title={config.view?.title ?? `${config.entityName} Detail`}
+          render={config.view?.render}
         />
 
         <ConfirmActionDialog
@@ -340,9 +366,9 @@ export function CrudPage<
 
         <DataTable
           columns={config.columns}
-          data={data}
+          data={tableData}
           actions={actions}
-          paginationInfo={{ startItem, endItem, totalItems }}
+          paginationInfo={{ startItem, endItem, totalItems: tableTotalItems }}
           pageSize={pageSize}
           pageSizeOptions={pageSizeOptions}
           onPageSizeChange={handlePageSizeChange}
@@ -355,7 +381,7 @@ export function CrudPage<
           <div className="pt-2">
             <TablePagination
               currentPage={currentPage}
-              totalPages={totalPages}
+              totalPages={tableTotalPages}
               onPageChange={setCurrentPage}
             />
           </div>

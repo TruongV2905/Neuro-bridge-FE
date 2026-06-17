@@ -1,8 +1,11 @@
 "use client";
+
+import { useRef } from "react";
 import { format, parseISO } from "date-fns";
+import { Search, RefreshCw, Download, Upload, Plus, X } from "lucide-react";
+
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, RefreshCw, Download, Plus, X } from "lucide-react";
 
 import type { FilterConfig } from "@/types/dasboard";
 import { FilterRenderer } from "./FilterRenderer";
@@ -29,6 +32,10 @@ interface CrudToolbarProps<TFilter extends object = Record<string, unknown>> {
   onRefresh?: () => void | Promise<void>;
   onExport?: () => void | Promise<void>;
 
+  onImport?: (file: File) => void | Promise<void>;
+  importAccept?: string;
+  isImporting?: boolean;
+
   showCreate?: boolean;
   isRefreshing?: boolean;
 }
@@ -48,12 +55,61 @@ export function CrudToolbar<TFilter extends object = Record<string, unknown>>({
   onRefresh,
   onExport,
 
+  onImport,
+  importAccept = ".xlsx,.xls,.csv",
+  isImporting = false,
+
   showCreate = false,
   isRefreshing = false,
 }: CrudToolbarProps<TFilter>) {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   const hasFilters = filters.length > 0;
   const showRefresh = Boolean(onRefresh);
   const showExport = Boolean(onExport);
+  const showImport = Boolean(onImport);
+
+  const toDateValue = (value: unknown) => {
+    if (!value) return undefined;
+
+    if (value instanceof Date) {
+      return value;
+    }
+
+    if (typeof value === "string") {
+      return parseISO(value);
+    }
+
+    return undefined;
+  };
+
+  const getFilterValue = (
+    filter: FilterConfig<TFilter>,
+    filterValues: Partial<Record<FilterKey<TFilter>, unknown>>,
+  ) => {
+    if (filter.type === "date-range" && filter.rangeKeys) {
+      const fromValue = filterValues[filter.rangeKeys.from];
+      const toValue = filterValues[filter.rangeKeys.to];
+
+      return {
+        from: toDateValue(fromValue),
+        to: toDateValue(toValue),
+      };
+    }
+
+    if (filter.type === "number-range" && filter.rangeKeys) {
+      const minValue = filterValues[filter.rangeKeys.from];
+      const maxValue = filterValues[filter.rangeKeys.to];
+
+      return {
+        min: typeof minValue === "number" ? minValue : undefined,
+        max: typeof maxValue === "number" ? maxValue : undefined,
+      };
+    }
+
+    return filterValues[filter.name];
+  };
+
   const handleFilterRendererChange = (
     filter: FilterConfig<TFilter>,
     value: unknown,
@@ -94,45 +150,23 @@ export function CrudToolbar<TFilter extends object = Record<string, unknown>>({
 
     onFilterChange?.(filterName, value);
   };
-  const getFilterValue = (
-    filter: FilterConfig<TFilter>,
-    filterValues: Partial<Record<FilterKey<TFilter>, unknown>>,
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImportChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (filter.type === "date-range" && filter.rangeKeys) {
-      const fromValue = filterValues[filter.rangeKeys.from];
-      const toValue = filterValues[filter.rangeKeys.to];
+    const file = event.target.files?.[0];
 
-      return {
-        from: toDateValue(fromValue),
-        to: toDateValue(toValue),
-      };
-    }
+    if (!file) return;
 
-    if (filter.type === "number-range" && filter.rangeKeys) {
-      const minValue = filterValues[filter.rangeKeys.from];
-      const maxValue = filterValues[filter.rangeKeys.to];
+    await onImport?.(file);
 
-      return {
-        min: typeof minValue === "number" ? minValue : undefined,
-        max: typeof maxValue === "number" ? maxValue : undefined,
-      };
-    }
-
-    return filterValues[filter.name];
+    event.target.value = "";
   };
-  const toDateValue = (value: unknown) => {
-    if (!value) return undefined;
 
-    if (value instanceof Date) {
-      return value;
-    }
-
-    if (typeof value === "string") {
-      return parseISO(value);
-    }
-
-    return undefined;
-  };
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4 shadow-sm">
       <div className="flex items-center justify-between gap-3">
@@ -164,6 +198,32 @@ export function CrudToolbar<TFilter extends object = Record<string, unknown>>({
                 className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`}
               />
             </Button>
+          )}
+
+          {showImport && (
+            <>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept={importAccept}
+                className="hidden"
+                onChange={(event) => {
+                  void handleImportChange(event);
+                }}
+              />
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2"
+                onClick={handleImportClick}
+                disabled={isImporting}
+              >
+                <Upload className="h-4 w-4" />
+                Import
+              </Button>
+            </>
           )}
 
           {showExport && (

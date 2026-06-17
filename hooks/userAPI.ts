@@ -124,20 +124,15 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
 
       mutationFn: async ({ pathParams, data }) => {
         const { finalUrl, remainingParams } = resolveUrl(url, pathParams);
-        console.log("pathParams:", pathParams);
-        console.log("data:", data);
-        console.log("finalUrl:", finalUrl);
-        console.log("remainingParams:", remainingParams);
         const config: AxiosRequestConfig = {
           method,
           url: finalUrl,
           data,
           params: remainingParams,
-          headers: isMultipart
-            ? { "Content-Type": "multipart/form-data" }
-            : undefined,
         };
-
+        if (isMultipart && config.headers) {
+          delete config.headers["Content-Type"];
+        }
         const res = await api<APIResponse<TResponse>>(config);
 
         return {
@@ -157,6 +152,8 @@ export const createMutationHook = <TResponse = unknown, TVariables = unknown>({
             keys.map((key) =>
               queryClient.invalidateQueries({
                 queryKey: toQueryKey(key),
+                exact: false,
+                refetchType: "all",
               }),
             ),
           );

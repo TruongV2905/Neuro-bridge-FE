@@ -3,6 +3,7 @@ export interface SkillResponse {
   skillName: string;
   skillDescription: string;
   createdAt: string;
+  deleted: boolean;
 }
 export interface SkillRequest {
   skillName: string;

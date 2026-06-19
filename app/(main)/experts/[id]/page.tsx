@@ -7,17 +7,17 @@ import { useParams } from "next/navigation"
 import { useSelector } from "react-redux"
 import { ExpertSkillCard } from "@/app/(profileExpert)/expert-profile/_components/expert-skill-card"
 import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user"
+import type { UserResponse } from "@/types/user/user.type"
 
 import { ExpertProfileHeader } from "@/app/(profileExpert)/expert-profile/_components/expert-profile-header"
 import { ExpertSidebarCard } from "@/app/(profileExpert)/expert-profile/_components/expert-sidebar-card"
 import { expertProfile } from "@/app/(profileExpert)/expert-profile/mock-expert-profile"
 
-import { getUserByCode } from "@/services/user-api"
+import { getUserByCode } from "@/services/user.service"
 import {
   getSkillsByExpertCode,
   type SkillApiItem,
-} from "@/services/skill-api"
+} from "@/services/skill.service"
 
 export default function ExpertDetailPage() {
   const params = useParams()

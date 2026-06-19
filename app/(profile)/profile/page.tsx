@@ -226,7 +226,7 @@ export default function ProfilePage() {
                                     <FormField
                                         icon={<Mail size={16} />}
                                         label="Email Address"
-                                        value={profile.email || "No email"}
+                                        value={profile.email || "" }
                                         onChange={(value) => updateProfile("email", value)}
                                     />
                                 </div>
@@ -235,14 +235,14 @@ export default function ProfilePage() {
                                     <FormField
                                         icon={<Phone size={16} />}
                                         label="Phone Number"
-                                        value={profile.phone || "No phone"}
+                                        value={profile.phone || ""}
                                         onChange={(value) => updateProfile("phone", value)}
                                     />
 
                                     <FormField
                                         icon={<MapPin size={16} />}
                                         label="Address"
-                                        value={profile.address || "No address"}
+                                        value={profile.address || ""}
                                         onChange={(value) => updateProfile("address", value)}
                                     />
                                 </div>

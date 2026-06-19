@@ -1,10 +1,9 @@
 "use client"
 
-import { useSelector } from "react-redux"
-
+import { useDispatch, useSelector } from "react-redux"
 import type { RootState } from "@/redux/store"
 import type { User as UserType, UserResponse } from "@/types/user/user.type"
-
+import { logout } from "@/redux/features/userSlice"
 import { expertProfile } from "./mock-expert-profile"
 import { ExpertProfileHeader } from "./_components/expert-profile-header"
 import { ExpertStatsCard } from "./_components/expert-stats-card"
@@ -14,7 +13,7 @@ import { ExpertSidebarCard } from "./_components/expert-sidebar-card"
 import { ExpertWalletCard } from "./_components/expert-wallet-card"
 import { ExpertSkillCard } from "./_components/expert-skill-card"
 import { ExpertCertificateCard } from "./_components/expert-certificate-card"
-
+import { Button } from "@/components/ui/button"
 import { useGetUserByCode } from "@/services/user.service"
 import { useGetSkillsByExpertCode } from "@/services/skill.service"
 import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
@@ -26,7 +25,7 @@ export default function ProfileExpertPage() {
   const currentUser = useSelector(
     (state: RootState) => state.user
   ) as UserResponse | null
-
+  const dispatch = useDispatch()
   const isOwnerExpert = currentUser?.role === "EXPERT"
 
   const expertCode = isOwnerExpert
@@ -72,7 +71,14 @@ export default function ProfileExpertPage() {
   const portfolios = portfolioData?.result ?? []
   const skills = skillData?.result ?? []
   const certificates = certificateData?.result ?? []
+  const handleLogout = () => {
+    dispatch(logout())
 
+    localStorage.removeItem("accessToken")
+    localStorage.removeItem("refreshToken")
+
+    window.location.href = "/login"
+  }
   return (
     <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">
       <Header />
@@ -189,6 +195,27 @@ export default function ProfileExpertPage() {
           <ExpertSidebarCard expert={expertProfile} />
 
           {isOwnerExpert && <ExpertWalletCard wallet={expertProfile.wallet} />}
+
+          <div className="rounded-2xl border border-border/60 bg-card/80 p-3 shadow-xl backdrop-blur-xl">
+            <Button
+              variant="outline"
+              onClick={handleLogout}
+              className="
+        h-11
+        w-full
+        rounded-xl
+        border-red-500/30
+        bg-red-500/10
+        px-5
+        text-xs
+        font-bold
+        text-red-500
+        hover:bg-red-500/20
+      "
+            >
+              Logout
+            </Button>
+          </div>
         </div>
       </div>
     </main>

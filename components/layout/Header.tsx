@@ -1,13 +1,26 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
-import { Button } from "@/components/ui/button";
-import type { UserResponse } from "@/types/user";
-import { useSelector } from "react-redux";
+import { usePathname, useRouter } from "next/navigation";
+import { useDispatch, useSelector } from "react-redux";
+import { ChevronDown, LogOut, UserRound } from "lucide-react";
+
 import type { RootState } from "@/redux/store";
-import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
+import { UserResponse } from "@/types/user/user.type";
+import { logout } from "@/redux/features/userSlice";
 
 const NAV_LINKS = [
   { label: "Home", path: "/" },
@@ -19,20 +32,19 @@ const NAV_LINKS = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+  const dispatch = useDispatch();
+
   const currentUser = useSelector(
-    (state: RootState) => state.user
+    (state: RootState) => state.user,
   ) as UserResponse | null;
+
   const [headerAvatar, setHeaderAvatar] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!currentUser) {
-      setHeaderAvatar(null);
-      return;
-    }
-
     const updateAvatar = () => {
       const savedAvatar = localStorage.getItem("expert-avatar");
-      setHeaderAvatar(savedAvatar || currentUser.avatarUrl);
+      setHeaderAvatar(savedAvatar || currentUser?.avatarUrl || null);
     };
 
     updateAvatar();
@@ -42,36 +54,67 @@ export default function Header() {
     return () => {
       window.removeEventListener("avatar-updated", updateAvatar);
     };
-  }, [currentUser]);
+  }, [currentUser?.avatarUrl]);
+
+  const getFallbackName = (name?: string) => {
+    if (!name) return "U";
+
+    return name
+      .trim()
+      .split(" ")
+      .map((word) => word[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
+
+  const profilePath =
+    currentUser?.role === "EXPERT" ? "/expert-profile" : "/profile";
+
+  const handleLogout = () => {
+    dispatch(logout());
+
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    router.push("/login");
+  };
 
   return (
-    <header className="fixed left-1/2 top-4 z-100 flex w-[75%] -translate-x-1/2 items-center justify-between rounded-full border border-white/40 bg-linear-to-r to-white/40 via-[#4562f0]/40 from-[#d9ffbb]/40 bg-clip-padding px-6 py-3 text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-md">
-      <Link href="/" className="flex items-center gap-2">
+    <header className="fixed left-1/2 top-4 z-[10] grid w-[75%] -translate-x-1/2 grid-cols-[1fr_auto_1fr] items-center rounded-full border border-white/40 bg-white/20 px-6 py-3 text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-2xl backdrop-saturate-150">
+      {/* Logo - left */}
+      <Link href="/" className="flex items-center gap-2 justify-self-start">
         <Image
           src="/img/MainLogo.png"
           alt="Neuro Bridge Logo"
           width={350}
           height={70}
-          className="h-10 object-contain object-left"
+          className="h-10 w-auto object-contain object-left"
           quality={100}
           priority
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-            e.currentTarget.parentElement!.innerHTML =
-              '<span class="text-lg font-bold text-white">Neuro Bridge</span>';
-          }}
         />
       </Link>
 
-      <nav className="hidden items-center gap-6 md:flex">
+      {/* Navigate - center */}
+      <nav className="hidden items-center gap-6 justify-self-center md:flex">
         {NAV_LINKS.map((link) => {
-          const isActive = pathname === link.path;
+          const isHashLink = link.path.includes("#");
+
+          const isActive =
+            !isHashLink &&
+            (link.path === "/"
+              ? pathname === "/"
+              : pathname.startsWith(link.path));
+
           return (
             <Link
               key={link.path}
               href={link.path}
-              className={`relative rounded-full px-3 py-1.5 text-sm font-medium text-white transition-colors duration-200
-                ${isActive ? "bg-primary/12 text-primary" : "text-foreground/70 hover:bg-muted hover:text-foreground"}`}
+              className={`relative rounded-full px-3 py-1.5 text-sm font-semibold transition-colors duration-200
+                ${
+                  isActive
+                    ? "border-white/40 bg-white/20 text-background shadow-sm"
+                    : "text-background/75 hover:bg-background/10 "
+                }`}
             >
               {link.label}
             </Link>
@@ -79,37 +122,109 @@ export default function Header() {
         })}
       </nav>
 
-      <div className="flex items-center gap-4">
+      {/* Tool / Auth - right */}
+      <div className="flex items-center justify-end gap-4 justify-self-end">
         {currentUser ? (
-          <Link
-            href={currentUser.role === "EXPERT" ? "/expert-profile" : "/profile"}
-            className="flex items-center gap-3"
-          >
-            <span className="max-w-[180px] truncate text-sm font-semibold text-white">
-              {currentUser.fullName}
-            </span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <div className="flex items-center  gap-3 px-2.5 py-1.5 text-background transition-all duration-200 cursor-pointer">
+                <span className="hidden max-w-[180px] truncate text-sm font-semibold sm:block">
+                  {currentUser.fullName}
+                </span>
 
-            <div className="h-10 w-10 overflow-hidden rounded-full border border-white/40">
-              <img
-                src={headerAvatar || "/img/default-avatar.png"}
-                alt={currentUser.fullName}
-                className="h-full w-full object-cover"
-              />
-            </div>
-          </Link>
+                <Avatar className="h-10 w-10 border border-white/70 shadow-sm">
+                  <AvatarImage
+                    src={
+                      headerAvatar ||
+                      currentUser.avatarUrl ||
+                      "/img/default-avatar.png"
+                    }
+                    alt={currentUser.fullName || "User avatar"}
+                  />
+
+                  <AvatarFallback className="bg-[#2563EB] text-sm font-semibold text-white">
+                    {getFallbackName(currentUser.fullName)}
+                  </AvatarFallback>
+                </Avatar>
+
+                <ChevronDown className="hidden h-4 w-4 text-[#0A0D17]/60 sm:block" />
+              </div>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent
+              align="end"
+              sideOffset={14}
+              className="z-[999] w-64 rounded-2xl border border-slate-200 bg-white p-2 text-[#0A0D17] shadow-[0_18px_45px_rgba(15,23,42,0.18)]"
+            >
+              <DropdownMenuLabel className="px-3 py-2">
+                <div className="flex items-center gap-3">
+                  <Avatar className="h-11 w-11 border border-slate-200">
+                    <AvatarImage
+                      src={
+                        headerAvatar ||
+                        currentUser.avatarUrl ||
+                        "/img/default-avatar.png"
+                      }
+                      alt={currentUser.fullName || "User avatar"}
+                    />
+
+                    <AvatarFallback className="bg-[#2563EB] text-sm font-semibold text-white">
+                      {getFallbackName(currentUser.fullName)}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-[#0A0D17]">
+                      {currentUser.fullName}
+                    </p>
+
+                    <p className="mt-0.5 w-fit rounded-full bg-[#2563EB]/10 px-2 py-0.5 text-[11px] font-semibold text-[#2563EB]">
+                      {currentUser.role}
+                    </p>
+                  </div>
+                </div>
+              </DropdownMenuLabel>
+
+              <DropdownMenuSeparator className="my-2 bg-slate-200/80" />
+
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-[#0A0D17] outline-none transition-colors focus:bg-transparent focus:text-[#0A0D17] data-[highlighted]:bg-transparent data-[highlighted]:text-[#0A0D17]"
+              >
+                <Link href={profilePath} className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB]">
+                    <UserRound className="h-4 w-4" />
+                  </span>
+
+                  <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem
+                onClick={handleLogout}
+                className="mt-1 cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-red-600 outline-none transition-colors focus:bg-transparent focus:text-red-600 data-[highlighted]:bg-transparent data-[highlighted]:text-red-600"
+              >
+                <span className="mr-3 flex h-8 w-8 items-center justify-center rounded-full bg-red-50 text-red-600">
+                  <LogOut className="h-4 w-4" />
+                </span>
+
+                <span>Logout</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         ) : (
           <>
             <Button
               asChild
               variant="ghost"
-              className="rounded-full px-4 text-white/80 hover:bg-white/15 hover:text-white"
+              className="rounded-full px-4 text-background/80 hover:bg-white/30 hover:text-background"
             >
               <Link href="/login">Login</Link>
             </Button>
 
             <Button
               asChild
-              className="rounded-full bg-primary px-5 text-primary-foreground hover:bg-primary/90"
+              className="rounded-full px-5 py-4 text-white hover:bg-primary/90"
             >
               <Link href="/register">Register</Link>
             </Button>

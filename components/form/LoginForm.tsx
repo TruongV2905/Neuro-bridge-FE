@@ -57,7 +57,7 @@ function LoginForm() {
 
   return (
     <div className="flex h-full w-full items-center justify-center bg-background">
-      <div className="w-full max-w-105">
+      <div className="w-full">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="shrink-0">
             <Image
@@ -69,7 +69,7 @@ function LoginForm() {
           </div>
         </div>
 
-        <FieldGroup className="gap-2">
+        <FieldGroup className="gap-3">
           <Controller
             name="email"
             control={control}
@@ -85,7 +85,7 @@ function LoginForm() {
                   type="email"
                   placeholder="Enter your email"
                   aria-invalid={fieldState.invalid}
-                  className="h-13 rounded-full border border-background bg-white px-5 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
+                  className=" rounded-full border border-background bg-white px-5 py-8 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
                 />
 
                 {fieldState.invalid && (
@@ -111,7 +111,7 @@ function LoginForm() {
                     type={showPassword ? "text" : "password"}
                     placeholder="Enter your password"
                     aria-invalid={fieldState.invalid}
-                    className="h-13 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
+                    className="py-8 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
                   />
 
                   <button

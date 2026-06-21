@@ -1,24 +1,35 @@
 ﻿"use client";
 
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
+import { BriefcaseBusiness, UserRound } from "lucide-react";
+import gsap from "gsap";
 
 import logo from "@/public/img/MainLogo.png";
-import googleLogo from "@/public/img/google-logo.png";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import ClientRegisterForm from "./ClientRegisterForm";
+import ExpertRegisterForm from "./ExpertRegisterForm";
+
+type RegisterRole = "CLIENT" | "EXPERT";
 
 function RegisterForm() {
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [role, setRole] = useState<RegisterRole>("CLIENT");
+
+  const indicatorRef = useRef<HTMLSpanElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!indicatorRef.current) return;
+
+    gsap.to(indicatorRef.current, {
+      xPercent: role === "EXPERT" ? 100 : 0,
+      duration: 0.45,
+      ease: "back.out(1.7)",
+    });
+  }, [role]);
 
   return (
-    <div className="flex h-full w-full items-start justify-center bg-background pt-2 md:pt-4">
-      <div className="w-full max-w-105">
+    <div className="min-h-dvh w-full bg-background px-4 py-4">
+      <div className="sticky top-0 z-20 bg-background pb-3">
         <div className="mb-4 flex items-center justify-center gap-2">
           <div className="shrink-0">
             <Image
@@ -30,119 +41,46 @@ function RegisterForm() {
           </div>
         </div>
 
-        <form
-          className="space-y-2.5"
-          onSubmit={(e) => {
-            e.preventDefault();
-            console.log("Register");
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="fullName" className="text-sm font-bold text-foreground">
-              Họ và tên
-            </Label>
-            <Input
-              id="fullName"
-              type="text"
-              placeholder="Nhập họ và tên"
-              className="h-10 rounded-full border border-background bg-white px-5 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-            />
-          </div>
+        <div className="relative grid grid-cols-2 rounded-2xl bg-white p-1 shadow-sm">
+          {/* Nền xanh trượt qua lại bằng GSAP */}
+          <span
+            ref={indicatorRef}
+            className="pointer-events-none absolute inset-y-1 left-1 w-[calc(50%-0.25rem)] rounded-xl bg-primary shadow-md"
+          />
 
-          <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-sm font-bold text-foreground">
-              Email
-            </Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder="Nhập email"
-              className="h-10 rounded-full border border-background bg-white px-5 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-sm font-bold text-foreground">
-              Mật khẩu
-            </Label>
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Nhập mật khẩu"
-                className="h-10 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-foreground outline-none transition-none hover:bg-transparent"
-                tabIndex={-1}
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" strokeWidth={2.5} />
-                ) : (
-                  <Eye className="h-5 w-5" strokeWidth={2.5} />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <Label htmlFor="confirmPassword" className="text-sm font-bold text-foreground">
-              Xác thực mật khẩu
-            </Label>
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Nhập lại mật khẩu"
-                className="h-10 rounded-full border border-background bg-white px-5 pr-12 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((prev) => !prev)}
-                className="absolute right-4 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center text-foreground outline-none transition-none hover:bg-transparent"
-                tabIndex={-1}
-              >
-                {showConfirmPassword ? (
-                  <EyeOff className="h-5 w-5" strokeWidth={2.5} />
-                ) : (
-                  <Eye className="h-5 w-5" strokeWidth={2.5} />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            className="h-10 w-full rounded-xl bg-primary text-sm font-medium text-white shadow-md hover:bg-[#4562f0]"
-          >
-            Register
-          </Button>
-
-          <div className="flex items-center justify-end gap-2 pt-0.5 text-[11px]">
-            <span className="font-semibold text-foreground">Have an account? </span>
-            <Link href="/login" className="font-semibold text-primary hover:text-[#3155df]">
-              Login
-            </Link>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="h-px flex-1 bg-foreground" />
-            <span className="text-xs font-medium text-foreground">OR</span>
-            <div className="h-px flex-1 bg-foreground" />
-          </div>
-
-          <Button
+          <button
             type="button"
-            variant="outline"
-            className="h-10 w-full rounded-md border border-background bg-white text-sm font-semibold text-[#777] shadow-sm hover:bg-slate-50"
+            onClick={() => setRole("CLIENT")}
+            className={`relative z-10 flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors duration-300 ${
+              role === "CLIENT"
+                ? "text-white"
+                : "text-foreground hover:text-primary"
+            }`}
           >
-            <Image src={googleLogo} alt="Google" width={24} height={24} />
-            Continue with Google
-          </Button>
-        </form>
+            <BriefcaseBusiness className="h-4 w-4" />
+            Client
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setRole("EXPERT")}
+            className={`relative z-10 flex h-12 items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-colors duration-300 ${
+              role === "EXPERT"
+                ? "text-white"
+                : "text-foreground hover:text-primary"
+            }`}
+          >
+            <UserRound className="h-4 w-4" />
+            Expert
+          </button>
+        </div>
       </div>
+
+      {role === "CLIENT" ? (
+        <ClientRegisterForm key="client-register-form" />
+      ) : (
+        <ExpertRegisterForm key="expert-register-form" />
+      )}
     </div>
   );
 }

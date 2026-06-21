@@ -45,7 +45,7 @@ function AuthFormTransition({ children }: AuthFormTransitionProps) {
             duration: 0.62,
             ease: [0.16, 1, 0.3, 1],
           }}
-          className="absolute inset-0 w-full will-change-transform"
+          className="absolute inset-0 w-full overflow-y-auto overscroll-contain pr-1 [scrollbar-width:thin] will-change-transform"
         >
           {children}
         </motion.div>

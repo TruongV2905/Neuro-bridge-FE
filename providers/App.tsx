@@ -30,7 +30,6 @@ export default function AppProvider({
             pauseOnFocusLoss={false}
             draggable
             pauseOnHover
-            theme="colored"
           />
 
           {/* Chỉ hiển thị devtools ở môi trường development */}

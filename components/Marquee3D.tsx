@@ -3,22 +3,40 @@ import { Marquee } from "./ui/marquee";
 
 const reviews = [
   {
-    name: "Jack",
-    username: "@jack",
-    body: "I've never seen anything like this before. It's amazing. I love it.",
-    img: "https://avatar.vercel.sh/jack",
+    name: "Emily Carter",
+    username: "@emily",
+    body: "Giao diện rất mượt, dễ sử dụng và nhìn chuyên nghiệp hơn mình mong đợi.",
+    img: "https://randomuser.me/api/portraits/women/44.jpg",
   },
   {
-    name: "Jill",
-    username: "@jill",
-    body: "I don't know what to say. I'm speechless. This is amazing.",
-    img: "https://avatar.vercel.sh/jill",
+    name: "Michael Brown",
+    username: "@michael",
+    body: "Tính năng hoạt động ổn định, trải nghiệm tổng thể rất tốt và đáng tin cậy.",
+    img: "https://randomuser.me/api/portraits/men/32.jpg",
   },
   {
-    name: "John",
-    username: "@john",
-    body: "I'm at a loss for words. This is amazing. I love it.",
-    img: "https://avatar.vercel.sh/john",
+    name: "Sophia Nguyen",
+    username: "@sophia",
+    body: "Mình thích cách hệ thống trình bày thông tin rõ ràng, đẹp và dễ thao tác.",
+    img: "https://randomuser.me/api/portraits/women/68.jpg",
+  },
+  {
+    name: "Daniel Lee",
+    username: "@daniel",
+    body: "Sản phẩm rất hữu ích, tiết kiệm thời gian và phù hợp với nhu cầu thực tế.",
+    img: "https://randomuser.me/api/portraits/men/75.jpg",
+  },
+  {
+    name: "Olivia Wilson",
+    username: "@olivia",
+    body: "Thiết kế hiện đại, nội dung dễ hiểu và cảm giác sử dụng rất tự nhiên.",
+    img: "https://randomuser.me/api/portraits/women/12.jpg",
+  },
+  {
+    name: "James Miller",
+    username: "@james",
+    body: "Mình khá ấn tượng với tốc độ xử lý và cách bố cục rất gọn gàng.",
+    img: "https://randomuser.me/api/portraits/men/51.jpg",
   },
 ];
 

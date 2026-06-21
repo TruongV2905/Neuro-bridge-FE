@@ -1,4 +1,4 @@
-import { createMutationHook, createQueryHook } from "@/hooks/userAPI";
+import { createInfiniteQueryHook, createMutationHook, createQueryHook } from "@/hooks/userAPI";
 import { PageResponse } from "@/types/common.starter";
 import {
   SkillForExpertRequest,
@@ -18,7 +18,7 @@ export const skillKeys = {
 
 export const useGetAllSkills = createQueryHook<PageResponse<SkillResponse>>(
   skillKeys.list,
-  SKILL_ENDPOINT,
+  `${SKILL_ENDPOINT}/user`,
 );
 
 export const useGetSkillsByExpertCode = createQueryHook<SkillResponse[]>(
@@ -68,3 +68,8 @@ export const useCreateSkillsByFile = createMutationHook<void, FormData>({
   isMultipart: true,
   queryKeyToInvalidate: [skillKeys.list, skillKeys.admin, skillKeys.detail],
 });
+export const useInfiniteGetAllSkills =
+  createInfiniteQueryHook<SkillResponse>(
+    skillKeys.list,
+    `${SKILL_ENDPOINT}/user`,
+  );

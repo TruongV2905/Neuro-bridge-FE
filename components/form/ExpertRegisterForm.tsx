@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { CalendarIcon, Eye, EyeOff } from "lucide-react";
@@ -45,13 +45,20 @@ import {
 import { uploadFile } from "@/utils/uploadFile";
 import { useRegisterExpertMutation } from "@/services/authentication.service";
 import { useRouter } from "next/navigation";
+import { useInfiniteGetAllSkills } from "@/services/skill.service";
+import { MultiSelect, MultiSelectOption } from "../ui/multi-select";
+import { useDebounce } from "@/hooks/useDebounce";
+import { SkillResponse } from "@/types/skill.types";
 
 function ExpertRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [avatarPreview, setAvatarPreview] = useState<string>("");
+  const [skillSearch, setSkillSearch] = useState("");
 
+  const debouncedSkillSearch = useDebounce(skillSearch, 400);
   const registerExpertMutation = useRegisterExpertMutation();
+
   const navigate = useRouter();
   const { control, handleSubmit, reset } = useForm<RegisterExpertFormValues>({
     resolver: zodResolver(registerExpertSchema),
@@ -69,6 +76,28 @@ function ExpertRegisterForm() {
     },
   });
 
+  const skillsQuery = useInfiniteGetAllSkills({
+    size: 10,
+    search: debouncedSkillSearch,
+    sortBy: "skillName",
+    direction: "ASCENDING",
+  });
+
+  const skillOptions = useMemo<MultiSelectOption[]>(() => {
+    const skills =
+      skillsQuery.data?.pages.flatMap((page: any) => page.result.data) ?? [];
+
+    const skillMap = new Map<number, SkillResponse>();
+
+    skills.forEach((skill: SkillResponse) => {
+      skillMap.set(skill.id, skill);
+    });
+
+    return Array.from(skillMap.values()).map((skill) => ({
+      label: skill.skillName,
+      value: String(skill.id),
+    }));
+  }, [skillsQuery.data?.pages]);
   const fullName = useWatch({
     control,
     name: "fullName",
@@ -358,23 +387,41 @@ function ExpertRegisterForm() {
         render={({ field, fieldState }) => (
           <Field data-invalid={fieldState.invalid}>
             <FieldLabel htmlFor="skillIds" className="text-sm font-light">
-              Skill IDs
+              Skills
             </FieldLabel>
 
-            <Input
-              id="skillIds"
-              value={field.value.join(", ")}
-              placeholder="Example: 102, 103, 104"
-              aria-invalid={fieldState.invalid}
-              onChange={(event) => {
-                const skillIds = event.target.value
-                  .split(",")
-                  .map((item) => Number(item.trim()))
-                  .filter((item) => !Number.isNaN(item));
-
-                field.onChange(skillIds);
+            <MultiSelect
+              options={skillOptions}
+              value={(field.value ?? []).map(String)}
+              onValueChange={(values) => {
+                field.onChange(
+                  values
+                    .map((value) => Number(value))
+                    .filter((value) => !Number.isNaN(value)),
+                );
               }}
-              className="rounded-full border border-background bg-white px-5 py-8 text-sm text-foreground shadow-sm placeholder:text-[#b7b7b7] focus-visible:border-primary focus-visible:ring-0"
+              searchable
+              serverSearch
+              searchValue={skillSearch}
+              onSearchChange={setSkillSearch}
+              onLoadMore={() => {
+                if (
+                  skillsQuery.hasNextPage &&
+                  !skillsQuery.isFetchingNextPage
+                ) {
+                  skillsQuery.fetchNextPage();
+                }
+              }}
+              hasMore={!!skillsQuery.hasNextPage}
+              loadingMore={skillsQuery.isFetchingNextPage}
+              placeholder={
+                skillsQuery.isLoading ? "Loading skills..." : "Select skills"
+              }
+              disabled={skillsQuery.isLoading}
+              className={`min-h-[66px] rounded-full border bg-white px-5 py-3 text-sm text-foreground shadow-sm transition-none ${
+                fieldState.invalid ? "border-red-500" : "border-background"
+              }`}
+              popoverClassName="rounded-2xl border border-background bg-white shadow-lg"
             />
 
             {fieldState.invalid && <FieldError errors={[fieldState.error]} />}

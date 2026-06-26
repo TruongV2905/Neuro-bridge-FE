@@ -4,13 +4,13 @@ import Link from "next/link";
 import { usePathname } from "next/navigation"; 
 import { 
   Users, 
-  Briefcase, 
   Cpu, 
   LineChart, 
   Settings,
   HelpCircle,
   FolderOpen,
   FileText,
+  ShieldAlert,
   LogOut
 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -29,6 +29,7 @@ const adminNavItems = [
     items: [
       { title: "Projects", href: "#", icon: FolderOpen },
       { title: "Manage User", href: "/dashboard/users", icon: Users }, 
+      { title: "Reports", href: "/dashboard/reports", icon: ShieldAlert },
       { title: "Jobpost", href: "#", icon: FileText },
       { title: "Services", href: "#", icon: Cpu },
     ],

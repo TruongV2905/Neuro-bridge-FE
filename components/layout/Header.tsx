@@ -110,10 +110,9 @@ export default function Header() {
               key={link.path}
               href={link.path}
               className={`relative rounded-full px-3 py-1.5 text-sm font-semibold transition-colors duration-200
-                ${
-                  isActive
-                    ? "border-white/40 bg-white/20 text-background shadow-sm"
-                    : "text-background/75 hover:bg-background/10 "
+                ${isActive
+                  ? "border-[var(--primary)]/20 bg-[var(--primary)]/10 text-[var(--primary)] shadow-sm"
+                  : "text-foreground/75 hover:bg-[var(--primary)]/10 hover:text-[var(--primary)]"
                 }`}
             >
               {link.label}
@@ -127,7 +126,7 @@ export default function Header() {
         {currentUser ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center  gap-3 px-2.5 py-1.5 text-background transition-all duration-200 cursor-pointer">
+              <div className="flex items-center gap-3 px-2.5 py-1.5 text-foreground transition-all duration-200 cursor-pointer">
                 <span className="hidden max-w-[180px] truncate text-sm font-semibold sm:block">
                   {currentUser.fullName}
                 </span>
@@ -147,7 +146,7 @@ export default function Header() {
                   </AvatarFallback>
                 </Avatar>
 
-                <ChevronDown className="hidden h-4 w-4 text-[#0A0D17]/60 sm:block" />
+                <ChevronDown className="hidden h-4 w-4 text-foreground/60 sm:block" />
               </div>
             </DropdownMenuTrigger>
 
@@ -217,7 +216,7 @@ export default function Header() {
             <Button
               asChild
               variant="ghost"
-              className="rounded-full px-4 text-background/80 hover:bg-white/30 hover:text-background"
+              className="rounded-full px-4 text-foreground/75 hover:bg-[var(--primary)]/10 hover:text-[var(--primary)]"
             >
               <Link href="/login">Login</Link>
             </Button>

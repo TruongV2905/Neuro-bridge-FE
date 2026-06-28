@@ -4,7 +4,7 @@ export const currentUser: ChatUser = {
   id: "client-1",
   name: "Thầy Giáo Ba",
   avatarUrl:
-    "https://lh4.googleusercontent.com/N8zRhskPSotKzWxs5wm68JaDX0yCGY-ASI7g3AOqgBeFBD24sPQMd62CEsQT_WJRJ5RhFuBnEzzhcuTa-ZMussF_MQhbEYCKqKTCyL3zL6q17MYOpNpE3YqtUtyXIuBFkpyYlX-z",
+    "https://gamek.mediacdn.vn/133514250583805952/2024/9/24/46095642417196795788671928063442591448100684n-1727147815680594807522.jpg",
   role: "client",
   status: "Online",
 }
@@ -13,7 +13,7 @@ export const chatPartner: ChatUser = {
   id: "expert-1",
   name: "Zeros (Phạm Minh Lộc)",
   avatarUrl:
-    "https://newsmd2fr.keeng.vn/tiin/archive/imageslead/2022/04/05/thumb4_e4cac013758f58a91e95739e002a2933.jpg",
+    "https://gamek.mediacdn.vn/133514250583805952/2024/9/24/46095642417196795788671928063442591448100684n-1727147815680594807522.jpg",
   role: "expert",
   status: "Online",
 }

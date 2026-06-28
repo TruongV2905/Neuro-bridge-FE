@@ -1,6 +1,7 @@
 "use client"
-
-import { useMemo, useRef, useState } from "react"
+import { supabase } from "@/lib/supabase"
+import { useEffect, useMemo, useRef, useState } from "react"
+import { resubmitSubmissionPackage } from "@/services/submission-package.service"
 import {
     CheckCircle2,
     Code2,
@@ -16,7 +17,7 @@ import {
 
 type FileType = "SOURCE_CODE" | "DOCUMENT" | "VIDEO" | "DATASET"
 
-type PackageStatus = "DRAFT" | "SUBMITTED" | "APPROVED" | "REJECTED"
+type PackageStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUPERSEDED"
 
 type DeliverableFile = {
     fileId: string
@@ -26,15 +27,42 @@ type DeliverableFile = {
     fileMimeType: string
     uploadedAt: string
     previewUrl: string
+    downloadUrl: string
+    storagePath: string
 }
 
 type SubmissionPackage = {
     packageId: string
-    packageName: string
     version: number
     status: PackageStatus
     submittedAt: string
+    note: string
+    releaseDay: number
     files: DeliverableFile[]
+}
+
+type SubmissionPackageResponse = {
+    packageId: string
+    workspaceId: string
+    version: number
+    notes: string
+    submittedAt: string | null
+    reviewedAt: string | null
+    autoReleaseAt: string | null
+    status: PackageStatus
+    feedback: string | null
+    isDelete: boolean
+}
+
+type DeliverableFileResponse = {
+    fileId: string
+    packageId: string
+    fileName: string
+    fileUrl: string
+    fileSize: string
+    fileType: FileType
+    uploadedAt: string
+    isDelete: boolean
 }
 
 type PackageFileSlot = {
@@ -44,6 +72,11 @@ type PackageFileSlot = {
     accept?: string
     icon: React.ReactNode
 }
+
+type ProjectSubmissionPanelProps = {
+    workspaceId: string
+}
+
 
 type ModalMode = "create" | "edit"
 
@@ -94,10 +127,14 @@ function getCurrentTime() {
     })
 }
 
-export function ProjectSubmissionPanel() {
+export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelProps) {
     const [openModal, setOpenModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>("create")
     const [previewFile, setPreviewFile] = useState<DeliverableFile | null>(null)
+    const [note, setNote] = useState("")
+    const [releaseDay, setReleaseDay] = useState("")
+    const [uploadingType, setUploadingType] = useState<FileType | null>(null)
+    const [submitting, setSubmitting] = useState(false)
 
     const [draftFiles, setDraftFiles] = useState<
         Partial<Record<FileType, DeliverableFile>>
@@ -127,88 +164,281 @@ export function ProjectSubmissionPanel() {
         )
     }, [latestFiles])
 
+    useEffect(() => {
+        if (!workspaceId) return
+
+        const fetchLatestPackage = async () => {
+            try {
+                const packages = await getSubmissionPackagesByWorkspace()
+
+                const latestPackage = packages[0]
+
+                if (!latestPackage) return
+
+                const packageFiles = await getDeliverableFilesByPackage(
+                    latestPackage.packageId
+                )
+
+                const mappedFiles: DeliverableFile[] = packageFiles
+                    .filter((file) => !file.isDelete)
+                    .map((file) => ({
+                        fileId: file.fileId,
+                        fileType: file.fileType,
+                        fileName: file.fileName,
+                        fileSize: file.fileSize,
+                        fileMimeType: "",
+                        uploadedAt: file.uploadedAt,
+                        previewUrl: file.fileUrl,
+                        downloadUrl: file.fileUrl,
+                        storagePath: file.fileUrl,
+                    }))
+
+                setLatestPackage({
+                    packageId: latestPackage.packageId,
+                    version: latestPackage.version,
+                    status: latestPackage.status,
+                    submittedAt: latestPackage.submittedAt ?? "",
+                    note: latestPackage.notes ?? "",
+                    releaseDay: 0,
+                    files: mappedFiles,
+                })
+            } catch (error) {
+                console.error("Load latest submission package failed:", error)
+            }
+        }
+
+        fetchLatestPackage()
+    }, [workspaceId])
+
     const handleChooseFile = (type: FileType) => {
         inputRefs.current[type]?.click()
-    }
-
-    const revokeFileUrl = (file?: DeliverableFile) => {
-        if (!file?.previewUrl) return
-        URL.revokeObjectURL(file.previewUrl)
     }
 
     const openCreateModal = () => {
         setModalMode("create")
         setDraftFiles({})
+        setNote("")
+        setReleaseDay("")
         setOpenModal(true)
     }
 
     const openEditModal = () => {
         setModalMode("edit")
         setDraftFiles(latestFileMap)
+        setNote(latestPackage?.note ?? "")
+        setReleaseDay(latestPackage?.releaseDay ? String(latestPackage.releaseDay) : "")
         setOpenModal(true)
     }
 
-    const handleFileChange = (type: FileType, file?: File) => {
-        if (!file) return
+    const uploadFileToSupabase = async (type: FileType, file: File) => {
+        const { data: { session } } = await supabase.auth.getSession()
+        console.log("Session:", session)
+        console.log("User:", session?.user)
+        console.log("Access token:", session?.access_token?.slice(0, 20))
 
-        const uploadedFile: DeliverableFile = {
-            fileId: crypto.randomUUID(),
-            fileType: type,
-            fileName: file.name,
-            fileSize: formatFileSize(file.size),
-            fileMimeType: file.type,
-            uploadedAt: getCurrentTime(),
-            previewUrl: URL.createObjectURL(file),
+        const bucket = "submission-files"
+
+        const safeFileName = file.name
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/[^a-zA-Z0-9.-]/g, "-")
+
+        const filePath = `submission-packages/${type.toLowerCase()}/${crypto.randomUUID()}-${safeFileName}`
+
+        const { data: buckets, error: bucketError } =
+            await supabase.storage.listBuckets()
+        console.log("Buckets from client:", buckets)
+        console.log("Bucket list error:", bucketError)
+
+        const { data: uploadData, error } = await supabase.storage
+            .from(bucket)
+            .upload(filePath, file, {
+                cacheControl: "3600",
+                upsert: true,
+                contentType: file.type || "application/octet-stream",
+            })
+
+        console.log("Upload data:", uploadData)
+        console.log("Upload error:", error)
+
+        if (error) {
+            alert(`${error.name}: ${error.message}`)
+            throw error
         }
 
-        setDraftFiles((prev) => {
-            revokeFileUrl(prev[type])
+        const { data } = supabase.storage.from(bucket).getPublicUrl(filePath)
 
-            return {
-                ...prev,
-                [type]: uploadedFile,
-            }
-        })
+        return {
+            filePath,
+            publicUrl: data.publicUrl,
+        }
     }
 
-    const handleSubmitPackage = () => {
+    const handleFileChange = async (type: FileType, file?: File) => {
+        if (!file) return
+
+        try {
+            setUploadingType(type)
+
+            const { filePath, publicUrl } = await uploadFileToSupabase(type, file)
+
+            const uploadedFile: DeliverableFile = {
+                fileId: crypto.randomUUID(),
+                fileType: type,
+                fileName: file.name,
+                fileSize: formatFileSize(file.size),
+                fileMimeType: file.type,
+                uploadedAt: getCurrentTime(),
+                previewUrl: publicUrl,
+                downloadUrl: publicUrl,
+                storagePath: filePath,
+            }
+
+            setDraftFiles((prev) => ({
+                ...prev,
+                [type]: uploadedFile,
+            }))
+        } catch (error) {
+            console.error("Upload file failed:", error)
+            alert("Upload file failed. Please try again.")
+        } finally {
+            setUploadingType(null)
+        }
+    }
+
+    const getSubmissionPackagesByWorkspace = async () => {
+        const accessToken = localStorage.getItem("accessToken")
+
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error("Get submission packages failed")
+        }
+
+        return response.json() as Promise<SubmissionPackageResponse[]>
+    }
+
+    const getDeliverableFilesByPackage = async (packageId: string) => {
+        const accessToken = localStorage.getItem("accessToken")
+
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/packages/${packageId}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error("Get deliverable files failed")
+        }
+
+        return response.json() as Promise<DeliverableFileResponse[]>
+    }
+
+    const handleSubmitPackage = async () => {
         const files = packageFileSlots
             .map((slot) => draftFiles[slot.type])
             .filter(Boolean) as DeliverableFile[]
 
         if (files.length !== packageFileSlots.length) return
+        if (!note.trim()) return
+        if (!releaseDay.trim()) return
 
-        if (modalMode === "edit" && latestPackage) {
-            latestPackage.files.forEach((oldFile) => {
-                const newFile = draftFiles[oldFile.fileType]
+        try {
+            setSubmitting(true)
 
-                if (newFile?.previewUrl !== oldFile.previewUrl) {
-                    revokeFileUrl(oldFile)
-                }
-            })
+            if (modalMode === "edit" && latestPackage) {
+                const newPackage = await resubmitSubmissionPackage({
+                    packageId: latestPackage.packageId,
+                    notes: note.trim(),
+                    files: files.map((file) => ({
+                        fileName: file.fileName,
+                        fileUrl: file.previewUrl,
+                        fileSize: file.fileSize,
+                        fileType: file.fileType,
+                    })),
+                })
+
+                setLatestPackage({
+                    packageId: newPackage.packageId,
+                    version: newPackage.version,
+                    status: newPackage.status,
+                    submittedAt: newPackage.submittedAt ?? getCurrentTime(),
+                    note: newPackage.notes ?? note.trim(),
+                    releaseDay: Number(releaseDay),
+                    files,
+                })
+
+                setOpenModal(false)
+                return
+            }
+
+            const newPackage = await createSubmissionPackage(files)
 
             setLatestPackage({
-                ...latestPackage,
-                version: latestPackage.version + 1,
-                submittedAt: getCurrentTime(),
+                packageId: newPackage.packageId,
+                version: newPackage.version,
+                status: newPackage.status,
+                submittedAt: newPackage.submittedAt ?? getCurrentTime(),
+                note: newPackage.notes ?? note.trim(),
+                releaseDay: Number(releaseDay),
                 files,
             })
 
+            setDraftFiles({})
             setOpenModal(false)
-            return
+        } catch (error) {
+            console.error(error)
+            alert("Submit package failed. Please try again.")
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+
+    const createSubmissionPackage = async (files: DeliverableFile[]) => {
+        const payload = {
+            workspaceId,
+            notes: note.trim(),
+            customReleaseDays: Number(releaseDay),
+            files: files.map((file) => ({
+                fileName: file.fileName,
+                fileUrl: file.previewUrl,
+                fileSize: file.fileSize,
+                fileType: file.fileType,
+            })),
         }
 
-        setLatestPackage({
-            packageId: crypto.randomUUID(),
-            packageName: "Submission Package",
-            version: latestPackage ? latestPackage.version + 1 : 1,
-            status: "SUBMITTED",
-            submittedAt: getCurrentTime(),
-            files,
-        })
+        const accessToken = localStorage.getItem("accessToken")
 
-        setDraftFiles({})
-        setOpenModal(false)
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages`,
+            {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify(payload),
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error("Submit package failed")
+        }
+
+        return response.json()
     }
 
     const isEditMode = modalMode === "edit"
@@ -380,29 +610,62 @@ export function ProjectSubmissionPanel() {
             </aside>
 
             {openModal && (
-                <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
-                    <div className="w-full max-w-[720px] rounded-3xl bg-white p-6 shadow-xl">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 pb-5">
-                            <div>
-                                <h3 className="text-xl font-semibold text-slate-900">
-                                    {isEditMode
-                                        ? "Update Submission Package"
-                                        : "Create Submission Package"}
-                                </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    {isEditMode
-                                        ? "Replace any uploaded deliverable before updating the package."
-                                        : "Upload all 4 required deliverables before creating the package."}
-                                </p>
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/40 px-4 py-10 backdrop-blur-sm">
+                    <div className="my-auto w-full max-w-[720px] rounded-3xl bg-white p-6 shadow-xl">
+                        <div className="border-b border-slate-100 pb-5">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-slate-900">
+                                        {isEditMode
+                                            ? "Update Submission Package"
+                                            : "Create Submission Package"}
+                                    </h3>
+
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        {isEditMode
+                                            ? "Replace any uploaded deliverable before updating the package."
+                                            : "Upload all 4 required deliverables before creating the package."}
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenModal(false)}
+                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setOpenModal(false)}
-                                className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
+                            <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_180px]">
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-800">
+                                        Note:
+                                    </label>
+
+                                    <input
+                                        value={note}
+                                        onChange={(event) => setNote(event.target.value)}
+                                        placeholder="Enter note for this submission"
+                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="text-sm font-semibold text-slate-800">
+                                        Release day:
+                                    </label>
+
+                                    <input
+                                        type="number"
+                                        min={1}
+                                        value={releaseDay}
+                                        onChange={(event) => setReleaseDay(event.target.value)}
+                                        placeholder="Days"
+                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
+                                    />
+                                </div>
+                            </div>
                         </div>
 
                         <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -413,15 +676,15 @@ export function ProjectSubmissionPanel() {
                                     <div
                                         key={slot.type}
                                         className={`rounded-2xl border p-4 text-left transition ${file
-                                                ? "border-[var(--primary)]/40 bg-[var(--primary)]/5"
-                                                : "border-slate-100 bg-slate-50"
+                                            ? "border-[var(--primary)]/40 bg-[var(--primary)]/5"
+                                            : "border-slate-100 bg-slate-50"
                                             }`}
                                     >
                                         <div className="flex items-start gap-3">
                                             <div
                                                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${file
-                                                        ? "bg-[var(--primary)] text-white"
-                                                        : "bg-white text-[var(--primary)]"
+                                                    ? "bg-[var(--primary)] text-white"
+                                                    : "bg-white text-[var(--primary)]"
                                                     }`}
                                             >
                                                 {file ? (
@@ -454,10 +717,15 @@ export function ProjectSubmissionPanel() {
                                                 <button
                                                     type="button"
                                                     onClick={() => handleChooseFile(slot.type)}
-                                                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)]"
+                                                    disabled={uploadingType === slot.type}
+                                                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
                                                 >
                                                     <UploadCloud className="h-4 w-4" />
-                                                    {file ? "Upload again" : "Upload file"}
+                                                    {uploadingType === slot.type
+                                                        ? "Uploading..."
+                                                        : file
+                                                            ? "Upload again"
+                                                            : "Upload file"}
                                                 </button>
                                             </div>
                                         </div>
@@ -500,10 +768,20 @@ export function ProjectSubmissionPanel() {
                                 <button
                                     type="button"
                                     onClick={handleSubmitPackage}
-                                    disabled={uploadedCount !== 4}
+                                    disabled={
+                                        uploadedCount !== 4 ||
+                                        !note.trim() ||
+                                        !releaseDay.trim() ||
+                                        submitting ||
+                                        uploadingType !== null
+                                    }
                                     className="h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {isEditMode ? "Update Package" : "Create Package"}
+                                    {submitting
+                                        ? "Submitting..."
+                                        : isEditMode
+                                            ? "Update Package"
+                                            : "Create Package"}
                                 </button>
                             </div>
                         </div>

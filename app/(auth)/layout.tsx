@@ -8,7 +8,7 @@ function AuthLayout({
 }>) {
   return (
     <main className="flex min-h-screen items-center justify-center p-6 [background:var(--gradient)] md:p-10">
-      <section className="mx-auto grid w-full max-w-[800px] grid-cols-1 overflow-hidden rounded-[24px] bg-primary shadow-2xl md:min-h-[640px] md:grid-cols-[3fr_4fr]">
+      <section className="mx-auto grid w-full max-w-[45vw] grid-cols-1 overflow-hidden rounded-[24px] bg-primary shadow-2xl md:min-h-[640px] md:grid-cols-[2fr_3fr]">
         {/* Left side */}
         <div className="relative hidden h-full overflow-hidden bg-[#0f0a29] md:block">
           <video

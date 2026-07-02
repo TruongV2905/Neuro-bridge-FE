@@ -1,10 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import { useSelector } from "react-redux"
 
-import { RootState } from "@/redux/store"
-import { UserResponse } from "@/types/user"
+import type { RootState } from "@/redux/store"
+import type { User as UserType, UserResponse } from "@/types/user/user.type"
 
 import { expertProfile } from "./mock-expert-profile"
 import { ExpertProfileHeader } from "./_components/expert-profile-header"
@@ -15,113 +14,64 @@ import { ExpertSidebarCard } from "./_components/expert-sidebar-card"
 import { ExpertWalletCard } from "./_components/expert-wallet-card"
 import { ExpertSkillCard } from "./_components/expert-skill-card"
 import { ExpertCertificateCard } from "./_components/expert-certificate-card"
-import { getUserByCode } from "@/services/user-api"
 
-import {
-  getCertificates,
-  CertificateApiItem,
-} from "@/services/certificate-api"
-import {
-  getPortfoliosByExpertCode,
-  PortfolioApiItem,
-} from "@/services/portfolio-api"
-import { getSkills, SkillApiItem } from "@/services/skill-api"
+import { useGetUserByCode } from "@/services/user.service"
+import { useGetSkillsByExpertCode } from "@/services/skill.service"
+import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
+import { useGetCertificatesByExpertCode } from "@/services/certificate.service"
+
 import Header from "@/components/layout/Header"
 
 export default function ProfileExpertPage() {
-  const [expertUser, setExpertUser] = useState<UserResponse | null>(null)
-  const [expertUserLoading, setExpertUserLoading] = useState(true)
-  const [portfolios, setPortfolios] = useState<PortfolioApiItem[]>([])
-  const [portfolioLoading, setPortfolioLoading] = useState(true)
-
-  const [skills, setSkills] = useState<SkillApiItem[]>([])
-  const [skillLoading, setSkillLoading] = useState(true)
-
-  const [certificates, setCertificates] = useState<CertificateApiItem[]>([])
-  const [certificateLoading, setCertificateLoading] = useState(true)
-
   const currentUser = useSelector(
     (state: RootState) => state.user
   ) as UserResponse | null
 
-  const expertCode =
-    currentUser?.code ?? "EXP-TAAIEE8J88"
-
-  const token =
-    currentUser?.accessToken ||
-    localStorage.getItem("accessToken")
-
   const isOwnerExpert = currentUser?.role === "EXPERT"
 
-  useEffect(() => {
-    async function fetchExpertUser() {
-      try {
-        if (currentUser?.role === "EXPERT") {
-          setExpertUser(currentUser)
-          return
-        }
+  const expertCode = isOwnerExpert
+    ? currentUser?.code
+    : "EXP-TAAIEE8J88"
 
-        const data = await getUserByCode(expertCode, token)
-        setExpertUser(data)
-      } catch (error) {
-        console.error("Fetch expert user error:", error)
-      } finally {
-        setExpertUserLoading(false)
-      }
-    }
+  const {
+    data: expertUserData,
+    isLoading: expertUserLoading,
+  } = useGetUserByCode(
+    { code: expertCode },
+    { enabled: !!expertCode && !isOwnerExpert },
+  )
 
-    fetchExpertUser()
-  }, [currentUser, expertCode, token])
+  const {
+    data: portfolioData,
+    isLoading: portfolioLoading,
+  } = useGetPortfoliosByExpertCode(
+    { code: expertCode },
+    { enabled: !!expertCode },
+  )
 
-  useEffect(() => {
-    async function fetchPortfolios() {
-      if (!expertCode) {
-        setPortfolioLoading(false)
-        return
-      }
+  const {
+    data: skillData,
+    isLoading: skillLoading,
+  } = useGetSkillsByExpertCode(
+    { code: expertCode },
+    { enabled: !!expertCode },
+  )
 
-      try {
-        const data = await getPortfoliosByExpertCode(expertCode, token)
-        setPortfolios(data)
-      } catch (error) {
-        console.error("Fetch portfolios error:", error)
-      } finally {
-        setPortfolioLoading(false)
-      }
-    }
+  const {
+    data: certificateData,
+    isLoading: certificateLoading,
+  } = useGetCertificatesByExpertCode(
+    { code: expertCode },
+    { enabled: !!expertCode },
+  )
 
-    fetchPortfolios()
-  }, [expertCode, token])
+  const expertUser: UserType | UserResponse | null = isOwnerExpert
+    ? currentUser
+    : expertUserData?.result ?? null
 
-  useEffect(() => {
-    async function fetchSkills() {
-      try {
-        const data = await getSkills(token)
-        setSkills(data)
-      } catch (error) {
-        console.error("Fetch skills error:", error)
-      } finally {
-        setSkillLoading(false)
-      }
-    }
-
-    fetchSkills()
-  }, [token])
-
-  useEffect(() => {
-    async function fetchCertificates() {
-      try {
-        const data = await getCertificates(token)
-        setCertificates(data)
-      } catch (error) {
-        console.error("Fetch certificates error:", error)
-      } finally {
-        setCertificateLoading(false)
-      }
-    }
-
-    fetchCertificates()
-  }, [token])
+  const portfolios = portfolioData?.result ?? []
+  const skills = skillData?.result ?? []
+  const certificates = certificateData?.result ?? []
 
   return (
     <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">

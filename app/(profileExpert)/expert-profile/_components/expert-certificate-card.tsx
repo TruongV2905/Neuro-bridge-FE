@@ -1,7 +1,7 @@
 import { Award, CalendarDays, ExternalLink, ShieldCheck } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CertificateApiItem } from "@/services/certificate-api"
+import { CertificateApiItem } from "@/services/certificate.service"
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("vi-VN")

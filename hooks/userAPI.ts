@@ -1,14 +1,16 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AxiosError } from "axios";
 import type { AxiosRequestConfig } from "axios";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
+  InfiniteData,
   QueryKey,
+  UseInfiniteQueryOptions,
   UseMutationOptions,
   UseQueryOptions,
 } from "@tanstack/react-query";
 import api from "../configs/api";
-import { APIResponse } from "@/types/common.starter";
+import { APIResponse, PageResponse } from "@/types/common.starter";
 
 type ApiError = AxiosError<APIResponse<null>>;
 type MutationMethod = "POST" | "PUT" | "PATCH" | "DELETE";
@@ -211,6 +213,107 @@ export const createPostQueryHook = <TData = unknown, TVariables = unknown>(
     );
   };
 };
+
+
+export const createInfiniteQueryHook = <TItem = unknown>(
+  queryKey: string | QueryKey,
+  url: string,
+) => {
+  return function useCustomInfiniteQuery(
+    params?: Omit<Params, "page"> & {
+      page?: number;
+      size?: number;
+      search?: string;
+      sortBy?: string;
+      direction?: "ASCENDING" | "DESCENDING";
+    },
+    options?: Omit<
+      UseInfiniteQueryOptions<
+        APIResponse<PageResponse<TItem>>,
+        ApiError,
+        InfiniteData<APIResponse<PageResponse<TItem>>>,
+        QueryKey,
+        number
+      >,
+      "queryKey" | "queryFn" | "initialPageParam" | "getNextPageParam"
+    >,
+  ) {
+    const baseKey = toQueryKey(queryKey);
+
+    const {
+      page: _page,
+      size = 20,
+      search = "",
+      sortBy = "createdAt",
+      direction = "ASCENDING",
+      ...restParams
+    } = params ?? {};
+
+    return useInfiniteQuery<
+      APIResponse<PageResponse<TItem>>,
+      ApiError,
+      InfiniteData<APIResponse<PageResponse<TItem>>>,
+      QueryKey,
+      number
+    >({
+      queryKey: [
+        ...baseKey,
+        "infinite",
+        {
+          ...restParams,
+          size,
+          search,
+          sortBy,
+          direction,
+        },
+      ],
+
+      initialPageParam: 0,
+
+      queryFn: async ({ pageParam }) => {
+        const finalParams = {
+          ...restParams,
+          page: pageParam,
+          size,
+          search,
+          sortBy,
+          direction,
+        };
+
+        const { finalUrl, remainingParams } = resolveUrl(url, finalParams);
+
+        const { data } = await api.get<APIResponse<PageResponse<TItem>>>(
+          finalUrl,
+          {
+            params: remainingParams,
+          },
+        );
+
+        return {
+          result: data.result,
+          message: data.message,
+          code: data.code,
+        };
+      },
+
+      getNextPageParam: (lastPage) => {
+        const metadata = lastPage.result.metadata;
+
+        const nextPage = metadata.page + 1;
+
+        if (nextPage >= metadata.totalPages) {
+          return undefined;
+        }
+
+        return nextPage;
+      },
+
+      retry: 0,
+      ...options,
+    });
+  };
+};
+
 
 //Cách sử dụng:
 // export const useGetUsers = createQueryHook<UserResponse[]>(

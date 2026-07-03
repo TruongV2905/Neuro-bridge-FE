@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSelector } from "react-redux"
 
@@ -7,7 +8,13 @@ import Header from "@/components/layout/Header"
 import type { RootState } from "@/redux/store"
 import { UserRole } from "@/types/user/user.type"
 import type { UserResponse } from "@/types/user/user.type"
+import type { ChatUser } from "@/types/chat.types"
+
 import { useWorkspaceDetail } from "@/services/workspace.service"
+import {
+  getWorkspaceMembers,
+  type WorkspaceMember,
+} from "@/services/workspace-member.service"
 
 import { ProjectSubmissionPanel } from "../_components/ProjectSubmissionPanel"
 import { ClientProjectSubmissionPanel } from "../_components/ClientProjectSubmissionPanel"
@@ -15,12 +22,18 @@ import { ChatComposer } from "../_components/ChatComposer"
 import { ChatHeader } from "../_components/ChatHeader"
 import { ChatMessage } from "../_components/ChatMessage"
 import { ChatProfilePanel } from "../_components/ChatProfilePanel"
-import {
-  chatMedia,
-  chatMessages,
-  chatPartner,
-  currentUser,
-} from "../_data/mock-chat-room"
+import { chatMedia, chatMessages } from "../_data/mock-chat-room"
+
+const defaultAvatar =
+  "https://api.dicebear.com/9.x/initials/svg?seed=User"
+
+function getAvatarUrl(avatarUrl?: string | null, name = "User") {
+  return avatarUrl?.trim()
+    ? avatarUrl
+    : `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
+      name
+    )}`
+}
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -32,12 +45,48 @@ export default function ChatRoomPage() {
 
   const { data: workspace } = useWorkspaceDetail(workspaceId)
 
+  const [members, setMembers] = useState<WorkspaceMember[]>([])
+
+  useEffect(() => {
+    if (!workspaceId) return
+
+    getWorkspaceMembers(workspaceId)
+      .then(setMembers)
+      .catch((error) => {
+        console.error("Get workspace members failed:", error)
+      })
+  }, [workspaceId])
+
   const isExpert = user?.role === UserRole.EXPERT
   const isClient = user?.role === UserRole.CLIENT
 
-  const partner = isExpert
-    ? workspace?.client
-    : workspace?.expert
+  const clientMember = members.find((member) => member.role === "CLIENT")
+  const expertMember = members.find((member) => member.role === "EXPERT")
+
+  const currentMember = isExpert ? expertMember : clientMember
+  const partnerMember = isExpert ? clientMember : expertMember
+
+  const realCurrentUser: ChatUser = {
+    id: isExpert ? "expert-1" : "client-1",
+    name: currentMember?.name ?? user?.fullName ?? "You",
+    avatarUrl: getAvatarUrl(
+      currentMember?.avatarUrl ?? user?.avatarUrl,
+      currentMember?.name ?? user?.fullName ?? "You"
+    ),
+    role: isExpert ? "expert" : "client",
+    status: "Online",
+  }
+
+  const realChatPartner: ChatUser = {
+    id: isExpert ? "client-1" : "expert-1",
+    name: partnerMember?.name ?? (isExpert ? "Client" : "Expert"),
+    avatarUrl: getAvatarUrl(
+      partnerMember?.avatarUrl,
+      partnerMember?.name ?? (isExpert ? "Client" : "Expert")
+    ),
+    role: isExpert ? "client" : "expert",
+    status: "Online",
+  }
 
   return (
     <div className="relative min-h-screen bg-[#eaf3ff]">
@@ -51,13 +100,7 @@ export default function ChatRoomPage() {
         <div className="mx-auto mt-4 flex h-[calc(100vh-128px)] max-w-[1600px] gap-4 min-h-0">
           <section className="flex flex-1 max-w-[2000px] min-w-0 overflow-hidden rounded-2xl border border-white/70 bg-white/95 backdrop-blur-sm shadow-md transition-all">
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-              <ChatHeader
-                user={{
-                  ...chatPartner,
-                  name: partner?.name ?? chatPartner.name,
-                  avatarUrl: partner?.avatarUrl ?? chatPartner.avatarUrl,
-                }}
-              />
+              <ChatHeader user={realChatPartner} />
 
               <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-3">
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
@@ -65,13 +108,9 @@ export default function ChatRoomPage() {
                     {workspace?.projectName ?? "Loading project..."}
                   </span>
 
-                  <span>
-                    Status: {workspace?.projectStatus ?? "-"}
-                  </span>
+                  <span>Status: {workspace?.projectStatus ?? "-"}</span>
 
-                  <span>
-                    Progress: {workspace?.progressPercentage ?? 0}%
-                  </span>
+                  <span>Progress: {workspace?.progressPercentage ?? 0}%</span>
                 </div>
               </div>
 
@@ -87,8 +126,8 @@ export default function ChatRoomPage() {
                     <ChatMessage
                       key={message.id}
                       message={message}
-                      currentUser={currentUser}
-                      partner={chatPartner}
+                      currentUser={realCurrentUser}
+                      partner={realChatPartner}
                     />
                   ))}
                 </div>
@@ -97,19 +136,12 @@ export default function ChatRoomPage() {
               <ChatComposer />
             </div>
 
-            <ChatProfilePanel
-              user={{
-                ...chatPartner,
-                name: partner?.name ?? chatPartner.name,
-                avatarUrl: partner?.avatarUrl ?? chatPartner.avatarUrl,
-              }}
-              media={chatMedia}
-            />
+            <ChatProfilePanel user={realChatPartner} media={chatMedia} />
           </section>
 
           {isExpert && <ProjectSubmissionPanel workspaceId={workspaceId} />}
 
-          {isClient && <ClientProjectSubmissionPanel />}
+          {isClient && <ClientProjectSubmissionPanel workspaceId={workspaceId} />}
         </div>
       </main>
     </div>

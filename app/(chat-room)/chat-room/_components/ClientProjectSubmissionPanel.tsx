@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import {
     CheckCircle2,
     Code2,
@@ -39,10 +39,38 @@ type ClientSubmissionPackage = {
     files: ClientDeliverableFile[]
 }
 
+type SubmissionPackageResponse = {
+    packageId: string
+    workspaceId: string
+    version: number
+    notes: string
+    submittedAt: string | null
+    reviewedAt: string | null
+    autoReleaseAt: string | null
+    status: "PENDING" | "APPROVED" | "REJECTED" | "SUPERSEDED"
+    feedback: string | null
+    isDelete: boolean
+}
+
+type DeliverableFileResponse = {
+    fileId: string
+    packageId: string
+    fileName: string
+    fileUrl: string
+    fileSize: string
+    fileType: FileType
+    uploadedAt: string
+    isDelete: boolean
+}
+
 type FileSlot = {
     type: FileType
     label: string
     icon: React.ReactNode
+}
+
+type ClientProjectSubmissionPanelProps = {
+    workspaceId: string
 }
 
 const fileSlots: FileSlot[] = [
@@ -227,6 +255,8 @@ const mockPackages: ClientSubmissionPackage[] = [
     },
 ]
 
+
+
 function getStatusClass(status: ReviewStatus) {
     if (status === "APPROVED") {
         return "bg-emerald-50 text-emerald-600"
@@ -239,15 +269,122 @@ function getStatusClass(status: ReviewStatus) {
     return "bg-amber-50 text-amber-600"
 }
 
-export function ClientProjectSubmissionPanel() {
-    const [packages, setPackages] =
-        useState<ClientSubmissionPackage[]>(mockPackages)
+export function ClientProjectSubmissionPanel({
+    workspaceId,
+}: ClientProjectSubmissionPanelProps) {
+    const [packages, setPackages] = useState<ClientSubmissionPackage[]>([])
 
     const [openHistoryModal, setOpenHistoryModal] = useState(false)
 
-    const [selectedHistoryPackageId, setSelectedHistoryPackageId] = useState(
-        mockPackages[0]?.packageId ?? ""
-    )
+    const [selectedHistoryPackageId, setSelectedHistoryPackageId] = useState("")
+
+    const getSubmissionPackagesByWorkspace = async () => {
+        const accessToken = localStorage.getItem("accessToken")
+
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error("Get submission packages failed")
+        }
+
+        return response.json() as Promise<SubmissionPackageResponse[]>
+    }
+
+    const getDeliverableFilesByPackage = async (packageId: string) => {
+        const accessToken = localStorage.getItem("accessToken")
+
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/packages/${packageId}`,
+            {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${accessToken}`,
+                },
+            }
+        )
+
+        if (!response.ok) {
+            throw new Error("Get deliverable files failed")
+        }
+
+        return response.json() as Promise<DeliverableFileResponse[]>
+    }
+
+    function getMimeTypeFromFileName(fileName: string) {
+        const lowerName = fileName.toLowerCase()
+
+        if (lowerName.endsWith(".pdf")) return "application/pdf"
+        if (lowerName.endsWith(".png")) return "image/png"
+        if (lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg")) return "image/jpeg"
+        if (lowerName.endsWith(".webp")) return "image/webp"
+        if (lowerName.endsWith(".mp4")) return "video/mp4"
+        if (lowerName.endsWith(".txt")) return "text/plain"
+        if (lowerName.endsWith(".csv")) return "text/csv"
+
+        return "application/octet-stream"
+    }
+
+    useEffect(() => {
+        if (!workspaceId) return
+
+        const fetchPackagesWithFiles = async () => {
+            try {
+                const packageResponses = await getSubmissionPackagesByWorkspace()
+
+                const sortedPackages = [...packageResponses].sort(
+                    (a, b) => b.version - a.version
+                )
+                console.log("Packages by workspace:", sortedPackages)
+
+                const packagesWithFiles = await Promise.all(
+                    sortedPackages.map(async (item) => {
+                        const fileResponses = await getDeliverableFilesByPackage(item.packageId)
+                        console.log("Files of package", item.version, item.packageId, fileResponses)
+
+                        const files: ClientDeliverableFile[] = fileResponses
+                            .filter((file) => !file.isDelete)
+                            .map((file) => ({
+                                fileId: file.fileId,
+                                fileType: file.fileType,
+                                fileName: file.fileName,
+                                fileSize: file.fileSize,
+                                uploadedAt: file.uploadedAt,
+                                downloadUrl: file.fileUrl,
+                                previewUrl: file.fileUrl,
+                                fileMimeType: getMimeTypeFromFileName(file.fileName),
+                                status:
+                                    item.status === "APPROVED" || item.status === "REJECTED"
+                                        ? item.status
+                                        : "PENDING",
+                            }))
+
+                        return {
+                            packageId: item.packageId,
+                            version: item.version,
+                            submittedAt: item.submittedAt ?? "",
+                            downloadUrl: "#",
+                            files,
+                        }
+                    })
+                )
+
+                setPackages(packagesWithFiles)
+                setSelectedHistoryPackageId(packagesWithFiles[0]?.packageId ?? "")
+            } catch (error) {
+                console.error("Load client submission packages failed:", error)
+            }
+        }
+
+        fetchPackagesWithFiles()
+    }, [workspaceId])
 
     const [previewFile, setPreviewFile] =
         useState<ClientDeliverableFile | null>(null)
@@ -263,30 +400,69 @@ export function ClientProjectSubmissionPanel() {
     const handleOpenHistory = () => {
         setSelectedHistoryPackageId(latestPackage?.packageId ?? "")
         setOpenHistoryModal(true)
-    }   
+    }
 
-    const handleReviewFile = (
+    const handleReviewFile = async (
         packageId: string,
         fileId: string,
         status: ReviewStatus
     ) => {
-        setPackages((currentPackages) =>
-            currentPackages.map((item) => {
-                if (item.packageId !== packageId) return item
+        try {
+            await reviewDeliverableFile(fileId, status)
 
-                return {
-                    ...item,
-                    files: item.files.map((file) =>
-                        file.fileId === fileId
-                            ? {
-                                ...file,
-                                status,
-                            }
-                            : file
-                    ),
-                }
-            })
+            setPackages((currentPackages) =>
+                currentPackages.map((item) => {
+                    if (item.packageId !== packageId) return item
+
+                    return {
+                        ...item,
+                        files: item.files.map((file) =>
+                            file.fileId === fileId
+                                ? {
+                                    ...file,
+                                    status,
+                                }
+                                : file
+                        ),
+                    }
+                })
+            )
+        } catch (error) {
+            console.error("Review file failed:", error)
+            alert("Review file failed. Please try again.")
+        }
+    }
+
+    const reviewDeliverableFile = async (
+        fileId: string,
+        newStatus: ReviewStatus
+    ) => {
+        const accessToken = localStorage.getItem("accessToken")
+
+        const response = await fetch(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/review`,
+            {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${accessToken}`,
+                },
+                body: JSON.stringify({
+                    fileId,
+                    newStatus,
+                    feedback:
+                        newStatus === "APPROVED"
+                            ? "Approved by client"
+                            : "Rejected by client",
+                }),
+            }
         )
+
+        if (!response.ok) {
+            throw new Error("Review deliverable file failed")
+        }
+
+        return response.json()
     }
 
     const renderFileCard = (
@@ -354,7 +530,7 @@ export function ClientProjectSubmissionPanel() {
                                         Approve
                                     </span>
                                 </button>
-                                
+
                                 <button
                                     type="button"
                                     onClick={() => handleReviewFile(packageId, file.fileId, "REJECTED")}
@@ -400,6 +576,17 @@ export function ClientProjectSubmissionPanel() {
                                     <Eye className="h-3.5 w-3.5" />
                                     Preview
                                 </button>
+
+                                <a
+                                    href={file.downloadUrl}
+                                    download
+                                    title="Download" /* Hiện tên nút khi hover */
+                                    onClick={(event) => event.stopPropagation()}
+                                    className="inline-flex items-center justify-center rounded p-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 hover:text-[var(--primary)]"
+                                >
+                                    <Download className="h-3.5 w-3.5" />
+                                    <span className="sr-only">Download</span> {/* Giữ lại cho người khiếm thị đọc máy */}
+                                </a>
                             </div>
                         )}
                     </div>

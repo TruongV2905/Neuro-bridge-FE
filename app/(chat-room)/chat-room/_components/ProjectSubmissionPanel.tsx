@@ -17,6 +17,8 @@ import {
 
 type FileType = "SOURCE_CODE" | "DOCUMENT" | "VIDEO" | "DATASET"
 
+type FileReviewStatus = "PENDING" | "APPROVED" | "REJECTED"
+
 type PackageStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUPERSEDED"
 
 type DeliverableFile = {
@@ -29,6 +31,7 @@ type DeliverableFile = {
     previewUrl: string
     downloadUrl: string
     storagePath: string
+    reviewStatus: FileReviewStatus
 }
 
 type SubmissionPackage = {
@@ -63,6 +66,8 @@ type DeliverableFileResponse = {
     fileType: FileType
     uploadedAt: string
     isDelete: boolean
+    status?: FileReviewStatus
+    reviewStatus?: FileReviewStatus
 }
 
 type PackageFileSlot = {
@@ -127,6 +132,42 @@ function getCurrentTime() {
     })
 }
 
+function formatDateTime(value?: string | null) {
+    if (!value) return "-"
+
+    const date = new Date(value)
+
+    if (Number.isNaN(date.getTime())) return "-"
+
+    return date.toLocaleString("vi-VN", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+    })
+}
+
+function getFileReviewStatusStyle(status: FileReviewStatus) {
+    if (status === "APPROVED") {
+        return "bg-emerald-50 text-emerald-600 border-emerald-100"
+    }
+
+    if (status === "REJECTED") {
+        return "bg-rose-50 text-rose-600 border-rose-100"
+    }
+
+    return "bg-amber-50 text-amber-600 border-amber-100"
+}
+
+function getFileReviewStatusLabel(status: FileReviewStatus) {
+    if (status === "APPROVED") return "Approved"
+    if (status === "REJECTED") return "Rejected"
+
+    return "Pending"
+}
+
 export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelProps) {
     const [openModal, setOpenModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>("create")
@@ -167,13 +208,21 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     useEffect(() => {
         if (!workspaceId) return
 
+        let cancelled = false
+
         const fetchLatestPackage = async () => {
             try {
                 const packages = await getSubmissionPackagesByWorkspace()
 
                 const latestPackage = packages[0]
 
-                if (!latestPackage) return
+                if (!latestPackage) {
+                    if (!cancelled) {
+                        setLatestPackage(null)
+                    }
+
+                    return
+                }
 
                 const packageFiles = await getDeliverableFilesByPackage(
                     latestPackage.packageId
@@ -191,7 +240,10 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                         previewUrl: file.fileUrl,
                         downloadUrl: file.fileUrl,
                         storagePath: file.fileUrl,
+                        reviewStatus: file.reviewStatus ?? file.status ?? "PENDING",
                     }))
+
+                if (cancelled) return
 
                 setLatestPackage({
                     packageId: latestPackage.packageId,
@@ -202,12 +254,36 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                     releaseDay: 0,
                     files: mappedFiles,
                 })
+
+                setPreviewFile((currentPreviewFile) => {
+                    if (!currentPreviewFile) return currentPreviewFile
+
+                    const freshPreviewFile = mappedFiles.find(
+                        (file) => file.fileId === currentPreviewFile.fileId
+                    )
+
+                    return freshPreviewFile ?? currentPreviewFile
+                })
             } catch (error) {
                 console.error("Load latest submission package failed:", error)
             }
         }
 
         fetchLatestPackage()
+
+        const intervalId = window.setInterval(fetchLatestPackage, 3000)
+
+        const handleFocus = () => {
+            fetchLatestPackage()
+        }
+
+        window.addEventListener("focus", handleFocus)
+
+        return () => {
+            cancelled = true
+            window.clearInterval(intervalId)
+            window.removeEventListener("focus", handleFocus)
+        }
     }, [workspaceId])
 
     const handleChooseFile = (type: FileType) => {
@@ -292,6 +368,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 previewUrl: publicUrl,
                 downloadUrl: publicUrl,
                 storagePath: filePath,
+                reviewStatus: "PENDING",
             }
 
             setDraftFiles((prev) => ({
@@ -309,6 +386,9 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     const getSubmissionPackagesByWorkspace = async () => {
         const accessToken = localStorage.getItem("accessToken")
 
+        console.log(
+            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`
+        )
         const response = await fetch(
             `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
             {
@@ -550,9 +630,19 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                                                             {file.fileName}
                                                         </p>
 
-                                                        <p className="mt-0.5 text-[11px] text-slate-400">
-                                                            {file.fileSize} · {file.uploadedAt}
-                                                        </p>
+                                                        <div className="mt-1 flex items-center gap-2">
+                                                            <p className="text-[11px] text-slate-400">
+                                                                {file.fileSize} · {file.uploadedAt}
+                                                            </p>
+
+                                                            <span
+                                                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getFileReviewStatusStyle(
+                                                                    file.reviewStatus
+                                                                )}`}
+                                                            >
+                                                                {getFileReviewStatusLabel(file.reviewStatus)}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </button>
@@ -590,7 +680,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                                                 Last updated
                                             </p>
                                             <p className="mt-1 text-xs font-semibold text-slate-700">
-                                                {latestPackage?.submittedAt}
+                                                {formatDateTime(latestPackage?.submittedAt)}
                                             </p>
                                         </div>
                                     </div>
@@ -809,9 +899,19 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                                         <h3 className="truncate text-lg font-semibold text-slate-900">
                                             {previewFile.fileName}
                                         </h3>
-                                        <p className="text-xs text-slate-400">
-                                            {previewFile.fileSize} · {previewFile.uploadedAt}
-                                        </p>
+                                        <div className="mt-1 flex items-center gap-2">
+                                            <p className="text-xs text-slate-400">
+                                                {previewFile.fileSize} · {previewFile.uploadedAt}
+                                            </p>
+
+                                            <span
+                                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getFileReviewStatusStyle(
+                                                    previewFile.reviewStatus
+                                                )}`}
+                                            >
+                                                {getFileReviewStatusLabel(previewFile.reviewStatus)}
+                                            </span>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

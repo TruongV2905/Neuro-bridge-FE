@@ -1,6 +1,7 @@
 "use client"
 import { supabase } from "@/lib/supabase"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { resubmitSubmissionPackage } from "@/services/submission-package.service"
 import {
     CheckCircle2,
@@ -170,6 +171,7 @@ function getFileReviewStatusLabel(status: FileReviewStatus) {
 
 export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelProps) {
     const [openModal, setOpenModal] = useState(false)
+    const [mounted, setMounted] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>("create")
     const [previewFile, setPreviewFile] = useState<DeliverableFile | null>(null)
     const [note, setNote] = useState("")
@@ -188,6 +190,10 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     const inputRefs = useRef<Partial<Record<FileType, HTMLInputElement | null>>>(
         {}
     )
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const uploadedCount = useMemo(() => {
         return packageFileSlots.filter((slot) => draftFiles[slot.type]).length
@@ -699,299 +705,305 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 </div>
             </aside>
 
-            {openModal && (
-                <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-slate-950/40 px-4 py-10 backdrop-blur-sm">
-                    <div className="my-auto w-full max-w-[720px] rounded-3xl bg-white p-6 shadow-xl">
-                        <div className="border-b border-slate-100 pb-5">
-                            <div className="flex items-start justify-between gap-4">
-                                <div>
-                                    <h3 className="text-xl font-semibold text-slate-900">
-                                        {isEditMode
-                                            ? "Update Submission Package"
-                                            : "Create Submission Package"}
-                                    </h3>
+            {mounted &&
+                openModal &&
+                createPortal(
+                    <div className="fixed inset-0 z-[99999] flex items-center justify-center overflow-y-auto bg-slate-950/40 px-4 py-10 backdrop-blur-sm">
+                        <div className="relative z-[100000] my-auto w-full max-w-[720px] rounded-3xl bg-white p-6 shadow-xl">
+                            <div className="border-b border-slate-100 pb-5">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <h3 className="text-xl font-semibold text-slate-900">
+                                            {isEditMode
+                                                ? "Update Submission Package"
+                                                : "Create Submission Package"}
+                                        </h3>
 
-                                    <p className="mt-1 text-sm text-slate-500">
-                                        {isEditMode
-                                            ? "Replace any uploaded deliverable before updating the package."
-                                            : "Upload all 4 required deliverables before creating the package."}
-                                    </p>
+                                        <p className="mt-1 text-sm text-slate-500">
+                                            {isEditMode
+                                                ? "Replace any uploaded deliverable before updating the package."
+                                                : "Upload all 4 required deliverables before creating the package."}
+                                        </p>
+                                    </div>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenModal(false)}
+                                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                                    >
+                                        <X className="h-5 w-5" />
+                                    </button>
+                                </div>
+
+                                <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_180px]">
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-800">
+                                            Note:
+                                        </label>
+
+                                        <input
+                                            value={note}
+                                            onChange={(event) => setNote(event.target.value)}
+                                            placeholder="Enter note for this submission"
+                                            className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="text-sm font-semibold text-slate-800">
+                                            Release day:
+                                        </label>
+
+                                        <input
+                                            type="number"
+                                            min={1}
+                                            value={releaseDay}
+                                            onChange={(event) => setReleaseDay(event.target.value)}
+                                            placeholder="Days"
+                                            className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                                {packageFileSlots.map((slot) => {
+                                    const file = draftFiles[slot.type]
+
+                                    return (
+                                        <div
+                                            key={slot.type}
+                                            className={`rounded-2xl border p-4 text-left transition ${file
+                                                ? "border-[var(--primary)]/40 bg-[var(--primary)]/5"
+                                                : "border-slate-100 bg-slate-50"
+                                                }`}
+                                        >
+                                            <div className="flex items-start gap-3">
+                                                <div
+                                                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${file
+                                                        ? "bg-[var(--primary)] text-white"
+                                                        : "bg-white text-[var(--primary)]"
+                                                        }`}
+                                                >
+                                                    {file ? (
+                                                        <CheckCircle2 className="h-5 w-5" />
+                                                    ) : (
+                                                        slot.icon
+                                                    )}
+                                                </div>
+
+                                                <div className="min-w-0 flex-1">
+                                                    <p className="text-sm font-semibold text-slate-900">
+                                                        {slot.label}
+                                                    </p>
+
+                                                    {file ? (
+                                                        <>
+                                                            <p className="mt-1 truncate text-xs font-medium text-slate-600">
+                                                                {file.fileName}
+                                                            </p>
+                                                            <p className="mt-0.5 text-[11px] text-slate-400">
+                                                                {file.fileSize}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="mt-1 text-xs leading-relaxed text-slate-500">
+                                                            {slot.description}
+                                                        </p>
+                                                    )}
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleChooseFile(slot.type)}
+                                                        disabled={uploadingType === slot.type}
+                                                        className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
+                                                    >
+                                                        <UploadCloud className="h-4 w-4" />
+                                                        {uploadingType === slot.type
+                                                            ? "Uploading..."
+                                                            : file
+                                                                ? "Upload again"
+                                                                : "Upload file"}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <input
+                                                ref={(element) => {
+                                                    inputRefs.current[slot.type] = element
+                                                }}
+                                                type="file"
+                                                accept={slot.accept}
+                                                className="hidden"
+                                                onChange={(event) => {
+                                                    handleFileChange(slot.type, event.target.files?.[0])
+                                                    event.target.value = ""
+                                                }}
+                                            />
+                                        </div>
+                                    )
+                                })}
+                            </div>
+
+                            <div className="mt-6 flex items-center justify-between gap-4 border-t border-slate-100 pt-5">
+                                <p className="text-sm text-slate-500">
+                                    Uploaded{" "}
+                                    <span className="font-semibold text-slate-800">
+                                        {uploadedCount}/4
+                                    </span>{" "}
+                                    required files
+                                </p>
+
+                                <div className="flex gap-3">
+                                    <button
+                                        type="button"
+                                        onClick={() => setOpenModal(false)}
+                                        className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
+                                    >
+                                        Cancel
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={handleSubmitPackage}
+                                        disabled={
+                                            uploadedCount !== 4 ||
+                                            !note.trim() ||
+                                            !releaseDay.trim() ||
+                                            submitting ||
+                                            uploadingType !== null
+                                        }
+                                        className="h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {submitting
+                                            ? "Submitting..."
+                                            : isEditMode
+                                                ? "Update Package"
+                                                : "Create Package"}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+            {mounted &&
+                previewFile &&
+                createPortal(
+                    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
+                        <div className="flex max-h-[88vh] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
+                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+                                <div className="min-w-0">
+                                    <div className="flex items-center gap-2">
+                                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                            {previewFile.fileMimeType.startsWith("image/") ? (
+                                                <ImageIcon className="h-5 w-5" />
+                                            ) : previewFile.fileMimeType.startsWith("video/") ? (
+                                                <Video className="h-5 w-5" />
+                                            ) : (
+                                                <FileText className="h-5 w-5" />
+                                            )}
+                                        </span>
+
+                                        <div className="min-w-0">
+                                            <h3 className="truncate text-lg font-semibold text-slate-900">
+                                                {previewFile.fileName}
+                                            </h3>
+                                            <div className="mt-1 flex items-center gap-2">
+                                                <p className="text-xs text-slate-400">
+                                                    {previewFile.fileSize} · {previewFile.uploadedAt}
+                                                </p>
+
+                                                <span
+                                                    className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getFileReviewStatusStyle(
+                                                        previewFile.reviewStatus
+                                                    )}`}
+                                                >
+                                                    {getFileReviewStatusLabel(previewFile.reviewStatus)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <button
                                     type="button"
-                                    onClick={() => setOpenModal(false)}
-                                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                                    onClick={() => setPreviewFile(null)}
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
                             </div>
 
-                            <div className="mt-5 grid gap-4 sm:grid-cols-[1fr_180px]">
-                                <div>
-                                    <label className="text-sm font-semibold text-slate-800">
-                                        Note:
-                                    </label>
-
-                                    <input
-                                        value={note}
-                                        onChange={(event) => setNote(event.target.value)}
-                                        placeholder="Enter note for this submission"
-                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="text-sm font-semibold text-slate-800">
-                                        Release day:
-                                    </label>
-
-                                    <input
-                                        type="number"
-                                        min={1}
-                                        value={releaseDay}
-                                        onChange={(event) => setReleaseDay(event.target.value)}
-                                        placeholder="Days"
-                                        className="mt-2 h-11 w-full rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-[var(--primary)] focus:bg-white"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="mt-5 grid gap-4 sm:grid-cols-2">
-                            {packageFileSlots.map((slot) => {
-                                const file = draftFiles[slot.type]
-
-                                return (
-                                    <div
-                                        key={slot.type}
-                                        className={`rounded-2xl border p-4 text-left transition ${file
-                                            ? "border-[var(--primary)]/40 bg-[var(--primary)]/5"
-                                            : "border-slate-100 bg-slate-50"
-                                            }`}
-                                    >
-                                        <div className="flex items-start gap-3">
-                                            <div
-                                                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${file
-                                                    ? "bg-[var(--primary)] text-white"
-                                                    : "bg-white text-[var(--primary)]"
-                                                    }`}
-                                            >
-                                                {file ? (
-                                                    <CheckCircle2 className="h-5 w-5" />
-                                                ) : (
-                                                    slot.icon
-                                                )}
-                                            </div>
-
-                                            <div className="min-w-0 flex-1">
-                                                <p className="text-sm font-semibold text-slate-900">
-                                                    {slot.label}
-                                                </p>
-
-                                                {file ? (
-                                                    <>
-                                                        <p className="mt-1 truncate text-xs font-medium text-slate-600">
-                                                            {file.fileName}
-                                                        </p>
-                                                        <p className="mt-0.5 text-[11px] text-slate-400">
-                                                            {file.fileSize}
-                                                        </p>
-                                                    </>
-                                                ) : (
-                                                    <p className="mt-1 text-xs leading-relaxed text-slate-500">
-                                                        {slot.description}
-                                                    </p>
-                                                )}
-
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleChooseFile(slot.type)}
-                                                    disabled={uploadingType === slot.type}
-                                                    className="mt-3 inline-flex h-9 items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60"
-                                                >
-                                                    <UploadCloud className="h-4 w-4" />
-                                                    {uploadingType === slot.type
-                                                        ? "Uploading..."
-                                                        : file
-                                                            ? "Upload again"
-                                                            : "Upload file"}
-                                                </button>
-                                            </div>
-                                        </div>
-
-                                        <input
-                                            ref={(element) => {
-                                                inputRefs.current[slot.type] = element
-                                            }}
-                                            type="file"
-                                            accept={slot.accept}
-                                            className="hidden"
-                                            onChange={(event) => {
-                                                handleFileChange(slot.type, event.target.files?.[0])
-                                                event.target.value = ""
-                                            }}
+                            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-6">
+                                {previewFile.fileMimeType.startsWith("image/") && (
+                                    <div className="flex justify-center">
+                                        <img
+                                            src={previewFile.previewUrl}
+                                            alt={previewFile.fileName}
+                                            loading="lazy"
+                                            className="max-h-[60vh] max-w-full rounded-2xl object-contain shadow-sm"
                                         />
                                     </div>
-                                )
-                            })}
-                        </div>
-
-                        <div className="mt-6 flex items-center justify-between gap-4 border-t border-slate-100 pt-5">
-                            <p className="text-sm text-slate-500">
-                                Uploaded{" "}
-                                <span className="font-semibold text-slate-800">
-                                    {uploadedCount}/4
-                                </span>{" "}
-                                required files
-                            </p>
-
-                            <div className="flex gap-3">
-                                <button
-                                    type="button"
-                                    onClick={() => setOpenModal(false)}
-                                    className="h-11 rounded-xl border border-slate-200 px-5 text-sm font-semibold text-slate-600 transition hover:bg-slate-50"
-                                >
-                                    Cancel
-                                </button>
-
-                                <button
-                                    type="button"
-                                    onClick={handleSubmitPackage}
-                                    disabled={
-                                        uploadedCount !== 4 ||
-                                        !note.trim() ||
-                                        !releaseDay.trim() ||
-                                        submitting ||
-                                        uploadingType !== null
-                                    }
-                                    className="h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {submitting
-                                        ? "Submitting..."
-                                        : isEditMode
-                                            ? "Update Package"
-                                            : "Create Package"}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {previewFile && (
-                <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/45 px-4 backdrop-blur-sm">
-                    <div className="flex max-h-[88vh] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-2xl">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-                            <div className="min-w-0">
-                                <div className="flex items-center gap-2">
-                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                        {previewFile.fileMimeType.startsWith("image/") ? (
-                                            <ImageIcon className="h-5 w-5" />
-                                        ) : previewFile.fileMimeType.startsWith("video/") ? (
-                                            <Video className="h-5 w-5" />
-                                        ) : (
-                                            <FileText className="h-5 w-5" />
-                                        )}
-                                    </span>
-
-                                    <div className="min-w-0">
-                                        <h3 className="truncate text-lg font-semibold text-slate-900">
-                                            {previewFile.fileName}
-                                        </h3>
-                                        <div className="mt-1 flex items-center gap-2">
-                                            <p className="text-xs text-slate-400">
-                                                {previewFile.fileSize} · {previewFile.uploadedAt}
-                                            </p>
-
-                                            <span
-                                                className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getFileReviewStatusStyle(
-                                                    previewFile.reviewStatus
-                                                )}`}
-                                            >
-                                                {getFileReviewStatusLabel(previewFile.reviewStatus)}
-                                            </span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => setPreviewFile(null)}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-6">
-                            {previewFile.fileMimeType.startsWith("image/") && (
-                                <div className="flex justify-center">
-                                    <img
-                                        src={previewFile.previewUrl}
-                                        alt={previewFile.fileName}
-                                        loading="lazy"
-                                        className="max-h-[60vh] max-w-full rounded-2xl object-contain shadow-sm"
-                                    />
-                                </div>
-                            )}
-
-                            {previewFile.fileMimeType.startsWith("video/") && (
-                                <video
-                                    src={previewFile.previewUrl}
-                                    controls
-                                    className="max-h-[60vh] w-full rounded-2xl bg-black"
-                                />
-                            )}
-
-                            {previewFile.fileMimeType === "application/pdf" && (
-                                <iframe
-                                    src={previewFile.previewUrl}
-                                    title={previewFile.fileName}
-                                    className="h-[60vh] w-full rounded-2xl border border-slate-200 bg-white"
-                                />
-                            )}
-
-                            {!previewFile.fileMimeType.startsWith("image/") &&
-                                !previewFile.fileMimeType.startsWith("video/") &&
-                                previewFile.fileMimeType !== "application/pdf" && (
-                                    <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-                                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                            <FileText className="h-8 w-8" />
-                                        </div>
-
-                                        <h4 className="mt-4 text-base font-semibold text-slate-900">
-                                            Preview is not available
-                                        </h4>
-                                        <p className="mt-2 max-w-[420px] text-sm leading-relaxed text-slate-500">
-                                            This file type cannot be previewed directly in the browser.
-                                            You can still download this file.
-                                        </p>
-                                    </div>
                                 )}
-                        </div>
 
-                        <div className="flex items-center justify-between gap-3 border-t border-slate-100 p-5">
-                            <div className="text-xs text-slate-400">
-                                File type:{" "}
-                                <span className="font-medium text-slate-600">
-                                    {previewFile.fileMimeType || "Unknown"}
-                                </span>
+                                {previewFile.fileMimeType.startsWith("video/") && (
+                                    <video
+                                        src={previewFile.previewUrl}
+                                        controls
+                                        className="max-h-[60vh] w-full rounded-2xl bg-black"
+                                    />
+                                )}
+
+                                {previewFile.fileMimeType === "application/pdf" && (
+                                    <iframe
+                                        src={previewFile.previewUrl}
+                                        title={previewFile.fileName}
+                                        className="h-[60vh] w-full rounded-2xl border border-slate-200 bg-white"
+                                    />
+                                )}
+
+                                {!previewFile.fileMimeType.startsWith("image/") &&
+                                    !previewFile.fileMimeType.startsWith("video/") &&
+                                    previewFile.fileMimeType !== "application/pdf" && (
+                                        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                                <FileText className="h-8 w-8" />
+                                            </div>
+
+                                            <h4 className="mt-4 text-base font-semibold text-slate-900">
+                                                Preview is not available
+                                            </h4>
+                                            <p className="mt-2 max-w-[420px] text-sm leading-relaxed text-slate-500">
+                                                This file type cannot be previewed directly in the browser.
+                                                You can still download this file.
+                                            </p>
+                                        </div>
+                                    )}
                             </div>
 
-                            <a
-                                href={previewFile.previewUrl}
-                                download={previewFile.fileName}
-                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90"
-                            >
-                                <Download className="h-4 w-4" />
-                                Download
-                            </a>
+                            <div className="flex items-center justify-between gap-3 border-t border-slate-100 p-5">
+                                <div className="text-xs text-slate-400">
+                                    File type:{" "}
+                                    <span className="font-medium text-slate-600">
+                                        {previewFile.fileMimeType || "Unknown"}
+                                    </span>
+                                </div>
+
+                                <a
+                                    href={previewFile.previewUrl}
+                                    download={previewFile.fileName}
+                                    className="inline-flex h-10 items-center gap-2 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90"
+                                >
+                                    <Download className="h-4 w-4" />
+                                    Download
+                                </a>
+                            </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    </div>,
+                    document.body
+                )}
         </>
     )
 }

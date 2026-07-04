@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { createPortal } from "react-dom"
 import {
     CheckCircle2,
     Code2,
@@ -61,6 +62,9 @@ type DeliverableFileResponse = {
     fileType: FileType
     uploadedAt: string
     isDelete: boolean
+    status?: ReviewStatus
+    reviewStatus?: ReviewStatus
+    fileStatus?: ReviewStatus
 }
 
 type FileSlot = {
@@ -96,167 +100,6 @@ const fileSlots: FileSlot[] = [
     },
 ]
 
-const mockPackages: ClientSubmissionPackage[] = [
-    {
-        packageId: "pkg-3",
-        version: 3,
-        submittedAt: "Jun 23, 02:30 PM",
-        downloadUrl: "#",
-        files: [
-            {
-                fileId: "src-3",
-                fileType: "SOURCE_CODE",
-                fileName: "ai-chatbot-source-v3.zip",
-                fileSize: "18.4 MB",
-                uploadedAt: "Jun 23, 02:30 PM",
-                downloadUrl: "#",
-                status: "PENDING",
-                fileMimeType: "application/zip",
-                previewUrl: "#",
-            },
-            {
-                fileId: "doc-3",
-                fileType: "DOCUMENT",
-                fileName: "technical-document-v3.pdf",
-                fileSize: "2.8 MB",
-                uploadedAt: "Jun 23, 02:31 PM",
-                downloadUrl: "#",
-                status: "PENDING",
-                fileMimeType: "application/pdf",
-                previewUrl: "#",
-            },
-            {
-                fileId: "vid-3",
-                fileType: "VIDEO",
-                fileName: "demo-video-v3.mp4",
-                fileSize: "42.1 MB",
-                uploadedAt: "Jun 23, 02:32 PM",
-                downloadUrl: "#",
-                status: "PENDING",
-                fileMimeType: "video/mp4",
-                previewUrl: "#",
-            },
-            {
-                fileId: "data-3",
-                fileType: "DATASET",
-                fileName: "training-dataset-v3.csv",
-                fileSize: "9.7 MB",
-                uploadedAt: "Jun 23, 02:33 PM",
-                downloadUrl: "#",
-                status: "PENDING",
-                fileMimeType: "text/csv",
-                previewUrl: "#",
-            },
-        ],
-    },
-    {
-        packageId: "pkg-2",
-        version: 2,
-        submittedAt: "Jun 21, 10:15 AM",
-        downloadUrl: "#",
-        files: [
-            {
-                fileId: "src-2",
-                fileType: "SOURCE_CODE",
-                fileName: "ai-chatbot-source-v2.zip",
-                fileSize: "16.2 MB",
-                uploadedAt: "Jun 21, 10:15 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "application/zip",
-                previewUrl: "#",
-            },
-            {
-                fileId: "doc-2",
-                fileType: "DOCUMENT",
-                fileName: "technical-document-v2.pdf",
-                fileSize: "2.3 MB",
-                uploadedAt: "Jun 21, 10:16 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "application/pdf",
-                previewUrl: "#",
-            },
-            {
-                fileId: "vid-2",
-                fileType: "VIDEO",
-                fileName: "demo-video-v2.mp4",
-                fileSize: "39.5 MB",
-                uploadedAt: "Jun 21, 10:18 AM",
-                downloadUrl: "#",
-                status: "REJECTED",
-                fileMimeType: "video/mp4",
-                previewUrl: "#",
-            },
-            {
-                fileId: "data-2",
-                fileType: "DATASET",
-                fileName: "training-dataset-v2.csv",
-                fileSize: "8.9 MB",
-                uploadedAt: "Jun 21, 10:20 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "text/csv",
-                previewUrl: "#",
-            },
-        ],
-    },
-    {
-        packageId: "pkg-1",
-        version: 1,
-        submittedAt: "Jun 19, 09:00 AM",
-        downloadUrl: "#",
-        files: [
-            {
-                fileId: "src-1",
-                fileType: "SOURCE_CODE",
-                fileName: "ai-chatbot-source-v1.zip",
-                fileSize: "14.8 MB",
-                uploadedAt: "Jun 19, 09:00 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "application/zip",
-                previewUrl: "#",
-            },
-            {
-                fileId: "doc-1",
-                fileType: "DOCUMENT",
-                fileName: "technical-document-v1.pdf",
-                fileSize: "1.9 MB",
-                uploadedAt: "Jun 19, 09:02 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "application/pdf",
-                previewUrl: "#",
-            },
-            {
-                fileId: "vid-1",
-                fileType: "VIDEO",
-                fileName: "demo-video-v1.mp4",
-                fileSize: "35.2 MB",
-                uploadedAt: "Jun 19, 09:04 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "video/mp4",
-                previewUrl: "#",
-            },
-            {
-                fileId: "data-1",
-                fileType: "DATASET",
-                fileName: "training-dataset-v1.csv",
-                fileSize: "7.5 MB",
-                uploadedAt: "Jun 19, 09:05 AM",
-                downloadUrl: "#",
-                status: "APPROVED",
-                fileMimeType: "text/csv",
-                previewUrl: "#",
-            },
-        ],
-    },
-]
-
-
-
 function getStatusClass(status: ReviewStatus) {
     if (status === "APPROVED") {
         return "bg-emerald-50 text-emerald-600"
@@ -275,8 +118,13 @@ export function ClientProjectSubmissionPanel({
     const [packages, setPackages] = useState<ClientSubmissionPackage[]>([])
 
     const [openHistoryModal, setOpenHistoryModal] = useState(false)
+    const [mounted, setMounted] = useState(false)
 
     const [selectedHistoryPackageId, setSelectedHistoryPackageId] = useState("")
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
 
     const getSubmissionPackagesByWorkspace = async () => {
         const accessToken = localStorage.getItem("accessToken")
@@ -332,8 +180,14 @@ export function ClientProjectSubmissionPanel({
         return "application/octet-stream"
     }
 
+    function getFileStatus(file: DeliverableFileResponse) {
+        return file.status ?? file.reviewStatus ?? file.fileStatus ?? "PENDING"
+    }
+
     useEffect(() => {
         if (!workspaceId) return
+
+        let cancelled = false
 
         const fetchPackagesWithFiles = async () => {
             try {
@@ -342,12 +196,12 @@ export function ClientProjectSubmissionPanel({
                 const sortedPackages = [...packageResponses].sort(
                     (a, b) => b.version - a.version
                 )
-                console.log("Packages by workspace:", sortedPackages)
 
                 const packagesWithFiles = await Promise.all(
                     sortedPackages.map(async (item) => {
-                        const fileResponses = await getDeliverableFilesByPackage(item.packageId)
-                        console.log("Files of package", item.version, item.packageId, fileResponses)
+                        const fileResponses = await getDeliverableFilesByPackage(
+                            item.packageId
+                        )
 
                         const files: ClientDeliverableFile[] = fileResponses
                             .filter((file) => !file.isDelete)
@@ -360,10 +214,7 @@ export function ClientProjectSubmissionPanel({
                                 downloadUrl: file.fileUrl,
                                 previewUrl: file.fileUrl,
                                 fileMimeType: getMimeTypeFromFileName(file.fileName),
-                                status:
-                                    item.status === "APPROVED" || item.status === "REJECTED"
-                                        ? item.status
-                                        : "PENDING",
+                                status: getFileStatus(file),
                             }))
 
                         return {
@@ -376,14 +227,52 @@ export function ClientProjectSubmissionPanel({
                     })
                 )
 
+                if (cancelled) return
+
                 setPackages(packagesWithFiles)
-                setSelectedHistoryPackageId(packagesWithFiles[0]?.packageId ?? "")
+
+                setSelectedHistoryPackageId((currentPackageId) => {
+                    if (
+                        currentPackageId &&
+                        packagesWithFiles.some(
+                            (item) => item.packageId === currentPackageId
+                        )
+                    ) {
+                        return currentPackageId
+                    }
+
+                    return packagesWithFiles[0]?.packageId ?? ""
+                })
+
+                setPreviewFile((currentPreviewFile) => {
+                    if (!currentPreviewFile) return currentPreviewFile
+
+                    const freshPreviewFile = packagesWithFiles
+                        .flatMap((item) => item.files)
+                        .find((file) => file.fileId === currentPreviewFile.fileId)
+
+                    return freshPreviewFile ?? currentPreviewFile
+                })
             } catch (error) {
                 console.error("Load client submission packages failed:", error)
             }
         }
 
         fetchPackagesWithFiles()
+
+        const intervalId = window.setInterval(fetchPackagesWithFiles, 2000)
+
+        const handleFocus = () => {
+            fetchPackagesWithFiles()
+        }
+
+        window.addEventListener("focus", handleFocus)
+
+        return () => {
+            cancelled = true
+            window.clearInterval(intervalId)
+            window.removeEventListener("focus", handleFocus)
+        }
     }, [workspaceId])
 
     const [previewFile, setPreviewFile] =
@@ -667,202 +556,207 @@ export function ClientProjectSubmissionPanel({
                 </div>
             </aside>
 
-            {openHistoryModal && (
-                <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
-                    <div className="flex max-h-[88vh] w-full max-w-[780px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-                            <div>
-                                <h3 className="text-xl font-semibold text-slate-900">
-                                    Package History
-                                </h3>
-                                <p className="mt-1 text-sm text-slate-500">
-                                    Choose a version to view its submitted files.
-                                </p>
-                            </div>
-
-                            <button
-                                type="button"
-                                onClick={() => setOpenHistoryModal(false)}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
-
-                        <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-6">
-                            <div className="w-[170px] shrink-0 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                                <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                                    Versions
-                                </p>
-
-                                <div className="flex flex-col gap-2">
-                                    {packages.map((item) => {
-                                        const isSelected =
-                                            item.packageId === selectedHistoryPackageId
-
-                                        return (
-                                            <button
-                                                key={item.packageId}
-                                                type="button"
-                                                onClick={() =>
-                                                    setSelectedHistoryPackageId(item.packageId)
-                                                }
-                                                className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left transition ${isSelected
-                                                    ? "border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[var(--primary)]"
-                                                    : "border-slate-100 bg-white text-slate-600 hover:border-[var(--primary)]/30"
-                                                    }`}
-                                            >
-                                                <span className="text-sm font-semibold">
-                                                    v{item.version}
-                                                </span>
-                                                <PackageCheck className="h-4 w-4" />
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4">
-                                <div className="mb-4 flex items-center justify-between gap-3">
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-slate-800">
-                                            {selectedHistoryPackage
-                                                ? `Version ${selectedHistoryPackage.version} files`
-                                                : "Version files"}
-                                        </h4>
-
-                                        <p className="mt-0.5 text-xs text-slate-400">
-                                            {selectedHistoryPackage?.submittedAt ??
-                                                "Select a version to view files."}
-                                        </p>
-                                    </div>
-
-                                </div>
-
-                                {!selectedHistoryPackage ? (
-                                    <div className="flex min-h-[260px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
-                                        No version selected.
-                                    </div>
-                                ) : (
-                                    <div className="max-h-[460px] overflow-y-auto pr-1">
-                                        <div className="flex flex-col gap-3">
-                                            {fileSlots.map((slot) => {
-                                                const file =
-                                                    selectedHistoryPackage.files.find(
-                                                        (item) => item.fileType === slot.type
-                                                    )
-
-                                                if (!file) return null
-
-                                                return renderFileCard(
-                                                    file,
-                                                    slot,
-                                                    selectedHistoryPackage.packageId,
-                                                    false
-                                                )
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {previewFile && (
-                <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/35 px-4">
-                    <div className="flex max-h-[88vh] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
-                        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-                            <div className="flex min-w-0 items-center gap-3">
-                                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                    {previewFile.fileMimeType.startsWith("image/") ? (
-                                        <ImageIcon className="h-5 w-5" />
-                                    ) : previewFile.fileMimeType.startsWith("video/") ? (
-                                        <Video className="h-5 w-5" />
-                                    ) : (
-                                        <FileText className="h-5 w-5" />
-                                    )}
-                                </span>
-
-                                <div className="min-w-0">
-                                    <h3 className="truncate text-lg font-semibold text-slate-900">
-                                        {previewFile.fileName}
+            {mounted &&
+                openHistoryModal &&
+                createPortal(
+                    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
+                        <div className="relative z-[100000] flex max-h-[88vh] w-full max-w-[780px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+                                <div>
+                                    <h3 className="text-xl font-semibold text-slate-900">
+                                        Package History
                                     </h3>
-                                    <p className="text-xs text-slate-400">
-                                        {previewFile.fileSize} · {previewFile.uploadedAt}
+                                    <p className="mt-1 text-sm text-slate-500">
+                                        Choose a version to view its submitted files.
                                     </p>
                                 </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenHistoryModal(false)}
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
                             </div>
 
-                            <button
-                                type="button"
-                                onClick={() => setPreviewFile(null)}
-                                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors duration-150 hover:bg-slate-200"
-                            >
-                                <X className="h-5 w-5" />
-                            </button>
-                        </div>
+                            <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-6">
+                                <div className="w-[170px] shrink-0 rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                        Versions
+                                    </p>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-6">
-                            {previewFile.fileMimeType.startsWith("image/") && (
-                                <div className="flex justify-center">
-                                    <img
-                                        src={previewFile.previewUrl}
-                                        alt={previewFile.fileName}
-                                        loading="lazy"
-                                        className="max-h-[60vh] max-w-full rounded-2xl object-contain shadow-sm"
-                                    />
+                                    <div className="flex flex-col gap-2">
+                                        {packages.map((item) => {
+                                            const isSelected =
+                                                item.packageId === selectedHistoryPackageId
+
+                                            return (
+                                                <button
+                                                    key={item.packageId}
+                                                    type="button"
+                                                    onClick={() =>
+                                                        setSelectedHistoryPackageId(item.packageId)
+                                                    }
+                                                    className={`flex items-center justify-between rounded-xl border px-3 py-2 text-left transition ${isSelected
+                                                        ? "border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[var(--primary)]"
+                                                        : "border-slate-100 bg-white text-slate-600 hover:border-[var(--primary)]/30"
+                                                        }`}
+                                                >
+                                                    <span className="text-sm font-semibold">
+                                                        v{item.version}
+                                                    </span>
+                                                    <PackageCheck className="h-4 w-4" />
+                                                </button>
+                                            )
+                                        })}
+                                    </div>
                                 </div>
-                            )}
 
-                            {previewFile.fileMimeType.startsWith("video/") && (
-                                <video
-                                    src={previewFile.previewUrl}
-                                    controls
-                                    className="max-h-[60vh] w-full rounded-2xl bg-black"
-                                />
-                            )}
+                                <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4">
+                                    <div className="mb-4 flex items-center justify-between gap-3">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-slate-800">
+                                                {selectedHistoryPackage
+                                                    ? `Version ${selectedHistoryPackage.version} files`
+                                                    : "Version files"}
+                                            </h4>
 
-                            {previewFile.fileMimeType === "application/pdf" && (
-                                <iframe
-                                    src={previewFile.previewUrl}
-                                    title={previewFile.fileName}
-                                    className="h-[60vh] w-full rounded-2xl border border-slate-200 bg-white"
-                                />
-                            )}
-
-                            {!previewFile.fileMimeType.startsWith("image/") &&
-                                !previewFile.fileMimeType.startsWith("video/") &&
-                                previewFile.fileMimeType !== "application/pdf" && (
-                                    <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
-                                        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                            <FileText className="h-8 w-8" />
+                                            <p className="mt-0.5 text-xs text-slate-400">
+                                                {selectedHistoryPackage?.submittedAt ??
+                                                    "Select a version to view files."}
+                                            </p>
                                         </div>
+                                    </div>
 
-                                        <h4 className="mt-4 text-base font-semibold text-slate-900">
-                                            Preview is not available
-                                        </h4>
+                                    {!selectedHistoryPackage ? (
+                                        <div className="flex min-h-[260px] items-center justify-center rounded-xl bg-slate-50 text-sm text-slate-500">
+                                            No version selected.
+                                        </div>
+                                    ) : (
+                                        <div className="max-h-[460px] overflow-y-auto pr-1">
+                                            <div className="flex flex-col gap-3">
+                                                {fileSlots.map((slot) => {
+                                                    const file =
+                                                        selectedHistoryPackage.files.find(
+                                                            (item) => item.fileType === slot.type
+                                                        )
 
-                                        <p className="mt-2 max-w-[420px] text-sm leading-relaxed text-slate-500">
-                                            This file type cannot be previewed directly in
-                                            the browser. You can still download this file.
+                                                    if (!file) return null
+
+                                                    return renderFileCard(
+                                                        file,
+                                                        slot,
+                                                        selectedHistoryPackage.packageId,
+                                                        false
+                                                    )
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>,
+                    document.body
+                )}
+
+            {mounted &&
+                previewFile &&
+                createPortal(
+                    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-slate-950/35 px-4">
+                        <div className="relative z-[100000] flex max-h-[88vh] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+                            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                        {previewFile.fileMimeType.startsWith("image/") ? (
+                                            <ImageIcon className="h-5 w-5" />
+                                        ) : previewFile.fileMimeType.startsWith("video/") ? (
+                                            <Video className="h-5 w-5" />
+                                        ) : (
+                                            <FileText className="h-5 w-5" />
+                                        )}
+                                    </span>
+
+                                    <div className="min-w-0">
+                                        <h3 className="truncate text-lg font-semibold text-slate-900">
+                                            {previewFile.fileName}
+                                        </h3>
+                                        <p className="text-xs text-slate-400">
+                                            {previewFile.fileSize} · {previewFile.uploadedAt}
                                         </p>
                                     </div>
-                                )}
-                        </div>
+                                </div>
 
-                        <div className="border-t border-slate-100 p-5">
-                            <div className="text-xs text-slate-400">
-                                File type:{" "}
-                                <span className="font-medium text-slate-600">
-                                    {previewFile.fileMimeType || "Unknown"}
-                                </span>
+                                <button
+                                    type="button"
+                                    onClick={() => setPreviewFile(null)}
+                                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors duration-150 hover:bg-slate-200"
+                                >
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50 p-6">
+                                {previewFile.fileMimeType.startsWith("image/") && (
+                                    <div className="flex justify-center">
+                                        <img
+                                            src={previewFile.previewUrl}
+                                            alt={previewFile.fileName}
+                                            loading="lazy"
+                                            className="max-h-[60vh] max-w-full rounded-2xl object-contain shadow-sm"
+                                        />
+                                    </div>
+                                )}
+
+                                {previewFile.fileMimeType.startsWith("video/") && (
+                                    <video
+                                        src={previewFile.previewUrl}
+                                        controls
+                                        className="max-h-[60vh] w-full rounded-2xl bg-black"
+                                    />
+                                )}
+
+                                {previewFile.fileMimeType === "application/pdf" && (
+                                    <iframe
+                                        src={previewFile.previewUrl}
+                                        title={previewFile.fileName}
+                                        className="h-[60vh] w-full rounded-2xl border border-slate-200 bg-white"
+                                    />
+                                )}
+
+                                {!previewFile.fileMimeType.startsWith("image/") &&
+                                    !previewFile.fileMimeType.startsWith("video/") &&
+                                    previewFile.fileMimeType !== "application/pdf" && (
+                                        <div className="flex min-h-[300px] flex-col items-center justify-center rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center">
+                                            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--primary)]/10 text-[var(--primary)]">
+                                                <FileText className="h-8 w-8" />
+                                            </div>
+
+                                            <h4 className="mt-4 text-base font-semibold text-slate-900">
+                                                Preview is not available
+                                            </h4>
+
+                                            <p className="mt-2 max-w-[420px] text-sm leading-relaxed text-slate-500">
+                                                This file type cannot be previewed directly in
+                                                the browser. You can still download this file.
+                                            </p>
+                                        </div>
+                                    )}
+                            </div>
+
+                            <div className="border-t border-slate-100 p-5">
+                                <div className="text-xs text-slate-400">
+                                    File type:{" "}
+                                    <span className="font-medium text-slate-600">
+                                        {previewFile.fileMimeType || "Unknown"}
+                                    </span>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            )}
+                    </div>,
+                    document.body
+                )}
         </>
     )
 }

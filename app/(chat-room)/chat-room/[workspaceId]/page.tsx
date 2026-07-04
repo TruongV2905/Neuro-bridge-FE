@@ -89,15 +89,16 @@ export default function ChatRoomPage() {
   }
 
   return (
-    <div className="relative min-h-screen bg-[#eaf3ff]">
-      <div className="fixed inset-x-0 top-0 z-0 h-40 bg-gradient-to-b from-[#eef5ff] via-[#f7fbff] to-transparent" />
+    <div className="relative h-screen overflow-hidden bg-[#eaf3ff]">
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-0 h-40 bg-[#eaf3ff]" />
 
-      <div className="fixed inset-x-0 top-0 z-10 h-24 bg-indigo-950/15 backdrop-blur-xl border-b border-white/20" />
+      <div className="pointer-events-none fixed inset-x-0 top-0 z-[1] h-24 border-b border-white/30 bg-[#eaf3ff]/90 backdrop-blur-xl" />
 
-      <Header />
-
-      <main className="relative z-10 px-4 pb-6 pt-24">
-        <div className="mx-auto mt-4 flex h-[calc(100vh-128px)] max-w-[1600px] gap-4 min-h-0">
+      <div className="relative z-50">
+        <Header />
+      </div>
+      <main className="relative z-10 h-screen overflow-hidden px-4 pb-6 pt-32">
+        <div className="mx-auto flex h-[calc(100vh-152px)] min-h-0 max-w-[1600px] gap-4">
           <section className="flex flex-1 max-w-[2000px] min-w-0 overflow-hidden rounded-2xl border border-white/70 bg-white/95 backdrop-blur-sm shadow-md transition-all">
             <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
               <ChatHeader user={realChatPartner} />

@@ -15,7 +15,7 @@ export function JobPostProgressSidebar({ step, progress }: Props) {
   const reduceMotion = useReducedMotion();
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[320px] shrink-0 flex-col border-r border-slate-100/80 bg-gradient-to-b from-white via-white to-indigo-50/30 px-7 py-8 pt-28 shadow-[4px_0_40px_rgba(99,102,241,0.04)]">
+    <aside className="sticky top-0 flex h-screen w-[320px] shrink-0 flex-col border-r border-slate-100/80 bg-gradient-to-b from-white via-white to-indigo-50/30 px-7 py-3 shadow-[4px_0_40px_rgba(99,102,241,0.04)]">
       <div className="mb-10">
         <div className="mb-3 flex items-center justify-between">
           <p className="text-xs font-bold tracking-[0.25em] text-slate-400">
@@ -142,12 +142,6 @@ export function JobPostProgressSidebar({ step, progress }: Props) {
       </div>
 
       <div className="mt-auto space-y-5 pt-8">
-        <button
-          type="button"
-          className="w-full rounded-xl border border-transparent py-2.5 text-sm font-semibold text-slate-500 transition-all duration-300 hover:-translate-y-0.5 hover:border-indigo-100 hover:bg-white hover:text-indigo-600 hover:shadow-[0_8px_24px_rgba(99,102,241,0.14)] active:translate-y-0"
-        >
-          Save Draft
-        </button>
 
         <div className="rounded-2xl border border-indigo-100/80 bg-gradient-to-br from-indigo-50 to-violet-50/50 p-5 shadow-sm">
           <div className="mb-3 flex items-center justify-between">

@@ -47,6 +47,11 @@ export const useGetSkillById = createQueryHook<SkillResponse>(
   `${SKILL_ENDPOINT}/:id`,
 );
 
+export const useGetSkillsByIds = createMutationHook<SkillResponse[], number[]>({
+  url: `${SKILL_ENDPOINT}/by-list-ids`,
+  method: "POST",
+});
+
 export const useGetAllSkillsForAdmin = createQueryHook<
   PageResponse<SkillResponse>
 >(skillKeys.admin, `${SKILL_ENDPOINT}/admin`);

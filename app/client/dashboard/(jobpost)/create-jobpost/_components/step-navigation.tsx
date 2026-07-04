@@ -1,22 +1,16 @@
 "use client";
 
-import { ArrowLeft, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import type { CreateJobPostStep } from "@/types/job-post.type";
 
 type Props = {
   step: CreateJobPostStep;
   canContinue: boolean;
-  onBack: () => void;
   onContinue: () => void;
 };
 
-export function StepNavigation({
-  step,
-  canContinue,
-  onBack,
-  onContinue,
-}: Props) {
+export function StepNavigation({ step, canContinue, onContinue }: Props) {
   const scrollToTop = () => {
     requestAnimationFrame(() => {
       window.scrollTo({
@@ -26,31 +20,13 @@ export function StepNavigation({
     });
   };
 
-  const handleBack = () => {
-    onBack();
-    scrollToTop();
-  };
-
   const handleContinue = () => {
     onContinue();
     scrollToTop();
   };
 
   return (
-    <div className="mt-10 flex max-w-3xl items-center justify-between">
-      <motion.button
-        type="button"
-        onClick={handleBack}
-        disabled={step === 1}
-        whileHover={step !== 1 ? { scale: 1.02, x: -2 } : undefined}
-        whileTap={step !== 1 ? { scale: 0.98 } : undefined}
-        transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-        className="flex items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-6 py-3 font-medium text-slate-600 shadow-sm transition-all duration-300 hover:border-indigo-200 hover:shadow-[0_4px_20px_rgba(99,102,241,0.1)] disabled:pointer-events-none disabled:opacity-0"
-      >
-        <ArrowLeft size={16} />
-        Back
-      </motion.button>
-
+    <div className="mt-10 flex max-w-3xl items-center justify-end gap-4">
       <div className="flex items-center gap-2">
         {[1, 2, 3, 4].map((item) => (
           <motion.div

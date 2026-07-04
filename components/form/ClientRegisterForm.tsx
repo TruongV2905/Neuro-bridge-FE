@@ -3,12 +3,8 @@
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import {
-  CalendarIcon,
-  Eye,
-  EyeOff,
-} from "lucide-react";
-import { Controller, useForm,useWatch  } from "react-hook-form";
+import { CalendarIcon, Eye, EyeOff } from "lucide-react";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "react-toastify";
 
@@ -29,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Textarea } from "@/components/ui/textarea";
 import {
   RegisterClientFormValues,
@@ -43,10 +38,6 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import moment from "moment";
 import { useRouter } from "next/navigation";
-
-const isFile = (value: unknown) => {
-  return typeof File !== "undefined" && value instanceof File;
-};
 
 function ClientRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -73,7 +64,7 @@ function ClientRegisterForm() {
   const navigate = useRouter();
   const fullName = useWatch({
     control,
-    name: "fullName"
+    name: "fullName",
   });
 
   useEffect(() => {
@@ -100,7 +91,7 @@ function ClientRegisterForm() {
 
   const onSubmit = async (data: RegisterClientFormValues) => {
     try {
-      const { confirmPassword, avatarUrl, ...rest } = data;
+      const { avatarUrl } = data;
 
       let uploadedAvatarUrl = "";
 
@@ -111,7 +102,16 @@ function ClientRegisterForm() {
       }
 
       const payload: RegisterClientPayload = {
-        ...rest,
+        fullName: data.fullName,
+        gender: data.gender,
+        address: data.address,
+        dateOfBirth: data.dateOfBirth,
+        phone: data.phone,
+        email: data.email,
+        password: data.password,
+        companyName: data.companyName,
+        industry: data.industry,
+        companyDescription: data.companyDescription,
         avatarUrl: uploadedAvatarUrl,
       };
 
@@ -120,12 +120,10 @@ function ClientRegisterForm() {
         {
           onSuccess: (response) => {
             toast.success(response.result || "Client registered successfully!");
-             reset();
-             navigate.push("/login");
-            console.log("Register client response:", response);
+            reset();
+            navigate.push("/login");
           },
           onError: (error) => {
-            console.error("Register client failed:", error);
             toast.error(
               error?.response?.data?.message ||
                 "Register client failed. Please try again.",
@@ -133,8 +131,7 @@ function ClientRegisterForm() {
           },
         },
       );
-    } catch (error) {
-      console.error("Register client error:", error);
+    } catch {
       toast.error("Something went wrong. Please try again.");
     }
   };
@@ -522,9 +519,12 @@ function ClientRegisterForm() {
       <Button
         type="button"
         onClick={handleSubmit(onSubmit)}
+        disabled={registerClientMutation.isPending}
         className="h-12 w-full rounded-xl bg-primary text-sm font-medium text-white shadow-md hover:bg-[#4562f0]"
       >
-        Register Client
+        {registerClientMutation.isPending
+          ? "Registering..."
+          : "Register Client"}
       </Button>
 
       <div className="flex items-center justify-end gap-2 pt-0.5 text-[11px]">

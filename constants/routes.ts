@@ -1,0 +1,15 @@
+export const ROUTES = {
+  HOME: "/",
+  LOGIN: "/login",
+  REGISTER: "/register",
+  PROFILE: "/profile",
+  EXPERT_PROFILE: "/expert-profile",
+  EXPERTS: "/experts",
+  AVAILABLE_AI: "/availableAI",
+  DASHBOARD: "/dashboard",
+  CHAT_ROOM: (workspaceId: string) => `/chat-room/${workspaceId}`,
+  CLIENT_JOBPOSTS: "/client/jobposts",
+  EXPERT_JOBPOSTS: "/expert/jobposts",
+  EXPERT_JOBPOST_DETAIL: (id: string) => `/expert/jobposts/${id}`,
+  EXPERT_MY_PROPOSALS: "/expert/proposals",
+} as const;

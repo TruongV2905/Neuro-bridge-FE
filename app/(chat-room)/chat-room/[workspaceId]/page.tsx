@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSelector } from "react-redux"
+import { toast } from "react-toastify"
 
 import Header from "@/components/layout/Header"
 import type { RootState } from "@/redux/store"
 import { UserRole } from "@/types/user/user.type"
 import type { UserResponse } from "@/types/user/user.type"
 import type { ChatUser } from "@/types/chat.types"
+import { getInitialsAvatar } from "@/constants/assets"
 
 import { useWorkspaceDetail } from "@/services/workspace.service"
 import {
@@ -24,16 +26,8 @@ import { ChatMessage } from "../_components/ChatMessage"
 import { ChatProfilePanel } from "../_components/ChatProfilePanel"
 import { chatMedia, chatMessages } from "../_data/mock-chat-room"
 
-const defaultAvatar =
-  "https://api.dicebear.com/9.x/initials/svg?seed=User"
-
-function getAvatarUrl(avatarUrl?: string | null, name = "User") {
-  return avatarUrl?.trim()
-    ? avatarUrl
-    : `https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(
-      name
-    )}`
-}
+const getAvatarUrl = (avatarUrl?: string | null, name = "User") =>
+  avatarUrl?.trim() ? avatarUrl : getInitialsAvatar(name)
 
 export default function ChatRoomPage() {
   const params = useParams()
@@ -52,8 +46,9 @@ export default function ChatRoomPage() {
 
     getWorkspaceMembers(workspaceId)
       .then(setMembers)
-      .catch((error) => {
-        console.error("Get workspace members failed:", error)
+      .catch(() => {
+        toast.error("Failed to load workspace members.")
+        setMembers([])
       })
   }, [workspaceId])
 

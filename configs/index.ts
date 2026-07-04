@@ -1,11 +1,5 @@
-import { userConfig } from "@/modules/users/user.config";
-import { UserForm } from "@/modules/users/forms/UserForm";
+export {
+  dashboardRegister as crudModules,
+} from "@/modules/dashboard-register";
 
-export const crudModules = {
-  users: {
-    config: userConfig,
-    Form: UserForm,
-  },
-};
-
-export type CrudModuleKey = keyof typeof crudModules;
+export type { DashboardEntity as CrudModuleKey } from "@/modules/dashboard-register";

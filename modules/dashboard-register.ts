@@ -5,6 +5,7 @@ import { userConfig } from "@/modules/users/user.config";
 import { useUserCrud } from "@/modules/users/useUserCrud";
 
 import type { User } from "@/types/user/user.type";
+import type { UserSchema } from "@/schemas/user.schema";
 import { useSkillCrud } from "./skills/useSkillCrud";
 import { skillConfig } from "./skills/skill.config";
 import { SkillSchema } from "@/schemas/skill.schema";
@@ -22,7 +23,7 @@ export const dashboardRegister = {
   users: {
     config: userConfig,
     useCrud: useUserCrud,
-  } satisfies DashboardCrudModule<User>,
+  } satisfies DashboardCrudModule<User, UserSchema>,
   skills: {
     config: skillConfig,
     useCrud: useSkillCrud,

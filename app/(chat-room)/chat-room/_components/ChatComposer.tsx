@@ -11,7 +11,6 @@ export function ChatComposer() {
   const handleSend = () => {
     if (!message.trim()) return
 
-    console.log("Send message:", message)
     setMessage("")
   }
 
@@ -51,7 +50,6 @@ export function ChatComposer() {
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (!file) return
-            console.log("Selected image:", file)
           }}
         />
 
@@ -62,7 +60,6 @@ export function ChatComposer() {
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (!file) return
-            console.log("Selected file:", file)
           }}
         />
 

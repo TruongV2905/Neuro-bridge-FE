@@ -4,6 +4,7 @@ import { useCallback, useEffect } from "react";
 import { Camera, UploadCloud, X } from "lucide-react";
 import { useDropzone, type FileRejection } from "react-dropzone";
 import type { FieldError as RHFFieldError } from "react-hook-form";
+import { toast } from "react-toastify";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
@@ -51,7 +52,7 @@ function AvatarDropzoneField({
     const firstError = fileRejections[0]?.errors[0];
 
     if (firstError) {
-      console.error(firstError.message);
+      toast.error(firstError.message);
     }
   }, []);
 

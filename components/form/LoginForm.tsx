@@ -19,6 +19,9 @@ import { toast } from "react-toastify";
 import { useDispatch } from "react-redux";
 import { login } from "@/redux/features/userSlice";
 import { useRouter } from "next/navigation";
+import { STORAGE_KEYS } from "@/constants/storage";
+import { ROUTES } from "@/constants/routes";
+
 function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const loginMutation = useLoginMutation();
@@ -33,20 +36,18 @@ function LoginForm() {
   });
 
   const onSubmit = (data: LoginFormValues) => {
-    console.log("Login data:", data);
     loginMutation.mutate(
       { data },
       {
         onSuccess: (response) => {
-          toast.success("Login successful! Welcome back.");
           const { refreshToken, accessToken, ...userData } = response.result;
-          localStorage.setItem("accessToken", accessToken || "");
-          localStorage.setItem("refreshToken", refreshToken || "");
+          localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, accessToken || "");
+          localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, refreshToken || "");
           dispatch(login(userData));
-          router.push("/");
+          toast.success("Login successful! Welcome back.");
+          router.push(ROUTES.HOME);
         },
         onError: (error) => {
-          console.error("Login failed:", error);
           toast.error(
             error?.response?.data?.message || "Login failed. Please try again.",
           );

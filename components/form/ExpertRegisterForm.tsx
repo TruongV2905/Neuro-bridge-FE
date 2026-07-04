@@ -48,7 +48,7 @@ import { useRouter } from "next/navigation";
 import { useInfiniteGetAllSkills } from "@/services/skill.service";
 import { MultiSelect, MultiSelectOption } from "../ui/multi-select";
 import { useDebounce } from "@/hooks/useDebounce";
-import { SkillResponse } from "@/types/skill.types";
+import type { SkillResponse } from "@/types/skill.types";
 
 function ExpertRegisterForm() {
   const [showPassword, setShowPassword] = useState(false);
@@ -85,7 +85,7 @@ function ExpertRegisterForm() {
 
   const skillOptions = useMemo<MultiSelectOption[]>(() => {
     const skills =
-      skillsQuery.data?.pages.flatMap((page: any) => page.result.data) ?? [];
+      skillsQuery.data?.pages.flatMap((page) => page.result.data) ?? [];
 
     const skillMap = new Map<number, SkillResponse>();
 
@@ -125,7 +125,7 @@ function ExpertRegisterForm() {
 
   const onSubmit = async (data: RegisterExpertFormValues) => {
     try {
-      const { confirmPassword, avatarUrl, ...rest } = data;
+      const { avatarUrl } = data;
 
       let uploadedAvatarUrl = "";
 
@@ -136,7 +136,14 @@ function ExpertRegisterForm() {
       }
 
       const payload: RegisterExpertPayload = {
-        ...rest,
+        fullName: data.fullName,
+        gender: data.gender,
+        address: data.address,
+        dateOfBirth: data.dateOfBirth,
+        phone: data.phone,
+        email: data.email,
+        password: data.password,
+        skillIds: data.skillIds,
         avatarUrl: uploadedAvatarUrl,
       };
 
@@ -147,10 +154,8 @@ function ExpertRegisterForm() {
             toast.success(response.result || "Expert registered successfully!");
             reset();
             navigate.push("/login");
-            console.log("Register expert response:", response);
           },
           onError: (error) => {
-            console.error("Register expert failed:", error);
             toast.error(
               error?.response?.data?.message ||
                 "Register expert failed. Please try again.",
@@ -158,8 +163,7 @@ function ExpertRegisterForm() {
           },
         },
       );
-    } catch (error) {
-      console.error("Register expert error:", error);
+    } catch {
       toast.error("Something went wrong. Please try again.");
     }
   };

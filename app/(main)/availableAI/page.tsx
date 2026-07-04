@@ -19,7 +19,15 @@ export default function AvailableAIPage() {
         {availableAIData.map((item) => (
           <AvailableAICard
             key={item.id}
-            data={item}
+            name={item.name}
+            status={item.status}
+            type={item.type}
+            successScore={item.successScore}
+            description={item.description}
+            techStacks={item.techStacks}
+            author={item.author}
+            budget={item.budget}
+            hasGlow={item.hasGlow}
             onViewDetails={() => {
               setSelectedAI(item)
               setOpenDetail(true)

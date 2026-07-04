@@ -1,42 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
 import Link from "next/link"
-import { useSelector } from "react-redux"
-
+import { UserRole } from "@/types/user/user.type"
 import PageWrapper from "@/components/common/PageWrapper"
-import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user"
-import { getUserByCode } from "@/services/user-api"
+import { useGetUserByCode } from "@/services/user.service"
 
 const EXPERT_CODE = "EXP-OYPHF0XKD8"
+const DEFAULT_EXPERT_AVATAR = "/images/expert-avatar.png"
 
 export default function ExpertsPage() {
-  const currentUser = useSelector(
-    (state: RootState) => state.user
-  ) as UserResponse | null
-
-  const [expert, setExpert] = useState<UserResponse | null>(null)
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    async function fetchExpert() {
-      try {
-        const token =
-          currentUser?.accessToken || localStorage.getItem("accessToken")
-
-        const data = await getUserByCode(EXPERT_CODE, token)
-        setExpert(data)
-      } catch (error) {
-        console.error("Fetch expert error:", error)
-        setExpert(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchExpert()
-  }, [currentUser?.accessToken])
+  const { data, isLoading, isError } = useGetUserByCode({ code: EXPERT_CODE })
+  const expert = data?.result ?? null
 
   return (
     <main className="min-h-screen bg-gray-50 px-4 pb-12 pt-24 sm:px-6 lg:px-8">
@@ -45,11 +19,11 @@ export default function ExpertsPage() {
           title="Thuê Chuyên Gia AI"
           description="Tìm kiếm và hợp tác với những chuyên gia hàng đầu trong lĩnh vực Trí tuệ nhân tạo."
         >
-          {loading ? (
+          {isLoading ? (
             <div className="mt-8 rounded-2xl border border-gray-100 bg-white p-6 text-sm text-gray-500">
               Đang tải danh sách expert...
             </div>
-          ) : !expert ? (
+          ) : isError || !expert ? (
             <div className="mt-8 rounded-2xl border border-gray-100 bg-white p-6 text-sm text-red-500">
               Không tải được expert.
             </div>
@@ -58,7 +32,7 @@ export default function ExpertsPage() {
               <div className="flex flex-col rounded-2xl border border-gray-100 bg-white p-6 shadow-sm transition-all hover:shadow-md">
                 <div className="mb-4 flex items-center gap-4">
                   <img
-                    src={expert.avatarUrl || "/images/expert-avatar.png"}
+                    src={expert.avatarUrl || DEFAULT_EXPERT_AVATAR}
                     alt={expert.fullName}
                     className="h-16 w-16 rounded-full border-2 border-indigo-50 object-cover"
                   />
@@ -68,7 +42,7 @@ export default function ExpertsPage() {
                       {expert.fullName}
                     </h3>
                     <p className="text-sm font-medium text-indigo-600">
-                      {expert.role === "EXPERT" ? "AI Expert" : expert.role}
+                      {expert.role === UserRole.EXPERT ? "AI Expert" : expert.role}
                     </p>
                   </div>
                 </div>

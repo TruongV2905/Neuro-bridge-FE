@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
-  DialogRoot,
+  Dialog,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -92,7 +92,7 @@ export function AvailableAICardDetail({
   }
 
   return (
-    <DialogRoot
+    <Dialog
       open={open}
       onOpenChange={onOpenChange}
     >
@@ -565,6 +565,6 @@ export function AvailableAICardDetail({
           </div>
         </ScrollArea>
       </DialogContent>
-    </DialogRoot>
+    </Dialog>
   )
 }

@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query"
+import api from "@/configs/api"
 
 export type WorkspaceMember = {
   userId: string
@@ -22,22 +23,10 @@ export type WorkspaceDetail = {
 }
 
 export async function getWorkspaceDetail(workspaceId: string) {
-  const accessToken = localStorage.getItem("accessToken")
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/workspaces/${workspaceId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  const { data } = await api.get<WorkspaceDetail>(
+    `/workspace/api/v1/workspaces/${workspaceId}`
   )
-
-  if (!response.ok) {
-    throw new Error("Get workspace detail failed")
-  }
-
-  return response.json() as Promise<WorkspaceDetail>
+  return data
 }
 
 export function useWorkspaceDetail(workspaceId?: string) {

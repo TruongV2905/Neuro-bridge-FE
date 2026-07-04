@@ -1,3 +1,5 @@
+import api from "@/configs/api"
+
 export type WorkspaceMemberRole = "CLIENT" | "EXPERT"
 
 export type WorkspaceMember = {
@@ -7,23 +9,13 @@ export type WorkspaceMember = {
   role: WorkspaceMemberRole
 }
 
+type WorkspaceMembersResponse = {
+  result: WorkspaceMember[]
+}
+
 export async function getWorkspaceMembers(workspaceId: string) {
-  const accessToken = localStorage.getItem("accessToken")
-
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/workspace-members/workspace/${workspaceId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
+  const { data } = await api.get<WorkspaceMembersResponse>(
+    `/workspace/api/v1/workspace-members/workspace/${workspaceId}`
   )
-
-  if (!response.ok) {
-    throw new Error("Get workspace members failed")
-  }
-
-  const data = await response.json()
-
-  return data.result as WorkspaceMember[]
+  return data.result
 }

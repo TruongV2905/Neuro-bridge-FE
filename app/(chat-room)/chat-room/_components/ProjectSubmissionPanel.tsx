@@ -1,6 +1,8 @@
 "use client"
 import { supabase } from "@/lib/supabase"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { toast } from "react-toastify"
+import api from "@/configs/api"
 import { resubmitSubmissionPackage } from "@/services/submission-package.service"
 import {
     CheckCircle2,
@@ -193,7 +195,9 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
         return packageFileSlots.filter((slot) => draftFiles[slot.type]).length
     }, [draftFiles])
 
-    const latestFiles = latestPackage?.files ?? []
+    const latestFiles = useMemo(() => {
+        return latestPackage?.files ?? []
+    }, [latestPackage])
 
     const latestFileMap = useMemo(() => {
         return latestFiles.reduce<Partial<Record<FileType, DeliverableFile>>>(
@@ -204,6 +208,20 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
             {}
         )
     }, [latestFiles])
+
+    const getSubmissionPackagesByWorkspace = useCallback(async () => {
+        const { data } = await api.get<SubmissionPackageResponse[]>(
+            `/workspace/api/v1/submission-packages/workspaces/${workspaceId}`
+        )
+        return data
+    }, [workspaceId])
+
+    const getDeliverableFilesByPackage = useCallback(async (packageId: string) => {
+        const { data } = await api.get<DeliverableFileResponse[]>(
+            `/workspace/api/v1/deliverable-files/packages/${packageId}`
+        )
+        return data
+    }, [])
 
     useEffect(() => {
         if (!workspaceId) return
@@ -264,8 +282,8 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
                     return freshPreviewFile ?? currentPreviewFile
                 })
-            } catch (error) {
-                console.error("Load latest submission package failed:", error)
+            } catch {
+                toast.error("Failed to load latest submission package.")
             }
         }
 
@@ -284,7 +302,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
             window.clearInterval(intervalId)
             window.removeEventListener("focus", handleFocus)
         }
-    }, [workspaceId])
+    }, [getDeliverableFilesByPackage, getSubmissionPackagesByWorkspace, workspaceId])
 
     const handleChooseFile = (type: FileType) => {
         inputRefs.current[type]?.click()
@@ -307,11 +325,6 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     }
 
     const uploadFileToSupabase = async (type: FileType, file: File) => {
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log("Session:", session)
-        console.log("User:", session?.user)
-        console.log("Access token:", session?.access_token?.slice(0, 20))
-
         const bucket = "submission-files"
 
         const safeFileName = file.name
@@ -321,12 +334,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
         const filePath = `submission-packages/${type.toLowerCase()}/${crypto.randomUUID()}-${safeFileName}`
 
-        const { data: buckets, error: bucketError } =
-            await supabase.storage.listBuckets()
-        console.log("Buckets from client:", buckets)
-        console.log("Bucket list error:", bucketError)
-
-        const { data: uploadData, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from(bucket)
             .upload(filePath, file, {
                 cacheControl: "3600",
@@ -334,11 +342,8 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 contentType: file.type || "application/octet-stream",
             })
 
-        console.log("Upload data:", uploadData)
-        console.log("Upload error:", error)
-
         if (error) {
-            alert(`${error.name}: ${error.message}`)
+            toast.error(`Upload failed: ${error.message}`)
             throw error
         }
 
@@ -375,55 +380,11 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 ...prev,
                 [type]: uploadedFile,
             }))
-        } catch (error) {
-            console.error("Upload file failed:", error)
-            alert("Upload file failed. Please try again.")
+        } catch {
+            toast.error("Upload file failed. Please try again.")
         } finally {
             setUploadingType(null)
         }
-    }
-
-    const getSubmissionPackagesByWorkspace = async () => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        console.log(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`
-        )
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        )
-
-        if (!response.ok) {
-            throw new Error("Get submission packages failed")
-        }
-
-        return response.json() as Promise<SubmissionPackageResponse[]>
-    }
-
-    const getDeliverableFilesByPackage = async (packageId: string) => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/packages/${packageId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        )
-
-        if (!response.ok) {
-            throw new Error("Get deliverable files failed")
-        }
-
-        return response.json() as Promise<DeliverableFileResponse[]>
     }
 
     const handleSubmitPackage = async () => {
@@ -478,9 +439,8 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
             setDraftFiles({})
             setOpenModal(false)
-        } catch (error) {
-            console.error(error)
-            alert("Submit package failed. Please try again.")
+        } catch {
+            toast.error("Submit package failed. Please try again.")
         } finally {
             setSubmitting(false)
         }
@@ -500,25 +460,11 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
             })),
         }
 
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify(payload),
-            }
+        const { data } = await api.post(
+            `/workspace/api/v1/submission-packages`,
+            payload
         )
-
-        if (!response.ok) {
-            throw new Error("Submit package failed")
-        }
-
-        return response.json()
+        return data
     }
 
     const isEditMode = modalMode === "edit"

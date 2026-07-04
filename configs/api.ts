@@ -1,104 +1,113 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import axios, { AxiosError } from "axios";
+import axios, { AxiosError, AxiosResponse } from "axios";
 import type { InternalAxiosRequestConfig } from "axios";
 import { toast } from "react-toastify";
+import { STORAGE_KEYS } from "@/constants/storage";
+import { ROUTES } from "@/constants/routes";
 
-// Đối tượng chứa các hàm tiện ích để tránh dùng hook trực tiếp
+type RetryableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+};
+
+type ApiErrorPayload = {
+  message?: string;
+};
+
+type RefreshTokenResponse = {
+  result: {
+    token: string;
+    refreshToken: string;
+  };
+};
+
+type QueueItem = {
+  resolve: (token: string) => void;
+  reject: (error: unknown) => void;
+};
+
 const authUtils = {
   logout: () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    window.location.href = "/auth/login";
+    localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
+    window.location.href = ROUTES.LOGIN;
   },
 };
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
 });
-// Quản lý trạng thái refresh token
-let isRefreshing = false;
-let failedQueue: any[] = [];
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach((prom) => {
-    if (error) prom.reject(error);
-    else prom.resolve(token);
+let isRefreshing = false;
+let failedQueue: QueueItem[] = [];
+
+const processQueue = (error: unknown, token: string | null = null) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) reject(error);
+    else if (token) resolve(token);
   });
   failedQueue = [];
 };
 
-// 1. Request Interceptor
 api.interceptors.request.use(
-  (config: any) => {
-    const token = localStorage.getItem("accessToken");
+  (config) => {
+    const token = localStorage.getItem(STORAGE_KEYS.ACCESS_TOKEN);
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error: any) => Promise.reject(error),
+  (error) => Promise.reject(error),
 );
 
-// 2. Response Interceptor
 api.interceptors.response.use(
-  (response: any) => response,
-  async (error: AxiosError<any>) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
+  (response: AxiosResponse) => response,
+  async (error: AxiosError<ApiErrorPayload>) => {
+    const originalRequest = error.config as RetryableRequestConfig;
 
-    // Kiểm tra mã lỗi 401 (Unauthorized)
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // Nếu là lỗi "Expired token!" cụ thể từ server của bạn
-      if (error.response.data?.message === "Expired token!") {
-        if (isRefreshing) {
-          return new Promise((resolve, reject) => {
-            failedQueue.push({ resolve, reject });
-          })
-            .then((token) => {
-              originalRequest.headers.Authorization = `Bearer ${token}`;
-              return api(originalRequest);
-            })
-            .catch((err) => Promise.reject(err));
-        }
+    const isExpiredToken =
+      error.response?.status === 401 &&
+      !originalRequest._retry;
 
-        originalRequest._retry = true;
-        isRefreshing = true;
+    if (!isExpiredToken) return Promise.reject(error);
 
-        try {
-          const refreshToken = localStorage.getItem("refreshToken");
-          if (!refreshToken) throw new Error("No refresh token");
-
-          // Gọi API refresh token (Dùng axios instance mới để tránh loop interceptor)
-          const { data } = await axios.post(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/identity/auth/refresh`,
-            {
-              token: refreshToken,
-            },
-          );
-
-          const { token: newToken, refreshToken: newRefreshToken } =
-            data.result;
-
-          localStorage.setItem("accessToken", newToken);
-          localStorage.setItem("refreshToken", newRefreshToken);
-
-          processQueue(null, newToken);
-
-          originalRequest.headers.Authorization = `Bearer ${newToken}`;
+    if (isRefreshing) {
+      return new Promise<string>((resolve, reject) => {
+        failedQueue.push({ resolve, reject });
+      })
+        .then((token) => {
+          originalRequest.headers.Authorization = `Bearer ${token}`;
           return api(originalRequest);
-        } catch (refreshError) {
-          processQueue(refreshError, null);
-          toast.error("Session has expired!");
-          authUtils.logout();
-          return Promise.reject(refreshError);
-        } finally {
-          isRefreshing = false;
-        }
-      }
+        })
+        .catch((err) => Promise.reject(err));
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+    isRefreshing = true;
+
+    try {
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.REFRESH_TOKEN);
+      if (!refreshToken) throw new Error("No refresh token");
+
+      const { data } = await axios.post<RefreshTokenResponse>(
+        `${process.env.NEXT_PUBLIC_API_BASE_URL}/identity/auth/refresh`,
+        { token: refreshToken },
+      );
+
+      const { token: newToken, refreshToken: newRefreshToken } = data.result;
+
+      localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, newToken);
+      localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, newRefreshToken);
+
+      processQueue(null, newToken);
+      originalRequest.headers.Authorization = `Bearer ${newToken}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      processQueue(refreshError, null);
+      toast.error("Session has expired!");
+      authUtils.logout();
+      return Promise.reject(refreshError);
+    } finally {
+      isRefreshing = false;
+    }
   },
 );
 

@@ -76,6 +76,8 @@ export const registerClientSchema = baseRegisterSchema.extend({
 
 export type RegisterClientFormValues = z.infer<typeof registerClientSchema>;
 
+export type UserSchema = z.infer<typeof baseRegisterSchema>;
+
 export type RegisterClientPayload = Omit<
   RegisterClientFormValues,
   "confirmPassword"

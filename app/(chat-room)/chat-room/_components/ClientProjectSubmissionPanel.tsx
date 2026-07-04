@@ -1,6 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
+import { toast } from "react-toastify"
+import api from "@/configs/api"
 import {
     CheckCircle2,
     Code2,
@@ -279,43 +281,17 @@ export function ClientProjectSubmissionPanel({
     const [selectedHistoryPackageId, setSelectedHistoryPackageId] = useState("")
 
     const getSubmissionPackagesByWorkspace = async () => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
+        const { data } = await api.get<SubmissionPackageResponse[]>(
+            `/workspace/api/v1/submission-packages/workspaces/${workspaceId}`
         )
-
-        if (!response.ok) {
-            throw new Error("Get submission packages failed")
-        }
-
-        return response.json() as Promise<SubmissionPackageResponse[]>
+        return data
     }
 
     const getDeliverableFilesByPackage = async (packageId: string) => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/packages/${packageId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
+        const { data } = await api.get<DeliverableFileResponse[]>(
+            `/workspace/api/v1/deliverable-files/packages/${packageId}`
         )
-
-        if (!response.ok) {
-            throw new Error("Get deliverable files failed")
-        }
-
-        return response.json() as Promise<DeliverableFileResponse[]>
+        return data
     }
 
     function getMimeTypeFromFileName(fileName: string) {
@@ -342,12 +318,10 @@ export function ClientProjectSubmissionPanel({
                 const sortedPackages = [...packageResponses].sort(
                     (a, b) => b.version - a.version
                 )
-                console.log("Packages by workspace:", sortedPackages)
 
                 const packagesWithFiles = await Promise.all(
                     sortedPackages.map(async (item) => {
                         const fileResponses = await getDeliverableFilesByPackage(item.packageId)
-                        console.log("Files of package", item.version, item.packageId, fileResponses)
 
                         const files: ClientDeliverableFile[] = fileResponses
                             .filter((file) => !file.isDelete)
@@ -378,8 +352,8 @@ export function ClientProjectSubmissionPanel({
 
                 setPackages(packagesWithFiles)
                 setSelectedHistoryPackageId(packagesWithFiles[0]?.packageId ?? "")
-            } catch (error) {
-                console.error("Load client submission packages failed:", error)
+            } catch {
+                toast.error("Failed to load submission packages.")
             }
         }
 
@@ -427,9 +401,8 @@ export function ClientProjectSubmissionPanel({
                     }
                 })
             )
-        } catch (error) {
-            console.error("Review file failed:", error)
-            alert("Review file failed. Please try again.")
+        } catch {
+            toast.error("Review file failed. Please try again.")
         }
     }
 
@@ -437,32 +410,18 @@ export function ClientProjectSubmissionPanel({
         fileId: string,
         newStatus: ReviewStatus
     ) => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/review`,
+        const { data } = await api.patch(
+            `/workspace/api/v1/deliverable-files/review`,
             {
-                method: "PATCH",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify({
-                    fileId,
-                    newStatus,
-                    feedback:
-                        newStatus === "APPROVED"
-                            ? "Approved by client"
-                            : "Rejected by client",
-                }),
+                fileId,
+                newStatus,
+                feedback:
+                    newStatus === "APPROVED"
+                        ? "Approved by client"
+                        : "Rejected by client",
             }
         )
-
-        if (!response.ok) {
-            throw new Error("Review deliverable file failed")
-        }
-
-        return response.json()
+        return data
     }
 
     const renderFileCard = (

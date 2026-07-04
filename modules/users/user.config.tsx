@@ -1,10 +1,12 @@
 import type { CrudConfig } from "@/types/dasboard";
-import type { User } from "@/types/user/user.type";import { userColumns } from "./user.column";
+import type { User } from "@/types/user/user.type";
+import type { UserSchema } from "@/schemas/user.schema";
+import { userColumns } from "./user.column";
 import { userFilters } from "./user.filter";
 import { userCustomActions } from "./user.customAction";
 import { mockUsers } from "./user.mock";
 import UserView from "./user.view";
-export const userConfig: CrudConfig<User> = {
+export const userConfig: CrudConfig<User, UserSchema> = {
   entityName: "user",
   title: "User Management",
   description: "Manage Neuro Bridge users, roles, and account status",

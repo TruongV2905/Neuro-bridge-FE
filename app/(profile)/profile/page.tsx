@@ -1,9 +1,9 @@
-// src/app/profile/page.tsx
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { logout } from "@/redux/features/userSlice"
+import { toast } from "react-toastify"
+import { login, logout } from "@/redux/features/userSlice"
 import {
     User,
     Mail,
@@ -31,34 +31,45 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user/user.type"
+import { UserRole, type UserResponse } from "@/types/user/user.type"
+import {
+    useUpdateProfile,
+    type UpdateProfilePayload,
+} from "@/services/user.service"
+import { STORAGE_KEYS } from "@/constants/storage"
+import { ROUTES } from "@/constants/routes"
+import { DEFAULT_AVATAR } from "@/constants/assets"
 
 import { FormField } from "./_components/form-field"
 import { ReadOnlyItem } from "./_components/read-only-item"
 import { RoleSection } from "./_components/role-section"
 
-const defaultAvatar = "/thuongnhica.png"
+const buildUpdatePayload = (profile: UserResponse): UpdateProfilePayload => ({
+    fullName: profile.fullName,
+    email: profile.email,
+    phone: profile.phone,
+    address: profile.address,
+    avatarUrl: profile.avatarUrl,
+    gender: profile.gender,
+    dateOfBirth: profile.dateOfBirth,
+    companyName: profile.companyName,
+    industry: profile.industry,
+    companyDescription: profile.companyDescription,
+})
 
 export default function ProfilePage() {
     const reduxUser = useSelector(
         (state: RootState) => state.user
     ) as UserResponse | null
 
-    console.log("reduxUser profile:", reduxUser)
-
     const dispatch = useDispatch()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const updateProfileMutation = useUpdateProfile()
 
     const [profile, setProfile] = useState<UserResponse | null>(reduxUser)
     const [avatar, setAvatar] = useState(
-        reduxUser?.avatarUrl || defaultAvatar
+        reduxUser?.avatarUrl || DEFAULT_AVATAR
     )
-
-    useEffect(() => {
-        setProfile(reduxUser)
-        setAvatar(reduxUser?.avatarUrl || defaultAvatar)
-    }, [reduxUser])
-
 
     const handleAvatarClick = () => {
         fileInputRef.current?.click()
@@ -74,38 +85,51 @@ export default function ProfilePage() {
         reader.onloadend = () => {
             const imageUrl = reader.result as string
             setAvatar(imageUrl)
+            setProfile((prev) => (prev ? { ...prev, avatarUrl: imageUrl } : prev))
         }
 
         reader.readAsDataURL(file)
     }
 
-    const updateProfile = (field: keyof UserResponse, value: string) => {
-        setProfile((prev: UserResponse | null) => {
-            if (!prev) return prev
-
-            return {
-                ...prev,
-                [field]: value,
-            }
-        })
+    const updateProfileField = (field: keyof UserResponse, value: string) => {
+        setProfile((prev) => (prev ? { ...prev, [field]: value } : prev))
     }
 
     const handleCancel = () => {
         setProfile(reduxUser)
-        setAvatar(reduxUser?.avatarUrl || defaultAvatar)
+        setAvatar(reduxUser?.avatarUrl || DEFAULT_AVATAR)
     }
 
     const handleSave = () => {
-        console.log("Saved client profile:", profile)
+        if (!profile) return
+
+        updateProfileMutation.mutate(
+            {
+                pathParams: { code: profile.code },
+                data: buildUpdatePayload(profile),
+            },
+            {
+                onSuccess: (response) => {
+                    dispatch(login(response.result))
+                    setProfile(response.result)
+                    setAvatar(response.result.avatarUrl || DEFAULT_AVATAR)
+                    toast.success("Profile updated successfully.")
+                },
+                onError: (error) => {
+                    toast.error(
+                        error?.response?.data?.message ||
+                        "Failed to update profile. Please try again."
+                    )
+                },
+            }
+        )
     }
 
     const handleLogout = () => {
         dispatch(logout())
-
-        localStorage.removeItem("accessToken")
-        localStorage.removeItem("refreshToken")
-
-        window.location.href = "/login"
+        localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN)
+        localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN)
+        window.location.href = ROUTES.LOGIN
     }
 
     if (!profile) {
@@ -119,7 +143,8 @@ export default function ProfilePage() {
         )
     }
 
-    const isClient = profile.role === "CLIENT"
+    const isClient = profile.role === UserRole.CLIENT
+    const isSaving = updateProfileMutation.isPending
 
     return (
         <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
@@ -220,14 +245,14 @@ export default function ProfilePage() {
                                         icon={<User size={16} />}
                                         label="Full Name"
                                         value={profile.fullName}
-                                        onChange={(value) => updateProfile("fullName", value)}
+                                        onChange={(value) => updateProfileField("fullName", value)}
                                     />
 
                                     <FormField
                                         icon={<Mail size={16} />}
                                         label="Email Address"
                                         value={profile.email || "No email"}
-                                        onChange={(value) => updateProfile("email", value)}
+                                        onChange={(value) => updateProfileField("email", value)}
                                     />
                                 </div>
 
@@ -236,14 +261,14 @@ export default function ProfilePage() {
                                         icon={<Phone size={16} />}
                                         label="Phone Number"
                                         value={profile.phone || "No phone"}
-                                        onChange={(value) => updateProfile("phone", value)}
+                                        onChange={(value) => updateProfileField("phone", value)}
                                     />
 
                                     <FormField
                                         icon={<MapPin size={16} />}
                                         label="Address"
                                         value={profile.address || "No address"}
-                                        onChange={(value) => updateProfile("address", value)}
+                                        onChange={(value) => updateProfileField("address", value)}
                                     />
                                 </div>
                             </div>
@@ -302,6 +327,7 @@ export default function ProfilePage() {
 
                             <Button
                                 onClick={handleSave}
+                                disabled={isSaving}
                                 className="
     h-11
     min-w-[150px]
@@ -314,9 +340,10 @@ export default function ProfilePage() {
     text-xs
     font-bold
     text-white
+    disabled:opacity-60
   "
                             >
-                                Save Changes
+                                {isSaving ? "Saving..." : "Save Changes"}
                             </Button>
                         </div>
                     </div>
@@ -349,14 +376,14 @@ export default function ProfilePage() {
                                 icon={<Building2 size={16} />}
                                 label="Company Name"
                                 value={profile.companyName || ""}
-                                onChange={(value) => updateProfile("companyName", value)}
+                                onChange={(value) => updateProfileField("companyName", value)}
                             />
 
                             <FormField
                                 icon={<BriefcaseBusiness size={16} />}
                                 label="Operating Industry"
                                 value={profile.industry || ""}
-                                onChange={(value) => updateProfile("industry", value)}
+                                onChange={(value) => updateProfileField("industry", value)}
                             />
 
                             <div className="md:col-span-2">
@@ -365,7 +392,7 @@ export default function ProfilePage() {
                                     label="Company Core Description"
                                     value={profile.companyDescription || ""}
                                     onChange={(value) =>
-                                        updateProfile("companyDescription", value)
+                                        updateProfileField("companyDescription", value)
                                     }
                                 />
                             </div>

@@ -1,16 +1,20 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { BadgeCheck, Camera, Star } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type { UserResponse } from "@/types/user"
-import { SkillApiItem } from "@/services/skill-api"
+import type { User, UserResponse } from "@/types/user/user.type"
+import { UserStatus } from "@/types/user/user.type"
+import type { SkillResponse } from "@/types/skill.types"
+import { STORAGE_KEYS } from "@/constants/storage"
+
+const DEFAULT_EXPERT_AVATAR = "/images/expert-avatar.png"
 
 type ExpertProfileHeaderProps = {
-  expert: UserResponse
-  skills: SkillApiItem[]
+  expert: User | UserResponse
+  skills: SkillResponse[]
   editable?: boolean
 }
 
@@ -19,29 +23,19 @@ export function ExpertProfileHeader({
   skills,
   editable = false,
 }: ExpertProfileHeaderProps) {
-  const defaultAvatar = "/images/expert-avatar.png"
+  const [avatar, setAvatar] = useState(() => {
+    if (editable && typeof window !== "undefined") {
+      return (
+        localStorage.getItem(STORAGE_KEYS.EXPERT_AVATAR) ||
+        expert.avatarUrl ||
+        DEFAULT_EXPERT_AVATAR
+      )
+    }
 
-  const [avatar, setAvatar] = useState(
-    expert.avatarUrl || defaultAvatar
-  )
+    return expert.avatarUrl || DEFAULT_EXPERT_AVATAR
+  })
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!editable) {
-      setAvatar(expert.avatarUrl || defaultAvatar)
-      return
-    }
-
-    const savedAvatar = localStorage.getItem("expert-avatar")
-
-    if (savedAvatar) {
-      setAvatar(savedAvatar)
-      return
-    }
-
-    setAvatar(expert.avatarUrl || defaultAvatar)
-  }, [expert.avatarUrl, editable])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -58,14 +52,14 @@ export function ExpertProfileHeader({
     reader.onloadend = () => {
       const base64Image = reader.result as string
       setAvatar(base64Image)
-      localStorage.setItem("expert-avatar", base64Image)
+      localStorage.setItem(STORAGE_KEYS.EXPERT_AVATAR, base64Image)
       window.dispatchEvent(new Event("avatar-updated"))
     }
 
     reader.readAsDataURL(file)
   }
 
-  const legitScore = expert.status === "ACTIVE" ? 95 : 60
+  const legitScore = expert.status === UserStatus.ACTIVE ? 95 : 60
   const rating = 5
 
   return (

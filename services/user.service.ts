@@ -1,4 +1,4 @@
-import type { User, UserFilterRequest } from "@/types/user/user.type";
+import type { User, UserFilterRequest, UserResponse } from "@/types/user/user.type";
 import {
   createMutationHook,
   createPostQueryHook,
@@ -12,7 +12,24 @@ export const userKeys = {
   all: ["users"],
   filter: ["users", "filter"],
   detail: ["users", "detail"],
+  profile: ["users", "profile"],
 };
+
+export type UpdateProfilePayload = Partial<
+  Pick<
+    UserResponse,
+    | "fullName"
+    | "email"
+    | "phone"
+    | "address"
+    | "avatarUrl"
+    | "gender"
+    | "dateOfBirth"
+    | "companyName"
+    | "industry"
+    | "companyDescription"
+  >
+>;
 
 export const useFilterUsers = createPostQueryHook<
   PageResponse<User>,
@@ -29,3 +46,12 @@ export const useGetUserByCode = createQueryHook<User>(
   userKeys.detail,
   `${USER_ENDPOINT}/:code`,
 );
+
+export const useUpdateProfile = createMutationHook<
+  UserResponse,
+  UpdateProfilePayload
+>({
+  url: `${USER_ENDPOINT}/:code`,
+  method: "PUT",
+  queryKeyToInvalidate: [userKeys.detail, userKeys.profile],
+});

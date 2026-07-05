@@ -2,11 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation"; 
-import { 
-  Users, 
-  Briefcase, 
-  Cpu, 
-  LineChart, 
+import {
+  Users,
+  Cpu,
+  LineChart,
   Settings,
   HelpCircle,
   FolderOpen,

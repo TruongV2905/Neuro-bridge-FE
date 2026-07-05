@@ -51,6 +51,7 @@ export type UserFilterRequest = PageRequest & {
 };
 
 export interface UserResponse {
+  id: string;
   code: string;
   fullName: string;
   gender: UserGender | null;

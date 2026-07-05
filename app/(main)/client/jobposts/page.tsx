@@ -382,7 +382,7 @@ function ClientJobPostCard({
         />
       </div>
 
-      <div className="mt-5 flex flex-wrap gap-2 border-t pt-4">
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
         <Button
           type="button"
           variant={jobPost.status === JobPostStatus.PUBLIC ? "outline" : "default"}
@@ -401,6 +401,13 @@ function ClientJobPostCard({
               Công khai
             </>
           )}
+        </Button>
+
+        <Button asChild size="sm" variant="secondary">
+          <Link href={ROUTES.CLIENT_JOBPOST_DETAIL(jobPost.id)}>
+            <Users className="h-3.5 w-3.5" />
+            Xem ứng viên ({applicantCount})
+          </Link>
         </Button>
       </div>
     </article>

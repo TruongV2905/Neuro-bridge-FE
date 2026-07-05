@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD: "/dashboard",
   CHAT_ROOM: (workspaceId: string) => `/chat-room/${workspaceId}`,
   CLIENT_JOBPOSTS: "/client/jobposts",
+  CLIENT_JOBPOST_DETAIL: (id: string) => `/client/jobposts/${id}`,
   EXPERT_JOBPOSTS: "/expert/jobposts",
   EXPERT_JOBPOST_DETAIL: (id: string) => `/expert/jobposts/${id}`,
   EXPERT_MY_PROPOSALS: "/expert/proposals",

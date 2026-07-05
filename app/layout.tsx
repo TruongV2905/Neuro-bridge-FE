@@ -29,7 +29,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("h-full", "antialiased", roboto.variable, archivoBlack.variable, "font-sans", geist.variable)}>
+    <html
+      lang="en"
+      className={cn("h-full", "antialiased", roboto.variable, archivoBlack.variable, "font-sans", geist.variable)}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body className="min-h-screen font-sans">
         <AppProvider>{children}</AppProvider>
       </body>

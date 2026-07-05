@@ -23,6 +23,7 @@ import { UserResponse, UserRole } from "@/types/user/user.type";
 import { logout } from "@/redux/features/userSlice";
 import { STORAGE_KEYS } from "@/constants/storage";
 import { ROUTES } from "@/constants/routes";
+import NotificationBell from "@/components/notification/NotificationBell";
 
 const NAV_LINKS = [
   { label: "Home", path: ROUTES.HOME },
@@ -127,7 +128,8 @@ export default function Header() {
       </nav>
 
       {/* Tool / Auth - right */}
-      <div className="flex items-center justify-end gap-4 justify-self-end">
+      <div className="flex items-center justify-end gap-3 justify-self-end">
+        {currentUser?.id && <NotificationBell userId={currentUser.id} />}
         {currentUser ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -211,6 +213,24 @@ export default function Header() {
                 >
                   <Link
                     href={ROUTES.CLIENT_JOBPOSTS}
+                    className="flex items-center gap-3"
+                  >
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB]">
+                      <BriefcaseBusiness className="h-4 w-4" />
+                    </span>
+
+                    <span>Job posts</span>
+                  </Link>
+                </DropdownMenuItem>
+              )}
+
+              {currentUser.role === UserRole.EXPERT && (
+                <DropdownMenuItem
+                  asChild
+                  className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-[#0A0D17] outline-none transition-colors focus:bg-transparent focus:text-[#0A0D17] data-[highlighted]:bg-transparent data-[highlighted]:text-[#0A0D17]"
+                >
+                  <Link
+                    href={ROUTES.EXPERT_JOBPOSTS}
                     className="flex items-center gap-3"
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB]">

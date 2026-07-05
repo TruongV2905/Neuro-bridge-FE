@@ -11,9 +11,21 @@ import {
   PURGE,
   REGISTER,
 } from "redux-persist";
-import storage from "redux-persist/lib/storage";
+import createWebStorage from "redux-persist/lib/storage/createWebStorage";
+import type { WebStorage } from "redux-persist/lib/types";
 
 import userReducer from "./features/userSlice";
+
+const createNoopStorage = (): WebStorage => ({
+  getItem: () => Promise.resolve(null),
+  setItem: () => Promise.resolve(),
+  removeItem: () => Promise.resolve(),
+});
+
+const storage =
+  typeof window !== "undefined"
+    ? createWebStorage("local")
+    : createNoopStorage();
 
 const rootReducer = combineReducers({
   user: userReducer,

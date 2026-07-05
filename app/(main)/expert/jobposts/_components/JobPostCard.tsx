@@ -30,7 +30,7 @@ export default function JobPostCard({ jobPost, skillNameById }: Props) {
   const extraCount = requiredSkills.length - previewSkills.length;
 
   return (
-    <Card className="h-full transition-shadow hover:shadow-md">
+    <Card className="flex h-full flex-col transition-shadow hover:shadow-md">
       <CardHeader>
         <CardTitle className="text-lg font-semibold text-foreground line-clamp-2">
           {jobPost.title}
@@ -40,7 +40,7 @@ export default function JobPostCard({ jobPost, skillNameById }: Props) {
         </CardDescription>
       </CardHeader>
 
-      <CardContent className="space-y-3">
+      <CardContent className="flex-1 space-y-3">
         <div className="flex flex-wrap gap-2">
           {previewSkills.length === 0 ? (
             <span className="text-xs text-muted-foreground">
@@ -70,10 +70,10 @@ export default function JobPostCard({ jobPost, skillNameById }: Props) {
         </div>
       </CardContent>
 
-      <CardFooter className="justify-between">
+      <CardFooter className="mt-auto justify-between gap-3">
         <span className="text-xs text-muted-foreground">
           {jobPost.expertApplyCodes?.length ?? 0} chuyên gia đã ứng tuyển
-        </span>
+        </span> 
         <Button asChild size="sm">
           <Link href={ROUTES.EXPERT_JOBPOST_DETAIL(jobPost.id)}>
             Xem &amp; Ứng tuyển

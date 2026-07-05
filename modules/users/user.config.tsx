@@ -4,7 +4,6 @@ import type { UserSchema } from "@/schemas/user.schema";
 import { userColumns } from "./user.column";
 import { userFilters } from "./user.filter";
 import { userCustomActions } from "./user.customAction";
-import { mockUsers } from "./user.mock";
 import UserView from "./user.view";
 export const userConfig: CrudConfig<User, UserSchema> = {
   entityName: "user",

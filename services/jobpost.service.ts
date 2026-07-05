@@ -32,7 +32,7 @@ const buildJobPostQuery = (params?: JobPostFilterRequest) => {
 
   const filter = params?.filter;
   if (filter) {
-    if (filter.creatorId) search.set("filter.creatorId", filter.creatorId);
+    if (filter.creatorCode) search.set("filter.creatorCode", filter.creatorCode);
     if (filter.minBudget != null)
       search.set("filter.minBudget", String(filter.minBudget));
     if (filter.maxBudget != null)

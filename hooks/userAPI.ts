@@ -241,13 +241,14 @@ export const createInfiniteQueryHook = <TItem = unknown>(
     const baseKey = toQueryKey(queryKey);
 
     const {
-      page: _page,
+      page: _pageIgnored,
       size = 20,
       search = "",
       sortBy = "createdAt",
       direction = "ASCENDING",
       ...restParams
     } = params ?? {};
+    void _pageIgnored;
 
     return useInfiniteQuery<
       APIResponse<PageResponse<TItem>>,

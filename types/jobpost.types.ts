@@ -30,7 +30,7 @@ export interface JobPostRequest {
 }
 
 export interface SubJobPostFilterRequest {
-  creatorId?: string;
+  creatorCode?: string;
   requiredSkillIds?: number[];
   preferredSkillIds?: number[];
   minBudget?: number;

@@ -11,7 +11,6 @@ import {
 
 import {
   SidebarGroup,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -19,9 +18,11 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
+import { cn } from "@/lib/utils";
 
 export function NavMain({
   items,
+  className,
 }: {
   items: {
     title: string;
@@ -33,19 +34,26 @@ export function NavMain({
       url: string;
     }[];
   }[];
+  className?: string;
 }) {
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
-
-      <SidebarMenu>
+      <SidebarMenu className="gap-1 px-2">
         {items.map((item) => {
           const hasSubItems = item.items && item.items.length > 0;
 
           if (!hasSubItems) {
             return (
               <SidebarMenuItem key={item.title}>
-                <SidebarMenuButton asChild tooltip={item.title}>
+                <SidebarMenuButton
+                  asChild
+                  tooltip={item.title}
+                  size="lg"
+                  className={cn(
+                    "h-11 rounded-xl px-3 text-sm font-semibold transition-all duration-200 [&_svg]:size-5!",
+                    className,
+                  )}
+                >
                   <Link href={item.url}>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
@@ -64,11 +72,18 @@ export function NavMain({
             >
               <SidebarMenuItem>
                 <CollapsibleTrigger asChild>
-                  <SidebarMenuButton tooltip={item.title}>
+                  <SidebarMenuButton
+                    tooltip={item.title}
+                    size="lg"
+                    className={cn(
+                      "h-11 rounded-xl px-3 text-sm font-semibold transition-all duration-200 [&_svg]:size-5!",
+                      className,
+                    )}
+                  >
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
 
-                    <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                    <ChevronRight className="ml-auto size-4! transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                   </SidebarMenuButton>
                 </CollapsibleTrigger>
 

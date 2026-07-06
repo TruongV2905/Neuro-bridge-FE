@@ -1,4 +1,4 @@
-import { AvailableAICard } from "@/components/cards/AvailableAICard"
+import { AvailableAICard } from "@/features/available-ai"
 import type { HomepageActivity } from "@/types/homepage"
 import { GradientCtaLink } from "./HomepagePrimitives"
 

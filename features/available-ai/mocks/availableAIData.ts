@@ -1,4 +1,4 @@
-import { AvailableAI } from "@/types/available-ai"
+import type { AvailableAI } from "../types"
 
 export const availableAIData: AvailableAI[] = [
     {

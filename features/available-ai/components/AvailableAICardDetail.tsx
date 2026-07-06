@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
-  DialogRoot,
+  Dialog as DialogRoot,
   DialogContent,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -22,7 +22,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   AvailableAI,
   AIStatus,
-} from "@/types/available-ai"
+} from "../types"
 import { StatCard } from "@/components/shared/StatCard"
 
 interface AvailableAICardDetailProps {
@@ -100,6 +100,10 @@ export function AvailableAICardDetail({
         className="
         flex flex-col
 
+        w-[calc(100vw-2rem)]
+        sm:!max-w-[720px]
+        lg:!max-w-[820px]
+
         overflow-hidden
 
         rounded-[28px]
@@ -117,7 +121,7 @@ export function AvailableAICardDetail({
         shadow-[0_25px_80px_rgba(0,0,0,0.45)]
         "
       >
-        <ScrollArea className="max-h-[90vh]">
+        <ScrollArea className="h-[90vh] max-h-[90vh]">
           <div className="p-5 sm:p-6">
 
             {/* Header */}

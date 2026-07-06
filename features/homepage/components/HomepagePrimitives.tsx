@@ -37,7 +37,7 @@ export function GradientCtaLink({
       variant={"default"}
       size="cta"
       className={cn(
-        "bg-linear-to-r from-[#5470ff] to-[#fc38da] text-white transition-transform duration-300 hover:-translate-y-0.5 hover:brightness-105",
+        "h-14 gap-2 rounded-full bg-linear-to-r from-[#5470ff] to-[#fc38da] px-8 text-base font-bold text-white transition-transform duration-300 hover:-translate-y-0.5 hover:brightness-105 sm:h-16 sm:px-10 [&_svg:not([class*='size-'])]:size-5",
         className,
       )}
     >

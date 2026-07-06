@@ -54,4 +54,4 @@ function AuthFormTransition({ children }: AuthFormTransitionProps) {
   );
 }
 
-export default AuthFormTransition;
+export { AuthFormTransition };

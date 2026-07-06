@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 
-import AvatarDropzoneField from "../fields/AvatarDropzoneField";
+import AvatarDropzoneField from "@/components/fields/AvatarDropzoneField";
 
 import {
   RegisterExpertFormValues,
@@ -46,7 +46,7 @@ import { uploadFile } from "@/utils/uploadFile";
 import { useRegisterExpertMutation } from "@/services/authentication.service";
 import { useRouter } from "next/navigation";
 import { useInfiniteGetAllSkills } from "@/services/skill.service";
-import { MultiSelect, MultiSelectOption } from "../ui/multi-select";
+import { MultiSelect, MultiSelectOption } from "@/components/ui/multi-select";
 import { useDebounce } from "@/hooks/useDebounce";
 import { SkillResponse } from "@/types/skill.types";
 

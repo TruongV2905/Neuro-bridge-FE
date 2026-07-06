@@ -36,11 +36,11 @@ import {
   RegisterClientPayload,
   registerClientSchema,
 } from "@/schemas/user.schema";
-import AvatarDropzoneField from "../fields/AvatarDropzoneField";
+import AvatarDropzoneField from "@/components/fields/AvatarDropzoneField";
 import { useRegisterClientMutation } from "@/services/authentication.service";
 import { uploadFile } from "@/utils/uploadFile";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Calendar } from "../ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import moment from "moment";
 import { useRouter } from "next/navigation";
 

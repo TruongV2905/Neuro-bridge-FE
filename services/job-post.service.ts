@@ -1,6 +1,7 @@
-import { createMutationHook } from "@/hooks/userAPI";
-import { JobPostAnalyzeResponse } from "@/types/job-post.type";
+import { createMutationHook, createQueryHook } from "@/hooks/userAPI";
+import { JobPostAnalyzeRequest, JobPostAnalyzeResponse, JobPostListItem, RecommendExpertsRequest } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
+import type { PageRequest, PageResponse } from "@/types/common.starter";
 
 const JOB_POST_ENDPOINT = "/jobpost/job-post";
 const SKILL_ENDPOINT = "/identity/skill";
@@ -9,20 +10,9 @@ export const jobPostKeys = {
   all: ["job-posts"],
   analyze: ["job-posts", "analyze"],
   recommendExperts: ["job-posts", "recommend-experts"],
+  clientList: ["job-posts", "client", "list"],
 };
 
-export type JobPostAnalyzeRequest = {
-  title: string;
-  description: string;
-  budgetFrom: number;
-  budgetTo: number;
-  estimatedDays: number;
-};
-
-export type RecommendExpertsRequest = JobPostAnalyzeRequest & {
-  requiredSkillIds: number[];
-  preferredSkillIds: number[];
-};
 
 export const useAnalyzeJobPost = createMutationHook<
   JobPostAnalyzeResponse,
@@ -53,3 +43,7 @@ export const useCreateJobPost = createMutationHook<unknown, CreateJobPostPayload
   url: JOB_POST_ENDPOINT,
   method: "POST",
 });
+
+export const useGetClientJobPosts = createQueryHook<
+  PageResponse<JobPostListItem>
+>(jobPostKeys.clientList, `${JOB_POST_ENDPOINT}/client`);

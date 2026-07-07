@@ -7,22 +7,21 @@ import {
   activities,
   articles,
   benefits,
-  groups,
 } from "./data/homepage"
 import AboutSection from "./components/AboutSection"
 import ActivitiesSection from "./components/SolutionSection"
-import BenefitsSection from "./components/TeamsSection"
-import BlogSection from "./components/InsightSection"
-import GroupsSection from "./components/GroupsSection"
+import BenefitsSection from "./components/BenefitsSection"
 import HeroSection from "./components/HeroSection"
 import HomepageFooter from "./components/HomepageFooter"
 import HomepageMotion from "./components/HomepageMotion"
+import InsightsSection from "./components/InsightsSection"
+import ProjectJourneySection from "./components/ProjectJourneySection"
 
 const navItems: NavDotItem[] = [
   { id: "home", label: "Home" },
   { id: "about", label: "About" },
   { id: "activities", label: "AI Solutions" },
-  { id: "groups", label: "Teams" },
+  { id: "groups", label: "Project Journey" },
   { id: "benefits", label: "Benefits" },
   { id: "blog", label: "Insights" },
 ]
@@ -42,13 +41,13 @@ export function HomepageView() {
         <ActivitiesSection activities={activities} />
       </AppWrap>
       <AppWrap id="groups">
-        <GroupsSection groups={groups} />
+        <ProjectJourneySection />
       </AppWrap>
       <AppWrap id="benefits">
         <BenefitsSection benefits={benefits} />
       </AppWrap>
       <AppWrap id="blog">
-        <BlogSection articles={articles} />
+        <InsightsSection articles={articles} />
       </AppWrap>
       <HomepageFooter />
     </HomepageMotion>

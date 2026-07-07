@@ -173,26 +173,6 @@ export default function ProjectJourneySection() {
             })}
           </div>
         </div>
-
-        <div
-          data-reveal
-          className="mt-12 flex flex-col items-stretch gap-4 rounded-[24px] border border-white/10 bg-white/[0.055] p-4 backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between sm:p-5"
-        >
-          <p className="px-2 text-sm font-semibold text-slate-300 sm:text-base">
-            Ready to turn a rough AI idea into a project experts can scope?
-          </p>
-          <div className="flex flex-col gap-3 sm:flex-row">
-            <GradientCtaLink href="/client/dashboard/create-job-post" className="min-w-[190px]">
-              Create AI Brief
-            </GradientCtaLink>
-            <Link
-              href="/availableAI"
-              className="inline-flex h-14 items-center justify-center rounded-full border border-[#7ca2ff]/35 px-8 text-sm font-bold text-white transition-all duration-300 hover:-translate-y-0.5 hover:border-[#fc38da]/50 hover:bg-white/10 sm:h-16"
-            >
-              Explore AI Solutions
-            </Link>
-          </div>
-        </div>
       </div>
     </section>
   )

@@ -187,6 +187,10 @@
     scroll-behavior: smooth;
   }
 
+  [id] {
+    scroll-margin-top: 110px;
+  }
+
   body {
     @apply font-sans bg-background text-foreground;
   }

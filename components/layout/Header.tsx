@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { type MouseEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
@@ -23,12 +23,18 @@ import { UserResponse } from "@/types/user/user.type";
 import { logout } from "@/redux/features/userSlice";
 
 const NAV_LINKS = [
-  { label: "Home", path: "/" },
-  { label: "AI Models", path: "/availableAI" },
-  { label: "AI Experts", path: "/experts" },
-  { label: "Benefits", path: "/#benefits" },
-  { label: "Insights", path: "/#blog" },
-];
+  { label: "Home", path: "/#home", sectionId: "home" },
+  { label: "AI Models", path: "/#activities", sectionId: "activities" },
+  { label: "Benefits", path: "/#benefits", sectionId: "benefits" },
+  { label: "Insights", path: "/#blog", sectionId: "blog" },
+] as const;
+
+type NavSectionId = (typeof NAV_LINKS)[number]["sectionId"];
+
+const HEADER_HIDE_THRESHOLD = 140;
+const HEADER_SOLID_THRESHOLD = 40;
+const HEADER_TOP_VISIBLE_DISTANCE = 80;
+const ACTIVE_SECTION_OFFSET = 140;
 
 export default function Header() {
   const pathname = usePathname();
@@ -40,6 +46,11 @@ export default function Header() {
   ) as UserResponse | null;
 
   const [headerAvatar, setHeaderAvatar] = useState<string | null>(null);
+  const [activeSectionId, setActiveSectionId] =
+    useState<NavSectionId | null>("home");
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const [isHeaderHidden, setIsHeaderHidden] = useState(false);
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
 
   useEffect(() => {
     const updateAvatar = () => {
@@ -55,6 +66,79 @@ export default function Header() {
       window.removeEventListener("avatar-updated", updateAvatar);
     };
   }, [currentUser?.avatarUrl]);
+
+  useEffect(() => {
+    let lastScrollY = window.scrollY;
+    let animationFrameId: number | null = null;
+
+    const updateActiveSection = (scrollY: number) => {
+      if (pathname !== "/") {
+        setActiveSectionId(null);
+        return;
+      }
+
+      let currentSectionId: NavSectionId = "home";
+      const activationPoint = scrollY + ACTIVE_SECTION_OFFSET;
+
+      for (const link of NAV_LINKS) {
+        const section = document.getElementById(link.sectionId);
+
+        if (!section) continue;
+
+        const sectionTop = section.getBoundingClientRect().top + scrollY;
+
+        if (sectionTop <= activationPoint) {
+          currentSectionId = link.sectionId;
+        }
+      }
+
+      setActiveSectionId(currentSectionId);
+    };
+
+    const updateHeaderState = () => {
+      const currentScrollY = Math.max(window.scrollY, 0);
+
+      setHasScrolled(currentScrollY > HEADER_SOLID_THRESHOLD);
+      updateActiveSection(currentScrollY);
+
+      if (isUserMenuOpen || currentScrollY < HEADER_TOP_VISIBLE_DISTANCE) {
+        setIsHeaderHidden(false);
+      } else if (
+        currentScrollY > lastScrollY &&
+        currentScrollY > HEADER_HIDE_THRESHOLD
+      ) {
+        setIsHeaderHidden(true);
+      } else if (currentScrollY < lastScrollY) {
+        setIsHeaderHidden(false);
+      }
+
+      lastScrollY = currentScrollY;
+      animationFrameId = null;
+    };
+
+    const requestHeaderUpdate = () => {
+      if (animationFrameId !== null) return;
+
+      animationFrameId = window.requestAnimationFrame(updateHeaderState);
+    };
+
+    requestHeaderUpdate();
+
+    const settleTimerId = window.setTimeout(requestHeaderUpdate, 350);
+
+    window.addEventListener("scroll", requestHeaderUpdate, { passive: true });
+    window.addEventListener("resize", requestHeaderUpdate);
+
+    return () => {
+      window.clearTimeout(settleTimerId);
+      window.removeEventListener("scroll", requestHeaderUpdate);
+      window.removeEventListener("resize", requestHeaderUpdate);
+
+      if (animationFrameId !== null) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [isUserMenuOpen, pathname]);
 
   const getFallbackName = (name?: string) => {
     if (!name) return "U";
@@ -79,8 +163,41 @@ export default function Header() {
     router.push("/login");
   };
 
+  const handleSectionClick = (
+    event: MouseEvent<HTMLAnchorElement>,
+    link: (typeof NAV_LINKS)[number],
+  ) => {
+    if (pathname !== "/") return;
+
+    event.preventDefault();
+
+    const targetSection = document.getElementById(link.sectionId);
+
+    if (!targetSection) {
+      router.push(link.path);
+      return;
+    }
+
+    targetSection.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.pushState(null, "", link.path);
+    setActiveSectionId(link.sectionId);
+    setIsHeaderHidden(false);
+  };
+
+  const shouldUseStrongHeader = pathname !== "/" || hasScrolled;
+
   return (
-    <header className="fixed left-1/2 top-4 z-[10] grid w-[75%] -translate-x-1/2 grid-cols-[1fr_auto_1fr] items-center rounded-full border border-white/40 bg-white/20 px-6 py-3 text-foreground shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-2xl backdrop-saturate-150">
+    <header
+      className={`fixed left-1/2 top-4 z-[50] grid w-[75%] -translate-x-1/2 grid-cols-[1fr_auto_1fr] items-center rounded-full border px-6 py-3 text-white backdrop-blur-2xl backdrop-saturate-150 transition-all duration-300 ease-out ${
+        shouldUseStrongHeader
+          ? "border-white/15 bg-[#101827]/90 shadow-[0_18px_50px_rgba(2,8,23,0.35)]"
+          : "border-white/35 bg-white/20 shadow-[0_10px_30px_rgba(15,23,42,0.2)]"
+      } ${
+        isHeaderHidden
+          ? "pointer-events-none -translate-y-[120%] opacity-0"
+          : "translate-y-0 opacity-100"
+      }`}
+    >
       {/* Logo - left */}
       <Link href="/" className="flex items-center gap-2 justify-self-start">
         <Image
@@ -97,24 +214,18 @@ export default function Header() {
       {/* Navigate - center */}
       <nav className="hidden items-center gap-6 justify-self-center md:flex">
         {NAV_LINKS.map((link) => {
-          const isHashLink = link.path.includes("#");
-
-          const isActive =
-            !isHashLink &&
-            (link.path === "/"
-              ? pathname === "/"
-              : pathname.startsWith(link.path));
+          const isActive = pathname === "/" && activeSectionId === link.sectionId;
 
           return (
             <Link
               key={link.path}
               href={link.path}
-              className={`relative rounded-full px-3 py-1.5 text-sm font-semibold transition-colors duration-200
-                ${
-                  isActive
-                    ? "border-white/40 bg-white/20 text-background shadow-sm"
-                    : "text-background/75 hover:bg-background/10 "
-                }`}
+              onClick={(event) => handleSectionClick(event, link)}
+              className={`relative rounded-full px-3 py-1.5 text-sm font-semibold transition-colors duration-200 ${
+                isActive
+                  ? "border border-white/45 bg-white/25 text-white shadow-sm"
+                  : "text-white/75 hover:bg-white/15 hover:text-white"
+              }`}
             >
               {link.label}
             </Link>
@@ -125,9 +236,9 @@ export default function Header() {
       {/* Tool / Auth - right */}
       <div className="flex items-center justify-end gap-4 justify-self-end">
         {currentUser ? (
-          <DropdownMenu>
+          <DropdownMenu open={isUserMenuOpen} onOpenChange={setIsUserMenuOpen}>
             <DropdownMenuTrigger asChild>
-              <div className="flex items-center  gap-3 px-2.5 py-1.5 text-background transition-all duration-200 cursor-pointer">
+              <div className="flex items-center gap-3 px-2.5 py-1.5 text-white transition-all duration-200 cursor-pointer">
                 <span className="hidden max-w-[180px] truncate text-sm font-semibold sm:block">
                   {currentUser.fullName}
                 </span>
@@ -147,7 +258,7 @@ export default function Header() {
                   </AvatarFallback>
                 </Avatar>
 
-                <ChevronDown className="hidden h-4 w-4 text-[#0A0D17]/60 sm:block" />
+                <ChevronDown className="hidden h-4 w-4 text-white/70 sm:block" />
               </div>
             </DropdownMenuTrigger>
 
@@ -217,7 +328,7 @@ export default function Header() {
             <Button
               asChild
               variant="ghost"
-              className="rounded-full px-4 text-background/80 hover:bg-white/30 hover:text-background"
+              className="rounded-full px-4 text-white/80 hover:bg-white/20 hover:text-white"
             >
               <Link href="/login">Login</Link>
             </Button>

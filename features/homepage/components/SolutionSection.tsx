@@ -177,7 +177,7 @@ export default function ActivitiesSection({ activities }: Readonly<ActivitiesSec
               : "translate-y-6 scale-[0.98] opacity-0"
           }`}
         >
-          <p className="text-[clamp(3rem,6vw,5.5rem)] font-extrabold leading-none text-white/[0.3]">AI SOLUTIONS</p>
+          <p className="text-[clamp(3rem,6vw,5.5rem)] font-extrabold leading-none text-white/[0.3 ]">AI SOLUTIONS</p>
           <h2 className="-mt-6 bg-linear-to-r from-white via-[#8fb7ff] to-[#fc8ee4] bg-clip-text text-[clamp(2rem,3vw,2.75rem)] font-extrabold uppercase tracking-[0.08em] text-transparent drop-shadow-[0_0_26px_rgba(84,112,255,0.38)]">
             Popular AI solutions
           </h2>

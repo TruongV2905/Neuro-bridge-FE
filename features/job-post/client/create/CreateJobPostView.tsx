@@ -16,15 +16,15 @@ import {
 } from "@/services/job-post.service";
 import type { SkillResponse } from "@/types/skill.types";
 import Header from "@/components/layout/Header";
-import { JobPostProgressSidebar } from "./job-post-progress-sidebar";
-import { StepNavigation } from "./step-navigation";
-import { BusinessOverviewStep } from "./steps/business-overview-step";
-import { AiAnalysisStep } from "./steps/ai-analysis-step";
-import { ConfigurationStep } from "./steps/configuration-step";
-import { ReviewLaunchStep } from "./steps/review-launch-step";
-import { StepFlipTransition } from "./ui/step-flip-transition";
+import { JobPostProgressSidebar } from "./components/JobPostProgressSidebar";
+import { StepNavigation } from "./components/StepNavigation";
+import { BusinessOverviewStep } from "./components/steps/BusinessOverviewStep";
+import { AiAnalysisStep } from "./components/steps/AiAnalysisStep";
+import { ConfigurationStep } from "./components/steps/ConfigurationStep";
+import { ReviewLaunchStep } from "./components/steps/ReviewLaunchStep";
+import { StepFlipTransition } from "./components/ui/StepFlipTransition";
 
-export function CreateJobPostForm() {
+export function CreateJobPostView() {
   const [step, setStep] = useState<CreateJobPostStep>(1);
   const [direction, setDirection] = useState(1);
 

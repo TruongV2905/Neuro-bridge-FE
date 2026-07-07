@@ -3,7 +3,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Check } from "lucide-react";
 
-import { createJobPostSteps } from "../_constants/job-post.constants";
+import { createJobPostSteps } from "../constants/jobPost.constants";
 import type { CreateJobPostStep } from "@/types/job-post.type";
 
 type Props = {

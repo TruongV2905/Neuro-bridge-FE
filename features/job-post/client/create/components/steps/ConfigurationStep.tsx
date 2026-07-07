@@ -25,9 +25,9 @@ import { Slider } from "@/components/ui/slider";
 import { useGetAllSkills } from "@/services/skill.service";
 import type { CreateJobPostFormValues, JobPostAnalyzeResponse } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
-import { StepBadge } from "../ui/step-badge";
-import { FormField } from "../ui/form-field";
-import { jobPostFieldClassName } from "../ui/form-field-styles";
+import { StepBadge } from "../ui/StepBadge";
+import { FormField } from "../ui/FormField";
+import { jobPostFieldClassName } from "../../constants/formFieldStyles";
 
 type BlockKind = "required" | "preferred";
 

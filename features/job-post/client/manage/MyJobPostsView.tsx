@@ -11,15 +11,15 @@ import {
   DEFAULT_PAGE,
   DEFAULT_SIZE,
   DEFAULT_SORT_BY,
-} from "./_constants/my-job-post.constants";
-import { MyJobPostHeader } from "./_components/my-job-post-header";
-import { MyJobPostFilterBar } from "./_components/my-job-post-filter-bar";
+} from "./constants/myJobPost.constants";
+import { MyJobPostHeader } from "./components/MyJobPostHeader";
+import { MyJobPostFilterBar } from "./components/MyJobPostFilterBar";
 import {
   JobPostCard,
   JobPostCardSkeleton,
-} from "./_components/job-post-card";
-import { JobPostPagination } from "./_components/job-post-pagination";
-import { EmptyState } from "./_components/empty-state";
+} from "./components/JobPostCard";
+import { JobPostPagination } from "./components/JobPostPagination";
+import { EmptyState } from "./components/EmptyState";
 import { JobPostDirection, JobPostFilter, JobPostListItem, JobPostStatus } from "@/types/job-post.type";
 
 type FilterState = {
@@ -48,7 +48,7 @@ const DEFAULT_STATE: FilterState = {
   estimatedDaysTo: 0,
 };
 
-export function MyJobPostContent() {
+export function MyJobPostsView() {
   const [state, setState] = useState<FilterState>(DEFAULT_STATE);
 
   const filter = useMemo<JobPostFilter>(

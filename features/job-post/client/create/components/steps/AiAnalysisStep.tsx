@@ -13,10 +13,10 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { AiBadge } from "../ui/ai-badge";
-import { AnalysisCard } from "../ui/analysis-card";
-import { SkillPill } from "../ui/skill-pill";
-import { StepBadge } from "../ui/step-badge";
+import { AiBadge } from "../ui/AiBadge";
+import { AnalysisCard } from "../ui/AnalysisCard";
+import { SkillPill } from "../ui/SkillPill";
+import { StepBadge } from "../ui/StepBadge";
 import type { JobPostAnalyzeResponse } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
 

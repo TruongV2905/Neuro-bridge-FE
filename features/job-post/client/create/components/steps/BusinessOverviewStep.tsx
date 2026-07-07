@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import type { CreateJobPostFormValues } from "@/types/job-post.type";
-import { StepBadge } from "../ui/step-badge";
-import { FormField } from "../ui/form-field";
-import { jobPostFieldClassName } from "../ui/form-field-styles";
+import { StepBadge } from "../ui/StepBadge";
+import { FormField } from "../ui/FormField";
+import { jobPostFieldClassName } from "../../constants/formFieldStyles";
 
 type Props = {
   register: UseFormRegister<CreateJobPostFormValues>;

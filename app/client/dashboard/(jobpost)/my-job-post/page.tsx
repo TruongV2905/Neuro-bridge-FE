@@ -1,5 +1,5 @@
-import { MyJobPostContent } from "./my-job-post-content";
+import { MyJobPostsView } from "@/features/job-post";
 
 export default function MyJobPostPage() {
-  return <MyJobPostContent />;
+  return <MyJobPostsView />;
 }

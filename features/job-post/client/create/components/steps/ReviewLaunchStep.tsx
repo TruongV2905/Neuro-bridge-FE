@@ -14,10 +14,10 @@ import {
   Wrench,
 } from "lucide-react";
 
-import { AiBadge } from "../ui/ai-badge";
-import { ExpertMatch } from "../ui/expert-match";
-import { SkillPill } from "../ui/skill-pill";
-import { StepBadge } from "../ui/step-badge";
+import { AiBadge } from "../ui/AiBadge";
+import { ExpertMatch } from "../ui/ExpertMatch";
+import { SkillPill } from "../ui/SkillPill";
+import { StepBadge } from "../ui/StepBadge";
 
 type Props = {
   projectTitle: string;

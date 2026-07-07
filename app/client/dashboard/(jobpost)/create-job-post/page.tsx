@@ -1,5 +1,5 @@
-import { CreateJobPostForm } from "./_components/create-job-post-form";
+import { CreateJobPostView } from "@/features/job-post";
 
 export default function CreateJobPostPage() {
-  return <CreateJobPostForm />;
+  return <CreateJobPostView />;
 }

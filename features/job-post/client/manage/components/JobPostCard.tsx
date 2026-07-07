@@ -25,7 +25,7 @@ import {
   formatBudgetRange,
   formatTimeline,
   getStatusMeta,
-} from "../_constants/my-job-post.constants";
+} from "../constants/myJobPost.constants";
 import { cn } from "@/lib/utils";
 import { JobPostListItem } from "@/types/job-post.type";
 

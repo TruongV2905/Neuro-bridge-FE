@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { jobPostFieldLabelClassName } from "./form-field-styles";
+import { jobPostFieldLabelClassName } from "../../constants/formFieldStyles";
 type FormFieldProps = {
   label: string;
   required?: boolean;

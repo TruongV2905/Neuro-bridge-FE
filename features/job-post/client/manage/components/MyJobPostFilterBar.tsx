@@ -35,7 +35,7 @@ import {
   SORT_OPTIONS,
   PAGE_SIZE_OPTIONS,
   type SortOption,
-} from "../_constants/my-job-post.constants";
+} from "../constants/myJobPost.constants";
 
 import { cn } from "@/lib/utils";
 import { JobPostDirection, JobPostStatus } from "@/types/job-post.type";
@@ -88,7 +88,7 @@ export function MyJobPostFilterBar({
   const [searchInput, setSearchInput] = useState(value.search);
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // Debounce search input → push to filter state after 400ms
+  // Debounce search input â†’ push to filter state after 400ms
   useEffect(() => {
     const handler = setTimeout(() => {
       if (searchInput !== value.search) {
@@ -126,7 +126,7 @@ export function MyJobPostFilterBar({
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by title, description…"
+            placeholder="Search by title, descriptionâ€¦"
             className="h-11 rounded-xl border-slate-200 bg-white pl-10 pr-10 text-sm shadow-sm shadow-slate-200/50 transition-all focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-100"
           />
           {searchInput && (
@@ -348,7 +348,7 @@ function FilterPanel({
             Budget range (USD)
           </Label>
           <span className="text-xs font-semibold text-slate-700">
-            {formatCompact(draft.minBudget)} –{" "}
+            {formatCompact(draft.minBudget)} â€“{" "}
             {draft.maxBudget >= budgetMax
               ? `${formatCompact(budgetMax)}+`
               : formatCompact(draft.maxBudget)}
@@ -380,7 +380,7 @@ function FilterPanel({
             className="h-8 rounded-lg border-slate-200 text-xs"
             placeholder="Min"
           />
-          <span className="text-xs text-slate-400">–</span>
+          <span className="text-xs text-slate-400">â€“</span>
           <Input
             type="number"
             min={0}
@@ -405,7 +405,7 @@ function FilterPanel({
             Timeline (days)
           </Label>
           <span className="text-xs font-semibold text-slate-700">
-            {draft.estimatedDaysFrom || 0} –{" "}
+            {draft.estimatedDaysFrom || 0} â€“{" "}
             {draft.estimatedDaysTo >= daysMax
               ? `${daysMax}+`
               : draft.estimatedDaysTo || 0}

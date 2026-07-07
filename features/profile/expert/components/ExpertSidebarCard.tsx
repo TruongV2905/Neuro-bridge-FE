@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 
-type Expert = typeof import("../mock-expert-profile").expertProfile
+type Expert = typeof import("../data/mockExpertProfile").expertProfile
 
 export function ExpertSidebarCard({ expert }: { expert: Expert }) {
   return (

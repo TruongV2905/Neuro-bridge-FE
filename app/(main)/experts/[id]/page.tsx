@@ -5,13 +5,14 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { useSelector } from "react-redux"
-import { ExpertSkillCard } from "@/app/(profileExpert)/expert-profile/_components/expert-skill-card"
 import type { RootState } from "@/redux/store"
 import type { UserResponse } from "@/types/user"
-
-import { ExpertProfileHeader } from "@/app/(profileExpert)/expert-profile/_components/expert-profile-header"
-import { ExpertSidebarCard } from "@/app/(profileExpert)/expert-profile/_components/expert-sidebar-card"
-import { expertProfile } from "@/app/(profileExpert)/expert-profile/mock-expert-profile"
+import {
+  ExpertProfileHeader,
+  ExpertSidebarCard,
+  ExpertSkillCard,
+  expertProfile,
+} from "@/features/profile/expert"
 
 import { getUserByCode } from "@/services/user-api"
 import {

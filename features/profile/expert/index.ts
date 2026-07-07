@@ -1,0 +1,5 @@
+export { ExpertProfileView } from "./ExpertProfileView"
+export { ExpertProfileHeader } from "./components/ExpertProfileHeader"
+export { ExpertSidebarCard } from "./components/ExpertSidebarCard"
+export { ExpertSkillCard } from "./components/ExpertSkillCard"
+// export { expertProfile } from "./data/mockExpertProfile"

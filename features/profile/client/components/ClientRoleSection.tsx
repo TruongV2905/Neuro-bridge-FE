@@ -6,7 +6,7 @@ interface RoleSectionProps {
   children: React.ReactNode
 }
 
-export function RoleSection({ title, description, children }: RoleSectionProps) {
+export function ClientRoleSection({ title, description, children }: RoleSectionProps) {
   return (
     /* Sửa bg-muted/30 thành bg-card để lên màu nền trắng hệ thống, và bật shadow-md */
     <Card className="rounded-[2rem] border border-border bg-card shadow-md overflow-hidden">

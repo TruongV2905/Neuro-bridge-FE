@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 
-export function IconBox({ children }: { children: React.ReactNode }) {
+export function ClientProfileIconBox({ children }: { children: React.ReactNode }) {
   return (
     <Button
       variant="ghost"

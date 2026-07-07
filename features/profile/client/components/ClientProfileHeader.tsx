@@ -1,9 +1,9 @@
 import { Bell, MessageSquare, Mic, Search, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { IconBox } from "./icon-box"
-import { UserProfile } from "../../../../types/profile-types"
+import { ClientProfileIconBox } from "./ClientProfileIconBox"
+import { UserProfile } from "@/types/profile-types"
 
-export function ProfileHeader({ user }: { user: UserProfile }) {
+export function ClientProfileHeader({ user }: { user: UserProfile }) {
   return (
     <header className="h-[56px] bg-primary text-primary-foreground px-4 shadow-sm">
       <div className="flex h-full items-center justify-between">
@@ -25,9 +25,9 @@ export function ProfileHeader({ user }: { user: UserProfile }) {
         </div>
 
         <div className="flex items-center gap-3">
-          <IconBox><Bell size={16} /></IconBox>
-          <IconBox><MessageSquare size={16} /></IconBox>
-          <IconBox><Sun size={16} /></IconBox>
+          <ClientProfileIconBox><Bell size={16} /></ClientProfileIconBox>
+          <ClientProfileIconBox><MessageSquare size={16} /></ClientProfileIconBox>
+          <ClientProfileIconBox><Sun size={16} /></ClientProfileIconBox>
 
           <Button
             variant="ghost"

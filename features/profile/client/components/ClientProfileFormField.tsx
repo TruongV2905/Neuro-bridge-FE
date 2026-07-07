@@ -7,7 +7,7 @@ interface FormFieldProps {
   onChange?: (value: string) => void
 }
 
-export function FormField({ label, value, icon, onChange }: FormFieldProps) {
+export function ClientProfileFormField({ label, value, icon, onChange }: FormFieldProps) {
   return (
     <div className="group relative rounded-2xl bg-border p-[1px] transition-all duration-500 hover:shadow-[0_0_20px_rgba(95,123,255,0.15)]">
       <div

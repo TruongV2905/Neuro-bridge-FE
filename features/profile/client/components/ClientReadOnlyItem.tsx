@@ -5,7 +5,7 @@ interface ReadOnlyItemProps {
   active?: boolean
 }
 
-export function ReadOnlyItem({ icon, label, value, active }: ReadOnlyItemProps) {
+export function ClientReadOnlyItem({ icon, label, value, active }: ReadOnlyItemProps) {
   return (
     /* 1. Thẻ bọc ngoài cùng: p-[1px] để tạo độ dày viền. 
        - Nếu active (Status): Viền luôn là màu xanh lục mờ.

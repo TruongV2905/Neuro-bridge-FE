@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CheckCircle2, FileText, Lock, Sparkles } from "lucide-react";
+import { Briefcase, CheckCircle2, FileText, Sparkles } from "lucide-react";
 import { toast } from "react-toastify";
 
 import { Badge } from "@/components/ui/badge";
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { useApplyJobPost } from "@/services/job-post.service";
 import type { ApplyJobPostRequest, JobPost } from "@/types/job-post.type";
+import { ExpertBasicApplyForm } from "./ExpertBasicApplyForm";
 import { ExpertApplyWithProposalForm } from "./ExpertApplyWithProposalForm";
 
 type ExpertApplyTypeDialogProps = {
@@ -31,7 +32,7 @@ type ExpertApplyTypeDialogProps = {
   onSuccess: () => void;
 };
 
-type DialogStep = "choice" | "proposal";
+type DialogStep = "choice" | "basic" | "proposal";
 
 type ApiErrorLike = {
   response?: {
@@ -101,13 +102,13 @@ export function ExpertApplyTypeDialog({
               <CardHeader className="space-y-3 p-5">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm">
-                    <Lock className="h-5 w-5" />
+                    <Briefcase className="h-5 w-5" />
                   </span>
                   <Badge
                     variant="outline"
-                    className="border-slate-200 bg-white text-slate-500"
+                    className="border-sky-200 bg-white text-sky-700"
                   >
-                    Coming soon
+                    Simple
                   </Badge>
                 </div>
                 <CardTitle className="text-base font-extrabold text-slate-950">
@@ -116,15 +117,17 @@ export function ExpertApplyTypeDialog({
               </CardHeader>
               <CardContent className="space-y-4 px-5 pb-5">
                 <p className="text-sm leading-6 text-slate-500">
-                  Apply with only budget and timeline. This is disabled until a
-                  basic-only backend endpoint is confirmed.
+                  Apply with only your proposed budget and delivery timeline.
                 </p>
                 <Button
                   type="button"
-                  disabled
-                  className="h-10 w-full rounded-xl bg-slate-200 text-sm font-bold text-slate-500"
+                  onClick={() => {
+                    setServerError(undefined);
+                    setStep("basic");
+                  }}
+                  className="h-10 w-full rounded-xl border border-sky-200 bg-white text-sm font-bold text-sky-700 hover:bg-sky-50"
                 >
-                  Coming soon
+                  Continue Basic Apply
                 </Button>
               </CardContent>
             </Card>
@@ -161,6 +164,26 @@ export function ExpertApplyTypeDialog({
                 </Button>
               </CardContent>
             </Card>
+          </div>
+        ) : step === "basic" ? (
+          <div className="rounded-2xl border border-slate-200 bg-white p-1">
+            <div className="mb-4 flex items-start gap-3 rounded-2xl bg-sky-50 px-4 py-3 text-sky-700">
+              <Briefcase className="mt-0.5 h-5 w-5 shrink-0" />
+              <p className="text-sm font-semibold leading-6">
+                Basic Apply submits only your budget and timeline.
+              </p>
+            </div>
+            <ExpertBasicApplyForm
+              job={job}
+              expertCode={expertCode}
+              isSubmitting={applyJobPost.isPending}
+              serverError={serverError}
+              onCancel={() => {
+                setServerError(undefined);
+                setStep("choice");
+              }}
+              onSubmit={handleSubmit}
+            />
           </div>
         ) : (
           <div className="rounded-2xl border border-slate-200 bg-white p-1">

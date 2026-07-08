@@ -117,8 +117,8 @@ export type ProposalUnlockRequest = {
 
 export type ApplyJobPostRequest = {
   expertApplyRequest: ExpertApplyRequest;
-  proposalRequest: ProposalRequest;
-  proposalUnlockRequest: ProposalUnlockRequest;
+  proposalRequest?: ProposalRequest;
+  proposalUnlockRequest?: ProposalUnlockRequest;
 };
 
 export type ExpertProposal = {

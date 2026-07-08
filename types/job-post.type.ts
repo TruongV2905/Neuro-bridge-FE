@@ -132,6 +132,7 @@ export type ProposalUnlock = {
   id: string;
   createdAt: string;
   strategyDetail: string;
+  unlockCost?: number;
 };
 
 export type ExpertProposalListParams = {
@@ -141,4 +142,14 @@ export type ExpertProposalListParams = {
   "pageRequest.sortBy": string;
   "pageRequest.direction": JobPostDirection;
   "pageRequest.search"?: string;
+};
+
+export type UpdateProposalRequest = {
+  title: string;
+  strategySummary: string;
+};
+
+export type UpdateProposalUnlockRequest = {
+  strategyDetail: string;
+  unlockCost: number;
 };

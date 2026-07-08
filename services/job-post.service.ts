@@ -8,6 +8,8 @@ import {
   JobPostListItem,
   ProposalUnlock,
   RecommendExpertsRequest,
+  UpdateProposalRequest,
+  UpdateProposalUnlockRequest,
 } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
 import type { PageResponse } from "@/types/common.starter";
@@ -99,3 +101,28 @@ export const useGetProposalUnlockByProposalId =
     jobPostKeys.proposalUnlockDetail,
     `${PROPOSAL_UNLOCK_ENDPOINT}/:proposalId`,
   );
+
+export const useUpdateProposal = createMutationHook<
+  ExpertProposal,
+  UpdateProposalRequest
+>({
+  url: `${PROPOSAL_ENDPOINT}/:id`,
+  method: "PUT",
+  queryKeyToInvalidate: [
+    jobPostKeys.expertProposals,
+    jobPostKeys.proposalDetail,
+  ],
+});
+
+export const useUpdateProposalUnlock = createMutationHook<
+  ProposalUnlock,
+  UpdateProposalUnlockRequest
+>({
+  url: `${PROPOSAL_UNLOCK_ENDPOINT}/:id`,
+  method: "PUT",
+  queryKeyToInvalidate: [
+    jobPostKeys.expertProposals,
+    jobPostKeys.proposalDetail,
+    jobPostKeys.proposalUnlockDetail,
+  ],
+});

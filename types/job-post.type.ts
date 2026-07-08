@@ -120,3 +120,25 @@ export type ApplyJobPostRequest = {
   proposalRequest: ProposalRequest;
   proposalUnlockRequest: ProposalUnlockRequest;
 };
+
+export type ExpertProposal = {
+  id: string;
+  title: string;
+  strategySummary: string;
+  unlockCost: number;
+};
+
+export type ProposalUnlock = {
+  id: string;
+  createdAt: string;
+  strategyDetail: string;
+};
+
+export type ExpertProposalListParams = {
+  expertCode: string;
+  "pageRequest.page": number;
+  "pageRequest.size": number;
+  "pageRequest.sortBy": string;
+  "pageRequest.direction": JobPostDirection;
+  "pageRequest.search"?: string;
+};

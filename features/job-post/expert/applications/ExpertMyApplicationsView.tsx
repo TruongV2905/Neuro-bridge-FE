@@ -73,10 +73,18 @@ export function ExpertMyApplicationsView() {
     useGetExpertProposals(queryParams, { enabled: !!expertCode });
 
   const result = data?.result;
-  const proposals = React.useMemo<ExpertProposal[]>(
-    () => result?.data ?? [],
-    [result],
+  // const proposals = React.useMemo<ExpertProposal[]>(
+  //   () => result?.data ?? [],
+  //   [result],
+  // );
+  const proposals = React.useMemo<ExpertProposal[]>(() => {
+  const data = result?.data ?? [];
+
+  return data.filter(
+    (proposal): proposal is ExpertProposal =>
+      Boolean(proposal && typeof proposal.id === "string"),
   );
+}, [result]);
   const metadata = result?.metadata;
   const totalElements = metadata?.totalElements ?? 0;
   const totalPages = metadata?.totalPages ?? 0;

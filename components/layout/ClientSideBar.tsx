@@ -91,6 +91,11 @@ const WORKSPACE_CONFIG: Record<
         icon: SparklesIcon,
       },
       {
+        title: "My Applications",
+        url: "/expert/dashboard/my-applications",
+        icon: SparklesIcon,
+      },
+      {
         title: "Browse Jobpost",
         url: "/expert/dashboard/browse-job-posts",
         icon: SearchIcon,

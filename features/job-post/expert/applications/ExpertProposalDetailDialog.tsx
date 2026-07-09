@@ -148,8 +148,8 @@ export function ExpertProposalDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl shadow-slate-900/10 sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="z-[200] flex max-h-[calc(100vh-2rem)] flex-col gap-0 overflow-hidden rounded-2xl bg-white p-0 shadow-2xl shadow-slate-900/10 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-5 pr-12">
           <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
             {isEditing ? "Edit Proposal" : "Proposal Detail"}
           </DialogTitle>
@@ -161,7 +161,7 @@ export function ExpertProposalDetailDialog({
         </DialogHeader>
 
         {isProposalLoading && !detail ? (
-          <div className="space-y-4">
+          <div className="min-h-0 space-y-4 overflow-y-auto px-6 py-5">
             <Skeleton className="h-8 w-2/3" />
             <Skeleton className="h-24 rounded-2xl" />
             <Skeleton className="h-36 rounded-2xl" />
@@ -179,76 +179,79 @@ export function ExpertProposalDetailDialog({
             onSave={handleSave}
           />
         ) : detail ? (
-          <div className="space-y-5">
-            {isProposalError && (
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
-                The latest proposal detail is unavailable right now. Showing
-                the list summary instead.
-              </div>
-            )}
-
-            <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4">
-              <div className="flex items-start gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-                  <FileText className="h-5 w-5" />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                    Proposal title
-                  </p>
-                  <h3 className="mt-1 text-lg font-extrabold text-slate-950">
-                    {detail.title}
-                  </h3>
-                </div>
-              </div>
-            </section>
-
-            <section>
-              <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
-                Strategy summary
-              </h4>
-              <p className="mt-3 whitespace-pre-line rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-600">
-                {detail.strategySummary || "No strategy summary was provided."}
-              </p>
-            </section>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <MetaBlock
-                icon={LockKeyhole}
-                label="Unlock cost"
-                value={formatMoney(displayedUnlockCost)}
-              />
-              <MetaBlock
-                icon={CalendarDays}
-                label="Unlock created"
-                value={
-                  unlock?.createdAt
-                    ? formatDateTime(unlock.createdAt)
-                    : "Unavailable"
-                }
-              />
-            </div>
-
-            <section>
-              <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
-                Detailed strategy
-              </h4>
-              {isUnlockLoading ? (
-                <Skeleton className="mt-3 h-32 rounded-2xl" />
-              ) : unlock?.strategyDetail ? (
-                <p className="mt-3 whitespace-pre-line rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-600">
-                  {unlock.strategyDetail}
-                </p>
-              ) : (
-                <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
-                  {isUnlockError
-                    ? "Detailed strategy is unavailable right now."
-                    : "No detailed strategy is available."}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-6 overflow-y-auto px-6 py-5">
+              {isProposalError && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                  The latest proposal detail is unavailable right now. Showing
+                  the list summary instead.
                 </div>
               )}
-            </section>
 
-            <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
+              <section className="rounded-2xl border border-slate-200 bg-slate-50/70 p-5">
+                <div className="flex items-start gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+                    <FileText className="h-5 w-5" />
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      Proposal title
+                    </p>
+                    <h3 className="mt-1 text-lg font-extrabold text-slate-950">
+                      {detail.title}
+                    </h3>
+                  </div>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
+                  Strategy summary
+                </h4>
+                <p className="mt-3 whitespace-pre-line rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-600">
+                  {detail.strategySummary ||
+                    "No strategy summary was provided."}
+                </p>
+              </section>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <MetaBlock
+                  icon={LockKeyhole}
+                  label="Unlock cost"
+                  value={formatMoney(displayedUnlockCost)}
+                />
+                <MetaBlock
+                  icon={CalendarDays}
+                  label="Unlock created"
+                  value={
+                    unlock?.createdAt
+                      ? formatDateTime(unlock.createdAt)
+                      : "Unavailable"
+                  }
+                />
+              </div>
+
+              <section>
+                <h4 className="text-sm font-extrabold uppercase tracking-wider text-slate-400">
+                  Detailed strategy
+                </h4>
+                {isUnlockLoading ? (
+                  <Skeleton className="mt-3 h-32 rounded-2xl" />
+                ) : unlock?.strategyDetail ? (
+                  <p className="mt-3 whitespace-pre-line rounded-2xl border border-slate-200 bg-white p-4 text-sm leading-7 text-slate-600">
+                    {unlock.strategyDetail}
+                  </p>
+                ) : (
+                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    {isUnlockError
+                      ? "Detailed strategy is unavailable right now."
+                      : "No detailed strategy is available."}
+                  </div>
+                )}
+              </section>
+            </div>
+
+            <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-6 py-4 sm:flex-row sm:justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -268,8 +271,10 @@ export function ExpertProposalDetailDialog({
             </div>
           </div>
         ) : (
-          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-            Unable to load proposal detail.
+          <div className="min-h-0 overflow-y-auto px-6 py-5">
+            <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+              Unable to load proposal detail.
+            </div>
           </div>
         )}
       </DialogContent>
@@ -314,55 +319,59 @@ function EditProposalForm({
 
   return (
     <form
-      className="space-y-5"
+      className="flex min-h-0 flex-1 flex-col"
       onSubmit={(event) => {
         event.preventDefault();
         onSave();
       }}
     >
-      {serverError && (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
-          {serverError}
-        </div>
-      )}
+      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-6 py-5">
+        {serverError && (
+          <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-700">
+            {serverError}
+          </div>
+        )}
 
-      <FormField label="Proposal title" error={errors.title}>
-        <Input
-          value={form.title}
-          onChange={(event) => onChange("title", event.target.value)}
-          className="h-10 rounded-xl border-slate-200"
-        />
-      </FormField>
+        <FormField label="Proposal title" error={errors.title}>
+          <Input
+            value={form.title}
+            onChange={(event) => onChange("title", event.target.value)}
+            className="h-10 rounded-xl border-slate-200"
+          />
+        </FormField>
 
-      <FormField label="Strategy summary" error={errors.strategySummary}>
-        <Textarea
-          value={form.strategySummary}
-          onChange={(event) =>
-            onChange("strategySummary", event.target.value)
-          }
-          className="min-h-28 rounded-xl border-slate-200"
-        />
-      </FormField>
+        <FormField label="Strategy summary" error={errors.strategySummary}>
+          <Textarea
+            value={form.strategySummary}
+            onChange={(event) =>
+              onChange("strategySummary", event.target.value)
+            }
+            className="min-h-28 rounded-xl border-slate-200"
+          />
+        </FormField>
 
-      <FormField label="Detailed strategy" error={errors.strategyDetail}>
-        <Textarea
-          value={form.strategyDetail}
-          onChange={(event) => onChange("strategyDetail", event.target.value)}
-          className="min-h-36 rounded-xl border-slate-200"
-        />
-      </FormField>
+        <FormField label="Detailed strategy" error={errors.strategyDetail}>
+          <Textarea
+            value={form.strategyDetail}
+            onChange={(event) =>
+              onChange("strategyDetail", event.target.value)
+            }
+            className="min-h-36 rounded-xl border-slate-200"
+          />
+        </FormField>
 
-      <FormField label="Unlock cost" error={errors.unlockCost}>
-        <Input
-          type="number"
-          min={0}
-          value={form.unlockCost}
-          onChange={(event) => onChange("unlockCost", event.target.value)}
-          className="h-10 rounded-xl border-slate-200"
-        />
-      </FormField>
+        <FormField label="Unlock cost" error={errors.unlockCost}>
+          <Input
+            type="number"
+            min={0}
+            value={form.unlockCost}
+            onChange={(event) => onChange("unlockCost", event.target.value)}
+            className="h-10 rounded-xl border-slate-200"
+          />
+        </FormField>
+      </div>
 
-      <div className="flex flex-col-reverse gap-2 border-t border-slate-100 pt-5 sm:flex-row sm:justify-end">
+      <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-slate-100 bg-white px-6 py-4 sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="outline"

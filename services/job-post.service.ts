@@ -5,6 +5,7 @@ import {
   JobPost,
   JobPostAnalyzeRequest,
   JobPostAnalyzeResponse,
+  JobPostApplicant,
   JobPostListItem,
   ProposalUnlock,
   RecommendExpertsRequest,
@@ -28,6 +29,7 @@ export const jobPostKeys = {
   publicList: ["job-posts", "public", "list"],
   detail: ["job-posts", "detail"],
   apply: ["job-posts", "apply"],
+  applicants: ["job-posts", "applicants"],
   expertProposals: ["job-posts", "expert", "proposals"],
   proposalDetail: ["job-posts", "proposal", "detail"],
   proposalUnlockDetail: ["job-posts", "proposal-unlock", "detail"],
@@ -86,6 +88,11 @@ export const useApplyJobPost = createMutationHook<
   method: "POST",
   queryKeyToInvalidate: [jobPostKeys.detail, jobPostKeys.publicList],
 });
+
+export const useGetJobPostApplicants = createQueryHook<JobPostApplicant[]>(
+  jobPostKeys.applicants,
+  `${APPLY_JOB_POST_ENDPOINT}/:jobPostId/applies`,
+);
 
 export const useGetExpertProposals = createQueryHook<
   PageResponse<ExpertProposal>

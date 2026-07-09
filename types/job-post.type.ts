@@ -135,6 +135,33 @@ export type ProposalUnlock = {
   unlockCost?: number;
 };
 
+export type ExpertApply = {
+  id: string;
+  proposedBudget: number;
+  estimatedDays: number;
+  expertCode: string;
+};
+
+export type ApplicantProposal = {
+  id: string;
+  title: string;
+  strategySummary: string;
+  unlockCost?: number;
+};
+
+export type ApplicantProposalUnlock = {
+  id: string;
+  createdAt: string;
+  strategyDetail: string | null;
+  unlockCost?: number;
+};
+
+export type JobPostApplicant = {
+  expertApply: ExpertApply;
+  proposal: ApplicantProposal | null;
+  proposalUnlock: ApplicantProposalUnlock | null;
+};
+
 export type ExpertProposalListParams = {
   expertCode: string;
   "pageRequest.page": number;

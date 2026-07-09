@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -33,8 +33,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useGetClientJobPosts } from "@/services/job-post.service";
+import { useGetJobPostById } from "@/services/job-post.service";
 import type { JobPostListItem } from "@/types/job-post.type";
+import { ClientApplicantsSection } from "./components/ClientApplicantsSection";
 import {
   formatBudgetRange,
   formatCurrency,
@@ -52,101 +53,64 @@ type EditFormState = {
   estimatedDays: string;
 };
 
-const FALLBACK_JOB_POSTS: JobPostListItem[] = [
-  {
-    id: "1",
-    title: "AI Customer Support Chatbot",
-    description:
-      "Build a customer support assistant that can answer product questions, route complex cases, and summarize conversations for the support team.",
-    requiredSkillIds: [1, 3, 7],
-    preferredSkillIds: [9, 12],
-    budgetFrom: 5000,
-    budgetTo: 15000,
-    estimatedDays: 21,
-    status: "PUBLIC",
-    expertApplyCodes: ["EXP-102", "EXP-204", "EXP-318"],
-  },
-  {
-    id: "2",
-    title: "Data Analytics Dashboard",
-    description:
-      "Create an internal analytics dashboard for business metrics, reporting workflows, and lightweight predictive insights.",
-    requiredSkillIds: [2, 5, 8],
-    preferredSkillIds: [11],
-    budgetFrom: 10000,
-    budgetTo: 20000,
-    estimatedDays: 30,
-    status: "PRIVATE",
-    expertApplyCodes: ["EXP-406"],
-  },
-];
-
-const EMPTY_JOB_POST: JobPostListItem = {
-  id: "",
-  title: "Untitled Jobpost",
-  description:
-    "This preview uses local state because a dedicated jobpost detail API is not wired yet.",
-  requiredSkillIds: [],
-  preferredSkillIds: [],
-  budgetFrom: 0,
-  budgetTo: 0,
-  estimatedDays: 0,
-  status: "PRIVATE",
-  expertApplyCodes: [],
-};
-
-const listQueryParams = {
-  page: 0,
-  size: 100,
-  sortBy: "createdAt",
-  direction: "DESCENDING",
-  search: undefined,
-};
+type WorkspaceTab = "Overview" | "Applicants";
 
 export function ClientJobPostDetailView() {
   const params = useParams<{ id?: string | string[] }>();
   const jobId = Array.isArray(params.id) ? params.id[0] : params.id ?? "";
 
-  const { data, isLoading, isError, refetch } =
-    useGetClientJobPosts(listQueryParams);
+  const { data, isLoading, isError, error, refetch } = useGetJobPostById(
+    { id: jobId },
+    { enabled: Boolean(jobId) },
+  );
+  const apiJob = data?.result;
 
-  const apiJob = useMemo(() => {
-    const jobs = data?.result?.data ?? [];
-    return jobs.find((job) => String(job.id) === String(jobId));
-  }, [data?.result?.data, jobId]);
+  if (isLoading) {
+    return <ClientJobPostDetailState message="Loading jobpost details..." />;
+  }
 
-  const fallbackJob = useMemo(() => {
+  if (isError || !apiJob) {
     return (
-      FALLBACK_JOB_POSTS.find((job) => String(job.id) === String(jobId)) ?? {
-        ...EMPTY_JOB_POST,
-        id: jobId,
-      }
+      <ClientJobPostDetailState
+        message={
+          getDetailErrorMessage(error) ||
+          "Unable to load this jobpost. Please try again."
+        }
+        onRetry={() => refetch()}
+      />
     );
-  }, [jobId]);
+  }
 
-  const [job, setJob] = useState<JobPostListItem>(fallbackJob);
+  return (
+    <ClientJobPostDetailContent
+      key={apiJob.id}
+      initialJob={apiJob}
+      jobPostId={jobId}
+    />
+  );
+}
+
+function ClientJobPostDetailContent({
+  initialJob,
+  jobPostId,
+}: {
+  initialJob: JobPostListItem;
+  jobPostId: string;
+}) {
+  const [job, setJob] = useState<JobPostListItem>(initialJob);
   const [isEditing, setIsEditing] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
   const [savedMessage, setSavedMessage] = useState("");
-
-  useEffect(() => {
-    setJob(apiJob ?? fallbackJob);
-  }, [apiJob, fallbackJob]);
+  const [activeWorkspace, setActiveWorkspace] =
+    useState<WorkspaceTab>("Overview");
 
   const [form, setForm] = useState<EditFormState>(() =>
-    buildFormState(fallbackJob),
+    buildFormState(initialJob),
   );
-
-  useEffect(() => {
-    if (!isEditing) {
-      setForm(buildFormState(job));
-    }
-  }, [isEditing, job]);
 
   const statusMeta = getStatusMeta(job.status);
   const StatusIcon = statusMeta.icon;
   const applicants = job.expertApplyCodes?.length ?? 0;
-  const isUsingFallback = !apiJob;
 
   const handleEdit = () => {
     setSavedMessage("");
@@ -258,14 +222,6 @@ export function ClientJobPostDetailView() {
                       Archive staged
                     </Badge>
                   )}
-                  {isUsingFallback && (
-                    <Badge
-                      variant="outline"
-                      className="h-7 rounded-full border-violet-200 bg-violet-50 px-3 text-[11px] font-bold uppercase tracking-wider text-violet-600"
-                    >
-                      Preview data
-                    </Badge>
-                  )}
                 </div>
 
                 <p className="mt-4 max-w-3xl text-sm leading-7 text-slate-500">
@@ -372,27 +328,6 @@ export function ClientJobPostDetailView() {
               </div>
             )}
 
-            {isError && (
-              <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700">
-                <span>
-                  Unable to load the jobpost list. Showing local preview data for
-                  now.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => refetch()}
-                  className="rounded-lg border border-amber-200 bg-white px-3 py-1.5 text-xs font-bold text-amber-700"
-                >
-                  Retry
-                </button>
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500">
-                Loading latest jobpost data...
-              </div>
-            )}
           </CardContent>
         </Card>
 
@@ -401,12 +336,18 @@ export function ClientJobPostDetailView() {
             <CardHeader className="border-b border-slate-100 px-6 py-5">
               <CardTitle className="flex items-center gap-2 text-base font-extrabold tracking-tight text-[#0A0D17]">
                 <ListChecks className="h-5 w-5 text-indigo-500" />
-                {isEditing ? "Edit Overview" : "Overview"}
+                {activeWorkspace === "Applicants"
+                  ? "Applicants & Proposals"
+                  : isEditing
+                    ? "Edit Overview"
+                    : "Overview"}
               </CardTitle>
             </CardHeader>
 
             <CardContent className="p-6">
-              {isEditing ? (
+              {activeWorkspace === "Applicants" ? (
+                <ClientApplicantsSection jobPostId={jobPostId} />
+              ) : isEditing ? (
                 <EditForm form={form} onChange={setForm} />
               ) : (
                 <Overview job={job} statusLabel={statusMeta.label} />
@@ -473,28 +414,41 @@ export function ClientJobPostDetailView() {
                 </p>
                 <div className="mt-4 grid gap-2">
                   {["Overview", "Applicants", "Proposals", "Activity"].map(
-                    (item) => (
-                      <button
-                        key={item}
-                        type="button"
-                        disabled={item !== "Overview"}
-                        className={cn(
-                          "flex items-center justify-between rounded-xl border px-3 py-2 text-left text-sm font-bold transition",
-                          item === "Overview"
-                            ? "border-indigo-200 bg-white text-indigo-600 shadow-sm"
-                            : "border-white/70 bg-white/50 text-slate-400",
-                        )}
-                      >
-                        {item}
-                        {item === "Overview" ? (
-                          <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                          <span className="text-[10px] uppercase tracking-wider">
-                            Soon
-                          </span>
-                        )}
-                      </button>
-                    ),
+                    (item) => {
+                      const isEnabled =
+                        item === "Overview" || item === "Applicants";
+                      const isActive = item === activeWorkspace;
+
+                      return (
+                        <button
+                          key={item}
+                          type="button"
+                          disabled={!isEnabled}
+                          onClick={() => {
+                            if (isEnabled) {
+                              setActiveWorkspace(item as WorkspaceTab);
+                            }
+                          }}
+                          className={cn(
+                            "flex items-center justify-between rounded-xl border px-3 py-2 text-left text-sm font-bold transition",
+                            isActive
+                              ? "border-indigo-200 bg-white text-indigo-600 shadow-sm"
+                              : isEnabled
+                                ? "border-white/70 bg-white/70 text-slate-600 hover:border-indigo-100 hover:text-indigo-600"
+                                : "border-white/70 bg-white/50 text-slate-400",
+                          )}
+                        >
+                          {item}
+                          {isActive ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <span className="text-[10px] uppercase tracking-wider">
+                              {isEnabled ? "View" : "Soon"}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    },
                   )}
                 </div>
               </CardContent>
@@ -762,6 +716,43 @@ function SidebarStat({
       <span className="text-sm font-extrabold text-slate-900">{value}</span>
     </div>
   );
+}
+
+function ClientJobPostDetailState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry?: () => void;
+}) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f6f1f1] p-6">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <p className="text-sm font-semibold text-slate-600">{message}</p>
+        <div className="mt-5 flex justify-center gap-3">
+          {onRetry && (
+            <Button type="button" onClick={onRetry}>
+              Retry
+            </Button>
+          )}
+          <Button variant="outline" asChild>
+            <Link href="/client/dashboard/my-job-post">
+              Back to My Jobpost
+            </Link>
+          </Button>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function getDetailErrorMessage(error: unknown) {
+  const apiError = error as {
+    response?: { data?: { message?: string } };
+    message?: string;
+  };
+
+  return apiError.response?.data?.message || apiError.message;
 }
 
 function buildFormState(job: JobPostListItem): EditFormState {

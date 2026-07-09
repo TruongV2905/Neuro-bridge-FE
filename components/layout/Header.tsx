@@ -155,6 +155,8 @@ export default function Header() {
   const profilePath =
     currentUser?.role === "EXPERT" ? "/expert-profile" : "/profile";
 
+  const dashboardPath = 
+    currentUser?.role === "EXPERT" ? "/expert/dashboard" : currentUser?.role === "ADMIN" ? "/admin/dashboard" : "/client/dashboard";
   const handleLogout = () => {
     dispatch(logout());
 
@@ -308,6 +310,18 @@ export default function Header() {
                   </span>
 
                   <span>Profile</span>
+                </Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                asChild
+                className="cursor-pointer rounded-xl px-3 py-2.5 text-sm font-medium text-[#0A0D17] outline-none transition-colors focus:bg-transparent focus:text-[#0A0D17] data-[highlighted]:bg-transparent data-[highlighted]:text-[#0A0D17]"
+              >
+                <Link href={dashboardPath} className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#2563EB]/10 text-[#2563EB]">
+                    <UserRound className="h-4 w-4" />
+                  </span>
+
+                  <span>Dashboard</span>
                 </Link>
               </DropdownMenuItem>
 

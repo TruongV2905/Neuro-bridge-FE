@@ -66,8 +66,23 @@ export type JobPostListItem = {
   expertApplyCodes: string[];
 };
 
+export type JobPost = JobPostListItem;
+
 export type JobPostClientListParams = PageRequest & {
   filter: JobPostFilter;
+};
+
+export type JobPostPublicListParams = {
+  page: number;
+  size: number;
+  sortBy: string;
+  direction: JobPostDirection;
+  search?: string;
+  "filter.status": JobPostStatus;
+  "filter.minBudget"?: number;
+  "filter.maxBudget"?: number;
+  "filter.estimatedDaysFrom"?: number;
+  "filter.estimatedDaysTo"?: number;
 };
 
 export type JobPostAnalyzeRequest = {
@@ -81,4 +96,87 @@ export type JobPostAnalyzeRequest = {
 export type RecommendExpertsRequest = JobPostAnalyzeRequest & {
   requiredSkillIds: number[];
   preferredSkillIds: number[];
+};
+
+export type ExpertApplyRequest = {
+  jobPostId: string;
+  proposedBudget: number;
+  estimatedDays: number;
+  expertCode: string;
+};
+
+export type ProposalRequest = {
+  title: string;
+  strategySummary: string;
+};
+
+export type ProposalUnlockRequest = {
+  strategyDetail: string;
+  unlockCost: number;
+};
+
+export type ApplyJobPostRequest = {
+  expertApplyRequest: ExpertApplyRequest;
+  proposalRequest?: ProposalRequest;
+  proposalUnlockRequest?: ProposalUnlockRequest;
+};
+
+export type ExpertProposal = {
+  id: string;
+  title: string;
+  strategySummary: string;
+  unlockCost: number;
+};
+
+export type ProposalUnlock = {
+  id: string;
+  createdAt: string;
+  strategyDetail: string;
+  unlockCost?: number;
+};
+
+export type ExpertApply = {
+  id: string;
+  proposedBudget: number;
+  estimatedDays: number;
+  expertCode: string;
+};
+
+export type ApplicantProposal = {
+  id: string;
+  title: string;
+  strategySummary: string;
+  unlockCost?: number;
+};
+
+export type ApplicantProposalUnlock = {
+  id: string;
+  createdAt: string;
+  strategyDetail: string | null;
+  unlockCost?: number;
+};
+
+export type JobPostApplicant = {
+  expertApply: ExpertApply;
+  proposal: ApplicantProposal | null;
+  proposalUnlock: ApplicantProposalUnlock | null;
+};
+
+export type ExpertProposalListParams = {
+  expertCode: string;
+  "pageRequest.page": number;
+  "pageRequest.size": number;
+  "pageRequest.sortBy": string;
+  "pageRequest.direction": JobPostDirection;
+  "pageRequest.search"?: string;
+};
+
+export type UpdateProposalRequest = {
+  title: string;
+  strategySummary: string;
+};
+
+export type UpdateProposalUnlockRequest = {
+  strategyDetail: string;
+  unlockCost: number;
 };

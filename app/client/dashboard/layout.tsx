@@ -1,6 +1,6 @@
 "use client";
 
-import { ClientSideBar } from "@/components/layout/ClientSideBar";
+import { WorkspaceSideBar } from "@/components/layout/ClientSideBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,7 +26,7 @@ export default function ClientDashboardLayout({
           } as React.CSSProperties
         }
       >
-        <ClientSideBar className="[&_[data-sidebar=sidebar]]:bg-[#712cfb] [&_[data-sidebar=sidebar]]:text-white" />
+        <WorkspaceSideBar role="CLIENT" />
         <SidebarInset>
           <header className="sticky top-0 z-100 flex h-[7vh] min-h-16 items-center justify-between bg-background px-6 border border-b-2">
             <div className="flex items-center gap-2">

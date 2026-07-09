@@ -8,7 +8,7 @@ export default function HomepageFooter() {
         muted
         playsInline
         preload="metadata"
-        className="pointer-events-none absolute inset-0 -z-20 h-full w-full object-cover"
+        className="pointer-events-none absolute inset-0 -z-20 object-center  w-full object-contain"
       >
         <source src="/video/footer-bg.mp4" type="video/mp4" />
       </video>
@@ -22,14 +22,15 @@ export default function HomepageFooter() {
             NEURO BRIDGE
           </p>
           <p className="mt-7 max-w-[420px] text-lg leading-relaxed text-white/85">
-            AI marketplace for discovering experts, automation workflows, and production-ready
-            solutions for modern teams.
+            AI marketplace for discovering experts, automation workflows, and
+            production-ready solutions for modern teams.
           </p>
         </div>
         <div>
           <h2 className="text-lg font-extrabold text-white">PLATFORM</h2>
           <p className="mt-6 max-w-[270px] text-lg leading-relaxed text-white/80">
-            Explore AI models, compare expert profiles, and turn project ideas into scoped delivery.
+            Explore AI models, compare expert profiles, and turn project ideas
+            into scoped delivery.
           </p>
         </div>
         <div>
@@ -46,5 +47,5 @@ export default function HomepageFooter() {
         Copyright &copy; 2026 Neuro Bridge. All rights reserved.
       </div>
     </footer>
-  )
+  );
 }

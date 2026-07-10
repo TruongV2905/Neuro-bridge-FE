@@ -1,5 +1,5 @@
 "use client"
-import { supabase } from "@/lib/supabase"
+import { supabase } from "@/configs/supabase"
 import { useMemo, useRef, useState } from "react"
 import {
     useCreateSubmissionPackage,
@@ -263,11 +263,6 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     }
 
     const uploadFileToSupabase = async (type: FileType, file: File) => {
-        const { data: { session } } = await supabase.auth.getSession()
-        console.log("Session:", session)
-        console.log("User:", session?.user)
-        console.log("Access token:", session?.access_token?.slice(0, 20))
-
         const bucket = "submission-files"
 
         const safeFileName = file.name
@@ -277,21 +272,13 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
         const filePath = `submission-packages/${type.toLowerCase()}/${crypto.randomUUID()}-${safeFileName}`
 
-        const { data: buckets, error: bucketError } =
-            await supabase.storage.listBuckets()
-        console.log("Buckets from client:", buckets)
-        console.log("Bucket list error:", bucketError)
-
-        const { data: uploadData, error } = await supabase.storage
+        const { error } = await supabase.storage
             .from(bucket)
             .upload(filePath, file, {
                 cacheControl: "3600",
                 upsert: true,
                 contentType: file.type || "application/octet-stream",
             })
-
-        console.log("Upload data:", uploadData)
-        console.log("Upload error:", error)
 
         if (error) {
             alert(`${error.name}: ${error.message}`)
@@ -331,7 +318,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 [type]: uploadedFile,
             }))
         } catch (error) {
-            console.error("Upload file failed:", error)
+            console.error("Upload file failed:", getRequestErrorMessage(error))
             alert("Upload file failed. Please try again.")
         } finally {
             setUploadingType(null)
@@ -382,7 +369,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
             setDraftFiles({})
             setOpenModal(false)
         } catch (error) {
-            console.error(error)
+            console.error("Submit package failed:", getRequestErrorMessage(error))
             alert(getRequestErrorMessage(error))
         }
     }

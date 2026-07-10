@@ -19,3 +19,8 @@ export type UploadedStorageObject = {
   contentType: string;
   sizeBytes: number;
 };
+
+export type StorageOperationErrorCode =
+  | "INVALID_UPLOAD_REQUEST"
+  | "STORAGE_UPLOAD_FAILED"
+  | "PUBLIC_URL_UNAVAILABLE";

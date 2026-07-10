@@ -7,6 +7,7 @@ import {
     useSubmissionPackagesByWorkspace,
 } from "@/services/submission-package.service"
 import { useSubmissionFileUpload } from "../hooks/useSubmissionFileUpload"
+import { getSubmissionUploadErrorMessage } from "../utils/submission-upload-error"
 import type {
     DeliverableFile as DeliverableFileResponse,
     SubmissionDraftFile,
@@ -250,8 +251,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 [type]: uploadedFile,
             }))
         } catch (error) {
-            console.error("Upload file failed:", getRequestErrorMessage(error))
-            alert("Upload file failed. Please try again.")
+            alert(getSubmissionUploadErrorMessage(error))
         }
     }
 

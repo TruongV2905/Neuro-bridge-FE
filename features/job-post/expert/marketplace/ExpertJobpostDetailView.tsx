@@ -209,6 +209,19 @@ export function ExpertJobpostDetailView() {
         onOpenChange={setApplyDialogOpen}
         job={job}
         expertCode={expertCode}
+        onVerifyApplied={async () => {
+          const refreshedJob = await refetch();
+          const hasApplied = Boolean(
+            expertCode &&
+              refreshedJob.data?.result.expertApplyCodes?.includes(expertCode),
+          );
+
+          if (hasApplied) {
+            setHasSubmittedApply(true);
+          }
+
+          return hasApplied;
+        }}
         onSuccess={() => {
           setHasSubmittedApply(true);
           refetch();

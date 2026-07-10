@@ -41,6 +41,12 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
 
   const isExpert = user?.role === UserRole.EXPERT
   const isClient = user?.role === UserRole.CLIENT
+  const canRenderClientSubmissionPanel =
+    isClient &&
+    Boolean(normalizedWorkspaceId) &&
+    Boolean(workspace) &&
+    !isWorkspaceLoading &&
+    !isWorkspaceError
 
   const partner = isExpert
     ? workspace?.client
@@ -126,7 +132,9 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
             <ProjectSubmissionPanel workspaceId={normalizedWorkspaceId} />
           )}
 
-          {isClient && <ClientProjectSubmissionPanel />}
+          {canRenderClientSubmissionPanel && (
+            <ClientProjectSubmissionPanel workspaceId={normalizedWorkspaceId} />
+          )}
         </div>
       </main>
     </div>

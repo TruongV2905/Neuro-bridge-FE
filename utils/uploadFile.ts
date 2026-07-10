@@ -1,4 +1,4 @@
-import { supabase } from "@/configs/supabase";
+import { uploadPublicStorageObject } from "@/services/supabase-storage.service";
 
 const BUCKET_NAME = "image_url";
 
@@ -69,35 +69,15 @@ export const uploadFile = async (
 
   const path = `${cleanFolder}/${dateFolder}/${uniqueId}_${safeName}`;
 
-  const { error } = await supabase.storage
-    .from(BUCKET_NAME)
-    .upload(path, file, {
+  const uploadedObject = await uploadPublicStorageObject({
+    bucket: BUCKET_NAME,
+    path,
+    file,
+    options: {
       upsert: false,
       contentType: file.type || "application/octet-stream",
-    });
+    },
+  });
 
-  if (error) throw error;
-
-  const { data } = supabase.storage.from(BUCKET_NAME).getPublicUrl(path);
-
-  return data.publicUrl;
-};
-
-/**
- * Upload nhiều file một lượt
- * Có thể truyền folder để lưu vào thư mục mong muốn
- */
-export const uploadFiles = async (
-  files: (File | null | undefined)[],
-  folder = "avatars",
-): Promise<string[]> => {
-  const realFiles = files.filter((f): f is File => f instanceof File);
-
-  if (!realFiles.length) return [];
-
-  const urls = await Promise.all(
-    realFiles.map((file) => uploadFile(file, folder)),
-  );
-
-  return urls;
+  return uploadedObject.publicUrl;
 };

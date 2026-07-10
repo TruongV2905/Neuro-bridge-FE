@@ -1,6 +1,8 @@
+import api from "@/configs/api";
 import { createMutationHook, createQueryHook } from "@/hooks/userAPI";
 import {
   ApplyJobPostRequest,
+  ExpertAppliedJobPostsResponse,
   ExpertProposal,
   JobPost,
   JobPostAnalyzeRequest,
@@ -13,7 +15,7 @@ import {
   UpdateProposalUnlockRequest,
 } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
-import type { PageResponse } from "@/types/common.starter";
+import type { APIResponse, PageResponse } from "@/types/common.starter";
 
 const JOB_POST_ENDPOINT = "/jobpost/job-post";
 const APPLY_JOB_POST_ENDPOINT = "/jobpost/apply-job-post";
@@ -27,6 +29,7 @@ export const jobPostKeys = {
   recommendExperts: ["job-posts", "recommend-experts"],
   clientList: ["job-posts", "client", "list"],
   publicList: ["job-posts", "public", "list"],
+  expertApplied: ["job-posts", "expert", "applied"],
   detail: ["job-posts", "detail"],
   apply: ["job-posts", "apply"],
   applicants: ["job-posts", "applicants"],
@@ -80,6 +83,12 @@ export const useGetJobPostById = createQueryHook<JobPost>(
   `${JOB_POST_ENDPOINT}/:id`,
 );
 
+export const useGetExpertAppliedJobPosts =
+  createQueryHook<ExpertAppliedJobPostsResponse>(
+    jobPostKeys.expertApplied,
+    `${JOB_POST_ENDPOINT}/expert-apply`,
+  );
+
 export const useApplyJobPost = createMutationHook<
   Record<string, never>,
   ApplyJobPostRequest
@@ -93,6 +102,18 @@ export const useGetJobPostApplicants = createQueryHook<JobPostApplicant[]>(
   jobPostKeys.applicants,
   `${APPLY_JOB_POST_ENDPOINT}/:jobPostId/applies`,
 );
+
+export async function fetchJobPostApplicants(jobPostId: string) {
+  const { data } = await api.get<APIResponse<JobPostApplicant[]>>(
+    `${APPLY_JOB_POST_ENDPOINT}/${encodeURIComponent(jobPostId)}/applies`,
+  );
+
+  return {
+    result: data.result,
+    message: data.message,
+    code: data.code,
+  };
+}
 
 export const useGetExpertProposals = createQueryHook<
   PageResponse<ExpertProposal>

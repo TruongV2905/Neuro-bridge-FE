@@ -1,8 +1,10 @@
 "use client";
 
 import * as React from "react";
+import { useQueries } from "@tanstack/react-query";
 import { useSelector } from "react-redux";
 import {
+  AlertCircle,
   BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
@@ -16,22 +18,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useGetExpertProposals } from "@/services/job-post.service";
+import {
+  fetchJobPostApplicants,
+  jobPostKeys,
+  useGetExpertAppliedJobPosts,
+} from "@/services/job-post.service";
 import type { RootState } from "@/redux/store";
 import type {
+  ExpertApplicationViewItem,
+  ExpertAppliedJobPostsResponse,
   ExpertProposal,
-  ExpertProposalListParams,
-  JobPostDirection,
 } from "@/types/job-post.type";
 import type { UserResponse } from "@/types/user/user.type";
-import { ExpertProposalCard } from "./ExpertProposalCard";
+import { ExpertApplicationCard } from "./ExpertApplicationCard";
 import { ExpertProposalDetailDialog } from "./ExpertProposalDetailDialog";
 
 const DEFAULT_STATE = {
   page: 0,
   size: 6,
-  sortBy: "createdAt",
-  direction: "DESCENDING" as JobPostDirection,
   search: "",
 };
 
@@ -57,44 +61,81 @@ export function ExpertMyApplicationsView() {
     return () => window.clearTimeout(timeoutId);
   }, [searchInput]);
 
-  const queryParams = React.useMemo<ExpertProposalListParams>(
-    () => ({
-      expertCode,
-      "pageRequest.page": state.page,
-      "pageRequest.size": state.size,
-      "pageRequest.sortBy": state.sortBy,
-      "pageRequest.direction": state.direction,
-      "pageRequest.search": state.search || undefined,
-    }),
-    [expertCode, state],
+  const appliedJobPostsQuery = useGetExpertAppliedJobPosts(undefined, {
+    enabled: !!expertCode,
+  });
+  const appliedJobPosts = React.useMemo(
+    () => normalizeAppliedJobPosts(appliedJobPostsQuery.data?.result),
+    [appliedJobPostsQuery.data?.result],
   );
 
-  const { data, isLoading, isFetching, isError, error, refetch } =
-    useGetExpertProposals(queryParams, { enabled: !!expertCode });
+  const applicantQueries = useQueries({
+    queries: appliedJobPosts.map((jobPost) => ({
+      queryKey: [...jobPostKeys.applicants, jobPost.id],
+      queryFn: () => fetchJobPostApplicants(jobPost.id),
+      enabled: !!expertCode,
+      retry: 0,
+    })),
+  });
 
-  const result = data?.result;
-  // const proposals = React.useMemo<ExpertProposal[]>(
-  //   () => result?.data ?? [],
-  //   [result],
-  // );
-  const proposals = React.useMemo<ExpertProposal[]>(() => {
-  const data = result?.data ?? [];
+  const applications = React.useMemo<ExpertApplicationViewItem[]>(() => {
+    return appliedJobPosts.flatMap((jobPost, index) => {
+      const applicants = applicantQueries[index]?.data?.result ?? [];
 
-  return data.filter(
-    (proposal): proposal is ExpertProposal =>
-      Boolean(proposal && typeof proposal.id === "string"),
+      return applicants
+        .filter(
+          (applicant) => applicant.expertApply.expertCode === expertCode,
+        )
+        .map((applicant) => ({
+          jobPost,
+          expertApply: applicant.expertApply,
+          proposal: applicant.proposal,
+          proposalUnlock: applicant.proposalUnlock,
+        }));
+    });
+  }, [applicantQueries, appliedJobPosts, expertCode]);
+
+  const filteredApplications = React.useMemo(
+    () => filterApplications(applications, state.search),
+    [applications, state.search],
   );
-}, [result]);
-  const metadata = result?.metadata;
-  const totalElements = metadata?.totalElements ?? 0;
-  const totalPages = metadata?.totalPages ?? 0;
-  const isInitialLoading = isLoading && proposals.length === 0;
-  const isEmpty = !isLoading && !isError && proposals.length === 0;
+  const totalElements = filteredApplications.length;
+  const totalPages = Math.ceil(totalElements / state.size);
+  const pageApplications = React.useMemo(() => {
+    const start = state.page * state.size;
+
+    return filteredApplications.slice(start, start + state.size);
+  }, [filteredApplications, state.page, state.size]);
+  const hasPrevious = state.page > 0;
+  const hasNext = state.page + 1 < totalPages;
+  const isInitialLoading =
+    appliedJobPostsQuery.isLoading && appliedJobPosts.length === 0;
+  const isAppliesLoading = applicantQueries.some((query) => query.isLoading);
+  const isApplicationListLoading =
+    isInitialLoading || (isAppliesLoading && applications.length === 0);
+  const isFetching =
+    appliedJobPostsQuery.isFetching ||
+    applicantQueries.some((query) => query.isFetching);
+  const failedApplicantQueries = applicantQueries.filter(
+    (query) => query.isError,
+  );
+  const isEmpty =
+    !isInitialLoading &&
+    !isAppliesLoading &&
+    !appliedJobPostsQuery.isError &&
+    filteredApplications.length === 0;
   const isDirty = state.search !== DEFAULT_STATE.search;
 
   const resetSearch = () => {
     setState(DEFAULT_STATE);
     setSearchInput(DEFAULT_STATE.search);
+  };
+
+  const refetchApplications = () => {
+    appliedJobPostsQuery.refetch();
+    applicantQueries.forEach((query) => {
+      query.refetch();
+    });
   };
 
   if (!expertCode) {
@@ -127,14 +168,14 @@ export function ExpertMyApplicationsView() {
               My Applications
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-              Track the proposals and applications you have submitted for
-              public jobposts.
+              Track every jobpost application you have submitted, with or
+              without proposal details.
             </p>
           </div>
 
           <div className="rounded-2xl border border-slate-200/80 bg-white px-5 py-4 shadow-sm shadow-slate-200/50">
             <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Submitted proposals
+              Submitted applications
             </p>
             <p className="mt-1 text-3xl font-extrabold text-slate-950">
               {totalElements.toLocaleString()}
@@ -149,7 +190,7 @@ export function ExpertMyApplicationsView() {
               <Input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search submitted proposals..."
+                placeholder="Search applications..."
                 className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm shadow-sm focus-visible:border-indigo-400 focus-visible:ring-indigo-100"
               />
             </div>
@@ -171,7 +212,7 @@ export function ExpertMyApplicationsView() {
             <span>
               Showing{" "}
               <span className="font-bold text-slate-700">
-                {proposals.length.toLocaleString()}
+                {pageApplications.length.toLocaleString()}
               </span>{" "}
               on this page
             </span>
@@ -184,43 +225,50 @@ export function ExpertMyApplicationsView() {
           </div>
         </section>
 
-        {isError && (
+        {appliedJobPostsQuery.isError && (
           <ErrorState
             message={
-              error?.response?.data?.message ||
-              "Unable to load submitted proposals."
+              getQueryErrorMessage(appliedJobPostsQuery.error) ||
+              "Unable to load submitted applications."
             }
-            onRetry={() => refetch()}
+            onRetry={() => appliedJobPostsQuery.refetch()}
           />
         )}
 
-        {isInitialLoading ? (
+        {failedApplicantQueries.length > 0 && (
+          <WarningState
+            count={failedApplicantQueries.length}
+            onRetry={refetchApplications}
+          />
+        )}
+
+        {isApplicationListLoading ? (
           <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
-              <ProposalCardSkeleton key={index} />
+              <ApplicationCardSkeleton key={index} />
             ))}
           </div>
-        ) : isEmpty ? (
+        ) : appliedJobPostsQuery.isError ? null : isEmpty ? (
           <EmptyState onReset={resetSearch} />
         ) : (
           <>
             <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
-              {proposals.map((proposal) => (
-                <ExpertProposalCard
-                  key={proposal.id}
-                  proposal={proposal}
-                  onView={setSelectedProposal}
+              {pageApplications.map((application) => (
+                <ExpertApplicationCard
+                  key={`${application.jobPost.id}-${application.expertApply.id}`}
+                  application={application}
+                  onViewProposal={setSelectedProposal}
                 />
               ))}
             </div>
 
-            <ProposalPagination
+            <ApplicationPagination
               page={state.page}
               size={state.size}
               totalPages={totalPages}
               totalElements={totalElements}
-              hasNext={metadata?.hasNext ?? false}
-              hasPrevious={metadata?.hasPrevious ?? false}
+              hasNext={hasNext}
+              hasPrevious={hasPrevious}
               onPageChange={(page) =>
                 setState((current) => ({ ...current, page }))
               }
@@ -238,6 +286,39 @@ export function ExpertMyApplicationsView() {
       />
     </main>
   );
+}
+
+function normalizeAppliedJobPosts(
+  result?: ExpertAppliedJobPostsResponse,
+): ExpertApplicationViewItem["jobPost"][] {
+  if (!result) return [];
+
+  if (Array.isArray(result)) return result;
+
+  return result.data ?? [];
+}
+
+function filterApplications(
+  applications: ExpertApplicationViewItem[],
+  search: string,
+) {
+  const term = search.trim().toLowerCase();
+
+  if (!term) return applications;
+
+  return applications.filter((application) => {
+    const searchableText = [
+      application.jobPost.title,
+      application.expertApply.expertCode,
+      application.proposal?.title,
+      application.proposal?.strategySummary,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+
+    return searchableText.includes(term);
+  });
 }
 
 function ErrorState({
@@ -265,6 +346,39 @@ function ErrorState({
   );
 }
 
+function WarningState({
+  count,
+  onRetry,
+}: {
+  count: number;
+  onRetry: () => void;
+}) {
+  return (
+    <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-700 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex gap-3">
+        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+        <div>
+          <p className="text-sm font-extrabold">
+            Some application details are unavailable
+          </p>
+          <p className="mt-1 text-xs font-semibold text-amber-600">
+            {count} jobpost {count === 1 ? "request" : "requests"} could not be
+            loaded. The rest of your applications are still shown.
+          </p>
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onRetry}
+        className="h-9 rounded-xl border-amber-200 bg-white px-4 text-xs font-bold text-amber-700 hover:bg-amber-100"
+      >
+        Retry
+      </Button>
+    </div>
+  );
+}
+
 function EmptyState({ onReset }: { onReset: () => void }) {
   return (
     <div className="mx-auto flex max-w-lg flex-col items-center justify-center rounded-3xl border border-dashed border-slate-200 bg-white px-8 py-14 text-center shadow-sm shadow-slate-200/50">
@@ -272,10 +386,10 @@ function EmptyState({ onReset }: { onReset: () => void }) {
         <BriefcaseBusiness className="h-7 w-7" />
       </div>
       <h2 className="mt-5 text-xl font-extrabold tracking-tight text-slate-950">
-        No submitted proposals found
+        No submitted applications found
       </h2>
       <p className="mt-2 text-sm leading-6 text-slate-500">
-        Applications you submit with proposals will appear here.
+        Jobpost applications you submit will appear here.
       </p>
       <Button
         type="button"
@@ -288,7 +402,7 @@ function EmptyState({ onReset }: { onReset: () => void }) {
   );
 }
 
-function ProposalCardSkeleton() {
+function ApplicationCardSkeleton() {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50">
       <div className="flex items-start justify-between gap-4">
@@ -311,7 +425,7 @@ function ProposalCardSkeleton() {
   );
 }
 
-function ProposalPagination({
+function ApplicationPagination({
   page,
   size,
   totalPages,
@@ -344,7 +458,7 @@ function ProposalPagination({
         <span className="font-bold text-slate-700">
           {totalElements.toLocaleString()}
         </span>{" "}
-        submitted proposals
+        submitted applications
       </p>
 
       <div className="flex items-center gap-1">
@@ -394,4 +508,19 @@ function ProposalPagination({
       </div>
     </div>
   );
+}
+
+type ApiErrorLike = {
+  response?: {
+    data?: {
+      message?: string;
+    };
+  };
+  message?: string;
+};
+
+function getQueryErrorMessage(error: unknown) {
+  const apiError = error as ApiErrorLike;
+
+  return apiError.response?.data?.message || apiError.message;
 }

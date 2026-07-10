@@ -461,7 +461,7 @@ function createEditFormState(
     title: detail.title ?? "",
     strategySummary: detail.strategySummary ?? "",
     strategyDetail: unlock?.strategyDetail ?? "",
-    unlockCost: String(unlockCost),
+    unlockCost: Number.isFinite(unlockCost) ? String(unlockCost) : "",
   };
 }
 
@@ -477,7 +477,7 @@ function getDisplayUnlockCost(
     return Number(detail?.unlockCost);
   }
 
-  return 0;
+  return undefined;
 }
 
 function validateEditForm(form: EditFormState): EditFormErrors {

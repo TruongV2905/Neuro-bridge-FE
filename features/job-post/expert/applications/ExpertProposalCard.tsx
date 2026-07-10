@@ -63,12 +63,12 @@ export function ExpertProposalCard({
   );
 }
 
-export function formatMoney(value?: number) {
-  const safeValue = Number.isFinite(value) ? Number(value) : 0;
+export function formatMoney(value?: number | null) {
+  if (!Number.isFinite(value)) return "Unlock cost unavailable";
 
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
-  }).format(safeValue);
+  }).format(Number(value));
 }

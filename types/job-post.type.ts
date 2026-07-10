@@ -1,4 +1,5 @@
 import { PageRequest } from "./common.starter";
+import type { PageResponse } from "./common.starter";
 
 export type CreateJobPostStep = 1 | 2 | 3 | 4;
 
@@ -125,14 +126,14 @@ export type ExpertProposal = {
   id: string;
   title: string;
   strategySummary: string;
-  unlockCost: number;
+  unlockCost?: number | null;
 };
 
 export type ProposalUnlock = {
   id: string;
   createdAt: string;
   strategyDetail: string;
-  unlockCost?: number;
+  unlockCost?: number | null;
 };
 
 export type ExpertApply = {
@@ -140,23 +141,37 @@ export type ExpertApply = {
   proposedBudget: number;
   estimatedDays: number;
   expertCode: string;
+  status?: string;
 };
 
 export type ApplicantProposal = {
   id: string;
   title: string;
   strategySummary: string;
-  unlockCost?: number;
+  unlockCost?: number | null;
 };
 
 export type ApplicantProposalUnlock = {
   id: string;
   createdAt: string;
-  strategyDetail: string | null;
-  unlockCost?: number;
+  strategyDetail?: string | null;
+  unlockCost?: number | null;
 };
 
 export type JobPostApplicant = {
+  expertApply: ExpertApply;
+  proposal: ApplicantProposal | null;
+  proposalUnlock: ApplicantProposalUnlock | null;
+};
+
+export type ExpertAppliedJobPost = JobPost;
+
+export type ExpertAppliedJobPostsResponse =
+  | ExpertAppliedJobPost[]
+  | PageResponse<ExpertAppliedJobPost>;
+
+export type ExpertApplicationViewItem = {
+  jobPost: JobPost;
   expertApply: ExpertApply;
   proposal: ApplicantProposal | null;
   proposalUnlock: ApplicantProposalUnlock | null;

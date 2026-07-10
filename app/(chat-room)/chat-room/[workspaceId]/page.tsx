@@ -23,14 +23,22 @@ import {
 } from "../_data/mock-chat-room"
 
 export default function ChatRoomPage() {
-  const params = useParams()
-  const workspaceId = params.workspaceId as string
+  const params = useParams<{ workspaceId?: string | string[] }>()
+  const workspaceId = Array.isArray(params.workspaceId)
+    ? params.workspaceId[0]
+    : params.workspaceId ?? ""
+  const normalizedWorkspaceId = workspaceId.trim()
 
   const user = useSelector(
     (state: RootState) => state.user
   ) as UserResponse | null
 
-  const { data: workspace } = useWorkspaceDetail(workspaceId)
+  const {
+    data: workspace,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+  } = useWorkspaceDetail(normalizedWorkspaceId)
 
   const isExpert = user?.role === UserRole.EXPERT
   const isClient = user?.role === UserRole.CLIENT
@@ -38,6 +46,14 @@ export default function ChatRoomPage() {
   const partner = isExpert
     ? workspace?.client
     : workspace?.expert
+  const partnerName = partner?.name ?? chatPartner.name
+  const partnerAvatarUrl = partner?.avatarUrl ?? chatPartner.avatarUrl
+  const workspaceStatusMessage = getWorkspaceStatusMessage({
+    isInvalidWorkspaceId: !normalizedWorkspaceId,
+    isLoading: isWorkspaceLoading,
+    isError: isWorkspaceError,
+    error: workspaceError,
+  })
 
   return (
     <div className="relative min-h-screen bg-[#eaf3ff]">
@@ -54,15 +70,15 @@ export default function ChatRoomPage() {
               <ChatHeader
                 user={{
                   ...chatPartner,
-                  name: partner?.name ?? chatPartner.name,
-                  avatarUrl: partner?.avatarUrl ?? chatPartner.avatarUrl,
+                  name: partnerName,
+                  avatarUrl: partnerAvatarUrl,
                 }}
               />
 
               <div className="border-b border-slate-100 bg-slate-50/70 px-6 py-3">
                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
                   <span className="font-semibold text-slate-800">
-                    {workspace?.projectName ?? "Loading project..."}
+                    {workspace?.projectName ?? workspaceStatusMessage}
                   </span>
 
                   <span>
@@ -100,18 +116,53 @@ export default function ChatRoomPage() {
             <ChatProfilePanel
               user={{
                 ...chatPartner,
-                name: partner?.name ?? chatPartner.name,
-                avatarUrl: partner?.avatarUrl ?? chatPartner.avatarUrl,
+                name: partnerName,
+                avatarUrl: partnerAvatarUrl,
               }}
               media={chatMedia}
             />
           </section>
 
-          {isExpert && <ProjectSubmissionPanel workspaceId={workspaceId} />}
+          {isExpert && normalizedWorkspaceId && (
+            <ProjectSubmissionPanel workspaceId={normalizedWorkspaceId} />
+          )}
 
           {isClient && <ClientProjectSubmissionPanel />}
         </div>
       </main>
     </div>
   )
+}
+
+function getWorkspaceStatusMessage({
+  isInvalidWorkspaceId,
+  isLoading,
+  isError,
+  error,
+}: {
+  isInvalidWorkspaceId: boolean
+  isLoading: boolean
+  isError: boolean
+  error: { response?: { status?: number; data?: { message?: string } } } | null
+}) {
+  if (isInvalidWorkspaceId) {
+    return "Invalid workspace ID"
+  }
+
+  if (isLoading) {
+    return "Loading project..."
+  }
+
+  if (isError) {
+    const status = error?.response?.status
+    const message = error?.response?.data?.message
+
+    if (message) return message
+    if (status === 401 || status === 403) return "Workspace access denied"
+    if (status === 404) return "Workspace not found"
+
+    return "Unable to load workspace"
+  }
+
+  return "Workspace unavailable"
 }

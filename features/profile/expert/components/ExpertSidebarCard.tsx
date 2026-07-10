@@ -1,11 +1,24 @@
 import { Mail, Shield } from "lucide-react"
+
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import type { User, UserResponse } from "@/types/user/user.type"
 
-type Expert = typeof import("../data/mockExpertProfile").expertProfile
+type ExpertSidebarProfile = Pick<
+  User | UserResponse,
+  "address" | "email" | "fullName" | "phone" | "status"
+>
 
-export function ExpertSidebarCard({ expert }: { expert: Expert }) {
+export function ExpertSidebarCard({
+  expert,
+}: {
+  expert: ExpertSidebarProfile
+}) {
+  const statusLabel = expert.status ? String(expert.status) : "Unavailable"
+  const phone = expert.phone || "Unavailable"
+  const address = expert.address || "Unavailable"
+
   return (
     <div className="group relative h-fit rounded-[2rem] bg-border p-[1px] transition-all duration-500 hover:shadow-[0_0_24px_rgba(95,123,255,0.15)]">
       <div
@@ -20,24 +33,22 @@ export function ExpertSidebarCard({ expert }: { expert: Expert }) {
           <div className="mb-6 flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs uppercase tracking-[0.25em] text-green-500">
               <span className="h-2 w-2 rounded-full bg-green-500" />
-              {expert.availability}
+              {statusLabel}
             </div>
 
             <div className="text-right">
-              <span className="text-3xl font-bold text-primary">
-                {expert.price}
-              </span>
+              <span className="text-3xl font-bold text-primary">--</span>
               <span className="text-muted-foreground">/hr</span>
             </div>
           </div>
 
-          <Button size="cta" className="w-full">
-            Hire {expert.name} →
+          <Button size="cta" className="w-full" disabled>
+            Hire unavailable
           </Button>
 
-          <Button variant="outline" size="lg" className="mt-4 w-full">
+          <Button variant="outline" size="lg" className="mt-4 w-full" disabled>
             <Mail className="mr-2" size={17} />
-            Message
+            Message unavailable
           </Button>
 
           <Separator className="my-6" />
@@ -59,14 +70,14 @@ export function ExpertSidebarCard({ expert }: { expert: Expert }) {
 
           <div className="mt-7">
             <h3 className="mb-5 text-xs uppercase tracking-[0.3em] text-muted-foreground">
-              Expert Metrics
+              Expert Details
             </h3>
 
             <div className="space-y-4 text-sm">
-              <Metric label="Response Time" value={expert.responseTime} />
-              <Metric label="Last Project" value={expert.lastProject} />
-              <Metric label="Rehire Rate" value={expert.rehireRate} highlight />
-              <Metric label="Country" value={`${expert.country} 🌐`} />
+              <Metric label="Name" value={expert.fullName} />
+              <Metric label="Email" value={expert.email} />
+              <Metric label="Phone" value={phone} />
+              <Metric label="Address" value={address} />
             </div>
           </div>
         </CardContent>
@@ -87,7 +98,11 @@ function Metric({
   return (
     <div className="flex justify-between gap-4">
       <span className="text-muted-foreground">{label}</span>
-      <span className={highlight ? "font-semibold text-primary" : "text-foreground"}>
+      <span
+        className={
+          highlight ? "font-semibold text-primary" : "text-foreground"
+        }
+      >
         {value}
       </span>
     </div>

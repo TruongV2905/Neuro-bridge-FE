@@ -1,16 +1,16 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { BadgeCheck, Camera, Star } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
-import type { UserResponse } from "@/types/user"
-import { SkillApiItem } from "@/services/skill-api"
+import type { User, UserResponse } from "@/types/user/user.type"
+import type { SkillResponse } from "@/types/skill.types"
 
 type ExpertProfileHeaderProps = {
-  expert: UserResponse
-  skills: SkillApiItem[]
+  expert: User | UserResponse
+  skills: SkillResponse[]
   editable?: boolean
 }
 
@@ -21,27 +21,20 @@ export function ExpertProfileHeader({
 }: ExpertProfileHeaderProps) {
   const defaultAvatar = "/images/expert-avatar.png"
 
-  const [avatar, setAvatar] = useState(
-    expert.avatarUrl || defaultAvatar
-  )
+  const [avatar, setAvatar] = useState(() => {
+    if (typeof window === "undefined" || !editable) {
+      return expert.avatarUrl || defaultAvatar
+    }
+
+    return (
+      localStorage.getItem("expert-avatar") ||
+      expert.avatarUrl ||
+      defaultAvatar
+    )
+  })
 
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!editable) {
-      setAvatar(expert.avatarUrl || defaultAvatar)
-      return
-    }
-
-    const savedAvatar = localStorage.getItem("expert-avatar")
-
-    if (savedAvatar) {
-      setAvatar(savedAvatar)
-      return
-    }
-
-    setAvatar(expert.avatarUrl || defaultAvatar)
-  }, [expert.avatarUrl, editable])
+  const displayedAvatar = editable ? avatar : expert.avatarUrl || defaultAvatar
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -93,7 +86,7 @@ export function ExpertProfileHeader({
               )}
 
               <img
-                src={avatar}
+                src={displayedAvatar}
                 alt={expert.fullName}
                 onClick={editable ? handleAvatarClick : undefined}
                 className="h-full w-full rounded-full border-4 border-primary object-cover shadow-lg transition-transform duration-300 group-hover/avatar:scale-105"

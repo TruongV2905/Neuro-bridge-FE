@@ -1,7 +1,7 @@
 import { Award, CalendarDays, ExternalLink, ShieldCheck } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { CertificateApiItem } from "@/services/certificate.service"
+import type { CertificateResponse } from "@/types/certificate.types"
 
 function formatDate(date: string) {
   return new Date(date).toLocaleDateString("vi-VN")
@@ -10,7 +10,7 @@ function formatDate(date: string) {
 export function ExpertCertificateCard({
   item,
 }: {
-  item: CertificateApiItem
+  item: CertificateResponse
 }) {
   return (
     <div className="group relative rounded-[2rem] bg-border p-[1px] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_0_24px_rgba(95,123,255,0.15)]">

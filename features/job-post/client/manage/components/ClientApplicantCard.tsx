@@ -1,24 +1,30 @@
 "use client";
 
+import Link from "next/link";
 import { ArrowUpRight, Clock4, FileText, LockKeyhole, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import type { JobPostApplicant } from "@/types/job-post.type";
+import type {
+  ApplicantProposal,
+  ClientProposalDialogSummary,
+  JobPostApplicant,
+} from "@/types/job-post.type";
 
 type ClientApplicantCardProps = {
   applicant: JobPostApplicant;
-  onViewProposal: (applicant: JobPostApplicant) => void;
+  onViewProposal: (summary: ClientProposalDialogSummary) => void;
 };
 
-export type UnlockCostSource = "unlock detail" | "proposal" | "unavailable";
+export type UnlockCostSource = "proposal" | "unavailable";
 
 export function ClientApplicantCard({
   applicant,
   onViewProposal,
 }: ClientApplicantCardProps) {
   const { expertApply, proposal } = applicant;
-  const unlockCost = resolveApplicantUnlockCost(applicant);
+  const unlockCost = resolveApplicantUnlockCost(proposal);
+  const expertProfileHref = getExpertProfileHref(expertApply.expertCode);
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50">
@@ -52,6 +58,19 @@ export function ClientApplicantCard({
         />
       </div>
 
+      {expertProfileHref && (
+        <Button
+          asChild
+          variant="outline"
+          className="mt-4 h-10 rounded-xl border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
+        >
+          <Link href={expertProfileHref} prefetch={false}>
+            View Expert Profile
+            <ArrowUpRight className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+      )}
+
       {proposal ? (
         <>
           <div className="mt-5 flex-1 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
@@ -81,7 +100,7 @@ export function ClientApplicantCard({
             </div>
             <Button
               type="button"
-              onClick={() => onViewProposal(applicant)}
+              onClick={() => onViewProposal({ expertApply, proposal })}
               className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 text-sm font-bold text-white"
             >
               View proposal
@@ -118,25 +137,15 @@ function Metric({
   );
 }
 
-export function resolveApplicantUnlockCost(applicant: JobPostApplicant): {
+export function resolveApplicantUnlockCost(proposal?: ApplicantProposal | null): {
   value: number | null;
   source: UnlockCostSource;
 } {
   if (
-    typeof applicant.proposalUnlock?.unlockCost === "number" &&
-    Number.isFinite(applicant.proposalUnlock.unlockCost)
+    typeof proposal?.unlockCost === "number" &&
+    Number.isFinite(proposal.unlockCost)
   ) {
-    return {
-      value: applicant.proposalUnlock.unlockCost,
-      source: "unlock detail",
-    };
-  }
-
-  if (
-    typeof applicant.proposal?.unlockCost === "number" &&
-    Number.isFinite(applicant.proposal.unlockCost)
-  ) {
-    return { value: applicant.proposal.unlockCost, source: "proposal" };
+    return { value: proposal.unlockCost, source: "proposal" };
   }
 
   return { value: null, source: "unavailable" };
@@ -148,4 +157,18 @@ export function formatApplicantMoney(value: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function getExpertProfileHref(expertCode: unknown) {
+  if (typeof expertCode !== "string") {
+    return null;
+  }
+
+  const normalizedExpertCode = expertCode.trim();
+
+  if (!normalizedExpertCode) {
+    return null;
+  }
+
+  return `/experts/${encodeURIComponent(normalizedExpertCode)}`;
 }

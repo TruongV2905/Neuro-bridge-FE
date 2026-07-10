@@ -1,8 +1,8 @@
 import { Sparkles } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { SkillApiItem } from "@/services/skill-api"
+import type { SkillResponse } from "@/types/skill.types"
 
-export function ExpertSkillCard({ item }: { item: SkillApiItem }) {
+export function ExpertSkillCard({ item }: { item: SkillResponse }) {
   return (
     <div className="group relative rounded-xl bg-border p-[1px] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(95,123,255,0.15)]">
       <div

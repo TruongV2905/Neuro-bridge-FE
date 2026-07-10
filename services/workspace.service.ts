@@ -1,49 +1,76 @@
-import { useQuery } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query";
+import type { AxiosError } from "axios";
 
-export type WorkspaceMember = {
-  userId: string
-  name: string
-  avatarUrl: string
-}
+import api from "@/configs/api";
+import type { APIResponse } from "@/types/common.starter";
+import type {
+  WorkspaceDetail,
+  WorkspaceMember,
+} from "@/types/workspace.type";
 
-export type WorkspaceDetail = {
-  workspaceId: string
-  jobId: string
-  escrowId: string
-  status: string
-  createdAt: string
-  client: WorkspaceMember
-  expert: WorkspaceMember
-  projectName: string
-  deadline: string
-  startDate: string
-  projectStatus: string
-  progressPercentage: number
-}
+const WORKSPACE_ENDPOINT = "/workspace/api/v1/workspaces";
+const WORKSPACE_MEMBER_ENDPOINT = "/workspace/api/v1/workspace-members";
+
+type WorkspaceApiError = AxiosError<APIResponse<null>>;
+
+export const workspaceKeys = {
+  all: ["workspace"] as const,
+  detail: (workspaceId: string) =>
+    [...workspaceKeys.all, "detail", workspaceId] as const,
+  dashboard: (pageNo: number, pageSize: number) =>
+    [...workspaceKeys.all, "dashboard", pageNo, pageSize] as const,
+  members: (workspaceId: string) =>
+    [...workspaceKeys.all, "members", workspaceId] as const,
+};
 
 export async function getWorkspaceDetail(workspaceId: string) {
-  const accessToken = localStorage.getItem("accessToken")
+  const { data } = await api.get<WorkspaceDetail>(
+    `${WORKSPACE_ENDPOINT}/${encodeURIComponent(workspaceId)}`,
+  );
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/workspaces/${workspaceId}`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    }
-  )
-
-  if (!response.ok) {
-    throw new Error("Get workspace detail failed")
-  }
-
-  return response.json() as Promise<WorkspaceDetail>
+  return data;
 }
 
-export function useWorkspaceDetail(workspaceId?: string) {
-  return useQuery({
-    queryKey: ["workspace-detail", workspaceId],
-    queryFn: () => getWorkspaceDetail(workspaceId as string),
-    enabled: !!workspaceId,
-  })
+export async function getWorkspaceMembers(workspaceId: string) {
+  const { data } = await api.get<APIResponse<WorkspaceMember[]>>(
+    `${WORKSPACE_MEMBER_ENDPOINT}/workspace/${encodeURIComponent(workspaceId)}`,
+  );
+
+  return data;
+}
+
+export function useWorkspaceDetail(workspaceId?: string | null) {
+  const normalizedWorkspaceId = normalizeWorkspaceId(workspaceId);
+
+  return useQuery<WorkspaceDetail, WorkspaceApiError>({
+    queryKey: normalizedWorkspaceId
+      ? workspaceKeys.detail(normalizedWorkspaceId)
+      : workspaceKeys.detail(""),
+    queryFn: () => getWorkspaceDetail(normalizedWorkspaceId ?? ""),
+    enabled: Boolean(normalizedWorkspaceId),
+    retry: 0,
+  });
+}
+
+export function useWorkspaceMembers(workspaceId?: string | null) {
+  const normalizedWorkspaceId = normalizeWorkspaceId(workspaceId);
+
+  return useQuery<APIResponse<WorkspaceMember[]>, WorkspaceApiError>({
+    queryKey: normalizedWorkspaceId
+      ? workspaceKeys.members(normalizedWorkspaceId)
+      : workspaceKeys.members(""),
+    queryFn: () => getWorkspaceMembers(normalizedWorkspaceId ?? ""),
+    enabled: Boolean(normalizedWorkspaceId),
+    retry: 0,
+  });
+}
+
+function normalizeWorkspaceId(workspaceId?: string | null) {
+  if (typeof workspaceId !== "string") {
+    return null;
+  }
+
+  const normalized = workspaceId.trim();
+
+  return normalized.length > 0 ? normalized : null;
 }

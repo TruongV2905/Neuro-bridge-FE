@@ -1,4 +1,5 @@
 export { ExpertProfileView } from "./ExpertProfileView"
+export { PublicExpertProfileView } from "./PublicExpertProfileView"
 export { ExpertProfileHeader } from "./components/ExpertProfileHeader"
 export { ExpertSidebarCard } from "./components/ExpertSidebarCard"
 export { ExpertSkillCard } from "./components/ExpertSkillCard"

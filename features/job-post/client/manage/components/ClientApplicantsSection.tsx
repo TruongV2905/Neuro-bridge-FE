@@ -6,7 +6,7 @@ import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useGetJobPostApplicants } from "@/services/job-post.service";
-import type { JobPostApplicant } from "@/types/job-post.type";
+import type { ClientProposalDialogSummary } from "@/types/job-post.type";
 import { ClientApplicantCard } from "./ClientApplicantCard";
 import { ClientProposalDetailDialog } from "./ClientProposalDetailDialog";
 
@@ -17,8 +17,8 @@ type ClientApplicantsSectionProps = {
 export function ClientApplicantsSection({
   jobPostId,
 }: ClientApplicantsSectionProps) {
-  const [selectedApplicant, setSelectedApplicant] =
-    useState<JobPostApplicant | null>(null);
+  const [selectedProposal, setSelectedProposal] =
+    useState<ClientProposalDialogSummary | null>(null);
   const { data, isLoading, isError, error, refetch } =
     useGetJobPostApplicants(
       { jobPostId },
@@ -82,15 +82,15 @@ export function ClientApplicantsSection({
           <ClientApplicantCard
             key={applicant.expertApply.id}
             applicant={applicant}
-            onViewProposal={setSelectedApplicant}
+            onViewProposal={setSelectedProposal}
           />
         ))}
       </div>
       <ClientProposalDetailDialog
-        applicant={selectedApplicant}
-        open={Boolean(selectedApplicant)}
+        proposalSummary={selectedProposal}
+        open={Boolean(selectedProposal)}
         onOpenChange={(nextOpen) => {
-          if (!nextOpen) setSelectedApplicant(null);
+          if (!nextOpen) setSelectedProposal(null);
         }}
       />
     </>

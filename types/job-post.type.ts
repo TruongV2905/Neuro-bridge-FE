@@ -161,7 +161,12 @@ export type ApplicantProposalUnlock = {
 export type JobPostApplicant = {
   expertApply: ExpertApply;
   proposal: ApplicantProposal | null;
-  proposalUnlock: ApplicantProposalUnlock | null;
+  proposalUnlock?: ApplicantProposalUnlock | null;
+};
+
+export type ClientProposalDialogSummary = {
+  expertApply: ExpertApply;
+  proposal: ApplicantProposal;
 };
 
 export type ExpertAppliedJobPost = JobPost;
@@ -174,7 +179,7 @@ export type ExpertApplicationViewItem = {
   jobPost: JobPost;
   expertApply: ExpertApply;
   proposal: ApplicantProposal | null;
-  proposalUnlock: ApplicantProposalUnlock | null;
+  proposalUnlock?: ApplicantProposalUnlock | null;
 };
 
 export type ExpertProposalListParams = {

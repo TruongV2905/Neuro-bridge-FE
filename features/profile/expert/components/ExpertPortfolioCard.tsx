@@ -1,9 +1,9 @@
 import { ExternalLink } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { PortfolioApiItem } from "@/services/portfolio.service"
+import type { PortfolioResponse } from "@/types/portfolio.types"
 
-export function ExpertPortfolioCard({ item }: { item: PortfolioApiItem }) {
+export function ExpertPortfolioCard({ item }: { item: PortfolioResponse }) {
   return (
     <div className="group relative rounded-xl bg-border p-[1px] transition-all duration-500 hover:-translate-y-1 hover:shadow-[0_0_20px_rgba(95,123,255,0.15)]">
       <div

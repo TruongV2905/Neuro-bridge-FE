@@ -1,5 +1,6 @@
 "use client";
 
+import { isAxiosError } from "axios";
 import { CalendarDays, Clock4, LockKeyhole, User } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -12,27 +13,43 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { JobPostApplicant } from "@/types/job-post.type";
+import { useGetProposalUnlockByProposalId } from "@/services/job-post.service";
+import type {
+  ClientProposalDialogSummary,
+  ProposalUnlock,
+} from "@/types/job-post.type";
 import {
   formatApplicantMoney,
   resolveApplicantUnlockCost,
 } from "./ClientApplicantCard";
 
 type ClientProposalDetailDialogProps = {
-  applicant: JobPostApplicant | null;
+  proposalSummary: ClientProposalDialogSummary | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function ClientProposalDetailDialog({
-  applicant,
+  proposalSummary,
   open,
   onOpenChange,
 }: ClientProposalDetailDialogProps) {
-  const proposal = applicant?.proposal;
-  const proposalUnlock = applicant?.proposalUnlock;
-  const unlockCost = applicant
-    ? resolveApplicantUnlockCost(applicant)
+  const proposal = proposalSummary?.proposal;
+  const proposalId = proposal?.id.trim() ?? "";
+  const shouldLoadProtectedDetail = open && proposalId.length > 0;
+  const unlockQuery = useGetProposalUnlockByProposalId(
+    { proposalId },
+    {
+      enabled: shouldLoadProtectedDetail,
+      retry: (failureCount, queryError) =>
+        shouldRetryProposalUnlockQuery(failureCount, queryError),
+    },
+  );
+  const proposalUnlock = shouldLoadProtectedDetail
+    ? unlockQuery.data?.result
+    : undefined;
+  const unlockCost = proposal
+    ? resolveApplicantUnlockCost(proposal)
     : { value: null, source: "unavailable" as const };
 
   return (
@@ -45,31 +62,31 @@ export function ClientProposalDetailDialog({
           <DialogDescription>
             Read-only proposal submitted by{" "}
             <span className="font-bold text-slate-700">
-              {applicant?.expertApply.expertCode || "Unknown expert"}
+              {proposalSummary?.expertApply.expertCode || "Unknown expert"}
             </span>
             .
           </DialogDescription>
         </DialogHeader>
 
-        {applicant && proposal ? (
+        {proposalSummary && proposal ? (
           <div className="space-y-5 px-6 py-5">
             <div className="grid gap-3 sm:grid-cols-3">
               <DetailMetric
                 icon={<User className="h-4 w-4" />}
                 label="Expert code"
-                value={applicant.expertApply.expertCode}
+                value={proposalSummary.expertApply.expertCode}
               />
               <DetailMetric
                 icon={<LockKeyhole className="h-4 w-4" />}
                 label="Proposed budget"
                 value={formatApplicantMoney(
-                  applicant.expertApply.proposedBudget,
+                  proposalSummary.expertApply.proposedBudget,
                 )}
               />
               <DetailMetric
                 icon={<Clock4 className="h-4 w-4" />}
                 label="Estimated time"
-                value={`${applicant.expertApply.estimatedDays} days`}
+                value={`${proposalSummary.expertApply.estimatedDays} days`}
               />
             </div>
 
@@ -92,7 +109,11 @@ export function ClientProposalDetailDialog({
                     ? "Unlock cost unavailable"
                     : formatApplicantMoney(unlockCost.value)
                 }
-                detail={`Cost source: ${unlockCost.source}`}
+                detail={`Cost source: ${
+                  unlockCost.source === "proposal"
+                    ? "proposal summary"
+                    : "unavailable"
+                }`}
               />
               <DetailMetric
                 icon={<CalendarDays className="h-4 w-4" />}
@@ -105,20 +126,16 @@ export function ClientProposalDetailDialog({
               />
             </div>
 
-            {proposalUnlock?.strategyDetail && (
-              <section>
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
-                  Detailed strategy
-                </h3>
-                <p className="mt-2 whitespace-pre-line rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm leading-7 text-slate-700">
-                  {proposalUnlock.strategyDetail}
-                </p>
-                <p className="mt-2 text-xs leading-5 text-slate-500">
-                  Detailed strategy is shown because the applicants API returned
-                  it. Payment/unlock access is not implemented yet.
-                </p>
-              </section>
-            )}
+            <ProtectedDetailSection
+              key={proposalId}
+              isLoading={unlockQuery.isLoading || unlockQuery.isFetching}
+              isError={unlockQuery.isError}
+              error={unlockQuery.error}
+              proposalUnlock={proposalUnlock}
+              onRetry={() => {
+                void unlockQuery.refetch();
+              }}
+            />
 
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <p className="text-sm font-bold text-amber-800">
@@ -146,6 +163,89 @@ export function ClientProposalDetailDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function ProtectedDetailSection({
+  isLoading,
+  isError,
+  error,
+  proposalUnlock,
+  onRetry,
+}: {
+  isLoading: boolean;
+  isError: boolean;
+  error: unknown;
+  proposalUnlock?: ProposalUnlock;
+  onRetry: () => void;
+}) {
+  const isLocked = isError && isProtectedDetailLocked(error);
+
+  return (
+    <section>
+      <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
+        Detailed strategy
+      </h3>
+
+      {isLoading ? (
+        <ProtectedDetailMessage tone="neutral">
+          Loading protected proposal detail...
+        </ProtectedDetailMessage>
+      ) : proposalUnlock?.strategyDetail ? (
+        <>
+          <p className="mt-2 whitespace-pre-line rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm leading-7 text-slate-700">
+            {proposalUnlock.strategyDetail}
+          </p>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            Detailed strategy is shown from the authorized Proposal Unlock
+            endpoint response.
+          </p>
+        </>
+      ) : isLocked ? (
+        <ProtectedDetailMessage tone="locked">
+          {getProposalUnlockErrorMessage(
+            error,
+            "Payment is required to view the detailed strategy.",
+          )}
+        </ProtectedDetailMessage>
+      ) : isError ? (
+        <div className="mt-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3">
+          <p className="text-sm font-semibold text-rose-700">
+            {getProposalUnlockErrorMessage(
+              error,
+              "Unable to load protected proposal detail.",
+            )}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRetry}
+            className="mt-3 h-9 rounded-xl border-rose-200 bg-white text-xs font-bold text-rose-700"
+          >
+            Retry detail
+          </Button>
+        </div>
+      ) : (
+        <ProtectedDetailMessage tone="locked">
+          Protected detail is locked or unavailable.
+        </ProtectedDetailMessage>
+      )}
+    </section>
+  );
+}
+
+function ProtectedDetailMessage({
+  tone,
+  children,
+}: {
+  tone: "neutral" | "locked";
+  children: React.ReactNode;
+}) {
+  const className =
+    tone === "neutral"
+      ? "mt-2 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm font-semibold text-slate-600"
+      : "mt-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700";
+
+  return <div className={className}>{children}</div>;
 }
 
 function DetailMetric({
@@ -180,4 +280,43 @@ function formatDateTime(value: string) {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(date);
+}
+
+function shouldRetryProposalUnlockQuery(
+  failureCount: number,
+  error: unknown,
+) {
+  const status = getResponseStatus(error);
+
+  if (status === 400 || status === 401 || status === 403) {
+    return false;
+  }
+
+  if (!status || status >= 500) {
+    return failureCount < 2;
+  }
+
+  return false;
+}
+
+function isProtectedDetailLocked(error: unknown) {
+  const status = getResponseStatus(error);
+
+  return status === 400 || status === 401 || status === 403;
+}
+
+function getResponseStatus(error: unknown) {
+  if (!isAxiosError(error)) {
+    return undefined;
+  }
+
+  return error.response?.status;
+}
+
+function getProposalUnlockErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+
+  return fallback;
 }

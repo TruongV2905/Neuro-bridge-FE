@@ -1,5 +1,4 @@
 "use client"
-import { supabase } from "@/configs/supabase"
 import { useMemo, useRef, useState } from "react"
 import {
     useCreateSubmissionPackage,
@@ -7,8 +6,10 @@ import {
     useResubmitSubmissionPackage,
     useSubmissionPackagesByWorkspace,
 } from "@/services/submission-package.service"
+import { useSubmissionFileUpload } from "../hooks/useSubmissionFileUpload"
 import type {
     DeliverableFile as DeliverableFileResponse,
+    SubmissionDraftFile,
     SubmissionFileRequest,
     SubmissionFileType,
     SubmissionPackageSummary,
@@ -28,18 +29,6 @@ import {
 
 type FileType = SubmissionFileType
 
-type DeliverableFile = {
-    fileId: string
-    fileType: FileType
-    fileName: string
-    fileSize: string
-    fileMimeType: string
-    uploadedAt: string
-    previewUrl: string
-    downloadUrl: string
-    storagePath: string
-}
-
 type SubmissionPackage = {
     packageId: string
     version: number
@@ -47,7 +36,7 @@ type SubmissionPackage = {
     submittedAt: string
     note: string
     releaseDay: number
-    files: DeliverableFile[]
+    files: SubmissionDraftFile[]
 }
 
 type PackageFileSlot = {
@@ -96,22 +85,6 @@ const packageFileSlots: PackageFileSlot[] = [
     },
 ]
 
-function formatFileSize(size: number) {
-    if (size < 1024) return `${size} B`
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`
-}
-
-function getCurrentTime() {
-    return new Date().toLocaleString("en-US", {
-        month: "short",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-    })
-}
-
 function getLatestSubmissionPackage(packages: SubmissionPackageSummary[]) {
     return packages[0] ?? null
 }
@@ -133,7 +106,7 @@ function mapSubmissionPackage(
     }
 }
 
-function mapDeliverableFile(file: DeliverableFileResponse): DeliverableFile {
+function mapDeliverableFile(file: DeliverableFileResponse): SubmissionDraftFile {
     return {
         fileId: file.fileId,
         fileType: file.fileType,
@@ -147,7 +120,7 @@ function mapDeliverableFile(file: DeliverableFileResponse): DeliverableFile {
     }
 }
 
-function mapSubmissionFileRequest(file: DeliverableFile): SubmissionFileRequest {
+function mapSubmissionFileRequest(file: SubmissionDraftFile): SubmissionFileRequest {
     return {
         fileName: file.fileName,
         fileUrl: file.previewUrl,
@@ -180,13 +153,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelProps) {
     const [openModal, setOpenModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>("create")
-    const [previewFile, setPreviewFile] = useState<DeliverableFile | null>(null)
+    const [previewFile, setPreviewFile] = useState<SubmissionDraftFile | null>(null)
     const [note, setNote] = useState("")
     const [releaseDay, setReleaseDay] = useState("")
-    const [uploadingType, setUploadingType] = useState<FileType | null>(null)
+    const {
+        uploadSubmissionFile,
+        uploadingType,
+        isUploading,
+    } = useSubmissionFileUpload()
 
     const [draftFiles, setDraftFiles] = useState<
-        Partial<Record<FileType, DeliverableFile>>
+        Partial<Record<FileType, SubmissionDraftFile>>
     >({})
 
     const normalizedWorkspaceId = workspaceId.trim()
@@ -233,7 +210,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     }, [latestPackage])
 
     const latestFileMap = useMemo(() => {
-        return latestFiles.reduce<Partial<Record<FileType, DeliverableFile>>>(
+        return latestFiles.reduce<Partial<Record<FileType, SubmissionDraftFile>>>(
             (acc, file) => {
                 acc[file.fileType] = file
                 return acc
@@ -262,56 +239,11 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
         setOpenModal(true)
     }
 
-    const uploadFileToSupabase = async (type: FileType, file: File) => {
-        const bucket = "submission-files"
-
-        const safeFileName = file.name
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .replace(/[^a-zA-Z0-9.-]/g, "-")
-
-        const filePath = `submission-packages/${type.toLowerCase()}/${crypto.randomUUID()}-${safeFileName}`
-
-        const { error } = await supabase.storage
-            .from(bucket)
-            .upload(filePath, file, {
-                cacheControl: "3600",
-                upsert: true,
-                contentType: file.type || "application/octet-stream",
-            })
-
-        if (error) {
-            alert(`${error.name}: ${error.message}`)
-            throw error
-        }
-
-        const { data } = supabase.storage.from(bucket).getPublicUrl(filePath)
-
-        return {
-            filePath,
-            publicUrl: data.publicUrl,
-        }
-    }
-
     const handleFileChange = async (type: FileType, file?: File) => {
         if (!file) return
 
         try {
-            setUploadingType(type)
-
-            const { filePath, publicUrl } = await uploadFileToSupabase(type, file)
-
-            const uploadedFile: DeliverableFile = {
-                fileId: crypto.randomUUID(),
-                fileType: type,
-                fileName: file.name,
-                fileSize: formatFileSize(file.size),
-                fileMimeType: file.type,
-                uploadedAt: getCurrentTime(),
-                previewUrl: publicUrl,
-                downloadUrl: publicUrl,
-                storagePath: filePath,
-            }
+            const uploadedFile = await uploadSubmissionFile(type, file)
 
             setDraftFiles((prev) => ({
                 ...prev,
@@ -320,8 +252,6 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
         } catch (error) {
             console.error("Upload file failed:", getRequestErrorMessage(error))
             alert("Upload file failed. Please try again.")
-        } finally {
-            setUploadingType(null)
         }
     }
 
@@ -330,7 +260,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
         const files = packageFileSlots
             .map((slot) => draftFiles[slot.type])
-            .filter(Boolean) as DeliverableFile[]
+            .filter(Boolean) as SubmissionDraftFile[]
 
         if (files.length !== packageFileSlots.length) return
         if (!normalizedWorkspaceId) return
@@ -734,7 +664,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                                         !note.trim() ||
                                         !releaseDay.trim() ||
                                         isSubmitting ||
-                                        uploadingType !== null
+                                        isUploading
                                     }
                                     className="h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >

@@ -35,6 +35,18 @@ export type SubmissionFileRequest = {
   fileType: SubmissionFileType;
 };
 
+export type SubmissionDraftFile = {
+  fileId: string;
+  fileType: SubmissionFileType;
+  fileName: string;
+  fileSize: string;
+  fileMimeType: string;
+  uploadedAt: string;
+  previewUrl: string;
+  downloadUrl: string;
+  storagePath: string;
+};
+
 export type CreateSubmissionPackageRequest = {
   workspaceId: string;
   notes: string;

@@ -1,7 +1,18 @@
 "use client"
 import { supabase } from "@/lib/supabase"
-import { useEffect, useMemo, useRef, useState } from "react"
-import { resubmitSubmissionPackage } from "@/services/submission-package.service"
+import { useMemo, useRef, useState } from "react"
+import {
+    useCreateSubmissionPackage,
+    useDeliverableFilesByPackage,
+    useResubmitSubmissionPackage,
+    useSubmissionPackagesByWorkspace,
+} from "@/services/submission-package.service"
+import type {
+    DeliverableFile as DeliverableFileResponse,
+    SubmissionFileRequest,
+    SubmissionFileType,
+    SubmissionPackageSummary,
+} from "@/types/submission-package.type"
 import {
     CheckCircle2,
     Code2,
@@ -15,9 +26,7 @@ import {
     X,
 } from "lucide-react"
 
-type FileType = "SOURCE_CODE" | "DOCUMENT" | "VIDEO" | "DATASET"
-
-type PackageStatus = "PENDING" | "APPROVED" | "REJECTED" | "SUPERSEDED"
+type FileType = SubmissionFileType
 
 type DeliverableFile = {
     fileId: string
@@ -34,35 +43,11 @@ type DeliverableFile = {
 type SubmissionPackage = {
     packageId: string
     version: number
-    status: PackageStatus
+    status: string
     submittedAt: string
     note: string
     releaseDay: number
     files: DeliverableFile[]
-}
-
-type SubmissionPackageResponse = {
-    packageId: string
-    workspaceId: string
-    version: number
-    notes: string
-    submittedAt: string | null
-    reviewedAt: string | null
-    autoReleaseAt: string | null
-    status: PackageStatus
-    feedback: string | null
-    isDelete: boolean
-}
-
-type DeliverableFileResponse = {
-    fileId: string
-    packageId: string
-    fileName: string
-    fileUrl: string
-    fileSize: string
-    fileType: FileType
-    uploadedAt: string
-    isDelete: boolean
 }
 
 type PackageFileSlot = {
@@ -127,6 +112,71 @@ function getCurrentTime() {
     })
 }
 
+function getLatestSubmissionPackage(packages: SubmissionPackageSummary[]) {
+    return packages[0] ?? null
+}
+
+function mapSubmissionPackage(
+    item: SubmissionPackageSummary,
+    files: DeliverableFileResponse[]
+): SubmissionPackage {
+    return {
+        packageId: item.packageId,
+        version: item.version,
+        status: item.status,
+        submittedAt: item.submittedAt ?? "",
+        note: item.notes ?? "",
+        releaseDay: 0,
+        files: files
+            .filter((file) => !file.isDelete)
+            .map(mapDeliverableFile),
+    }
+}
+
+function mapDeliverableFile(file: DeliverableFileResponse): DeliverableFile {
+    return {
+        fileId: file.fileId,
+        fileType: file.fileType,
+        fileName: file.fileName,
+        fileSize: file.fileSize,
+        fileMimeType: "",
+        uploadedAt: file.uploadedAt,
+        previewUrl: file.fileUrl,
+        downloadUrl: file.fileUrl,
+        storagePath: file.fileUrl,
+    }
+}
+
+function mapSubmissionFileRequest(file: DeliverableFile): SubmissionFileRequest {
+    return {
+        fileName: file.fileName,
+        fileUrl: file.previewUrl,
+        fileSize: file.fileSize,
+        fileType: file.fileType,
+    }
+}
+
+function getRequestErrorMessage(error: unknown) {
+    if (!isRecord(error)) {
+        return "Please try again later."
+    }
+
+    const response = isRecord(error.response) ? error.response : null
+    const data = response && isRecord(response.data) ? response.data : null
+    const message =
+        data && typeof data.message === "string" ? data.message : null
+
+    if (message) return message
+
+    return typeof error.message === "string"
+        ? error.message
+        : "Please try again later."
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null
+}
+
 export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelProps) {
     const [openModal, setOpenModal] = useState(false)
     const [modalMode, setModalMode] = useState<ModalMode>("create")
@@ -134,25 +184,53 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
     const [note, setNote] = useState("")
     const [releaseDay, setReleaseDay] = useState("")
     const [uploadingType, setUploadingType] = useState<FileType | null>(null)
-    const [submitting, setSubmitting] = useState(false)
 
     const [draftFiles, setDraftFiles] = useState<
         Partial<Record<FileType, DeliverableFile>>
     >({})
 
-    const [latestPackage, setLatestPackage] = useState<SubmissionPackage | null>(
-        null
-    )
+    const normalizedWorkspaceId = workspaceId.trim()
+    const packageListQuery =
+        useSubmissionPackagesByWorkspace(normalizedWorkspaceId)
+    const createSubmissionMutation = useCreateSubmissionPackage()
+    const resubmitSubmissionMutation = useResubmitSubmissionPackage()
+    const latestPackageSummary = useMemo(() => {
+        return getLatestSubmissionPackage(packageListQuery.data ?? [])
+    }, [packageListQuery.data])
+    const latestPackageId = latestPackageSummary?.packageId ?? ""
+    const packageFilesQuery = useDeliverableFilesByPackage(latestPackageId)
 
     const inputRefs = useRef<Partial<Record<FileType, HTMLInputElement | null>>>(
         {}
     )
 
+    const serverLatestPackage = useMemo(() => {
+        if (!latestPackageSummary) return null
+
+        return mapSubmissionPackage(
+            latestPackageSummary,
+            packageFilesQuery.data ?? []
+        )
+    }, [latestPackageSummary, packageFilesQuery.data])
+
+    const latestPackage = serverLatestPackage
+    const isPackageReadLoading =
+        packageListQuery.isLoading ||
+        (Boolean(latestPackageSummary) && packageFilesQuery.isLoading)
+    const isPackageReadError =
+        packageListQuery.isError || packageFilesQuery.isError
+    const packageReadError =
+        packageListQuery.error ?? packageFilesQuery.error
+    const isSubmitting =
+        createSubmissionMutation.isPending || resubmitSubmissionMutation.isPending
+
     const uploadedCount = useMemo(() => {
         return packageFileSlots.filter((slot) => draftFiles[slot.type]).length
     }, [draftFiles])
 
-    const latestFiles = latestPackage?.files ?? []
+    const latestFiles = useMemo(() => {
+        return latestPackage?.files ?? []
+    }, [latestPackage])
 
     const latestFileMap = useMemo(() => {
         return latestFiles.reduce<Partial<Record<FileType, DeliverableFile>>>(
@@ -163,52 +241,6 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
             {}
         )
     }, [latestFiles])
-
-    useEffect(() => {
-        if (!workspaceId) return
-
-        const fetchLatestPackage = async () => {
-            try {
-                const packages = await getSubmissionPackagesByWorkspace()
-
-                const latestPackage = packages[0]
-
-                if (!latestPackage) return
-
-                const packageFiles = await getDeliverableFilesByPackage(
-                    latestPackage.packageId
-                )
-
-                const mappedFiles: DeliverableFile[] = packageFiles
-                    .filter((file) => !file.isDelete)
-                    .map((file) => ({
-                        fileId: file.fileId,
-                        fileType: file.fileType,
-                        fileName: file.fileName,
-                        fileSize: file.fileSize,
-                        fileMimeType: "",
-                        uploadedAt: file.uploadedAt,
-                        previewUrl: file.fileUrl,
-                        downloadUrl: file.fileUrl,
-                        storagePath: file.fileUrl,
-                    }))
-
-                setLatestPackage({
-                    packageId: latestPackage.packageId,
-                    version: latestPackage.version,
-                    status: latestPackage.status,
-                    submittedAt: latestPackage.submittedAt ?? "",
-                    note: latestPackage.notes ?? "",
-                    releaseDay: 0,
-                    files: mappedFiles,
-                })
-            } catch (error) {
-                console.error("Load latest submission package failed:", error)
-            }
-        }
-
-        fetchLatestPackage()
-    }, [workspaceId])
 
     const handleChooseFile = (type: FileType) => {
         inputRefs.current[type]?.click()
@@ -306,139 +338,53 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
         }
     }
 
-    const getSubmissionPackagesByWorkspace = async () => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages/workspaces/${workspaceId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        )
-
-        if (!response.ok) {
-            throw new Error("Get submission packages failed")
-        }
-
-        return response.json() as Promise<SubmissionPackageResponse[]>
-    }
-
-    const getDeliverableFilesByPackage = async (packageId: string) => {
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/deliverable-files/packages/${packageId}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${accessToken}`,
-                },
-            }
-        )
-
-        if (!response.ok) {
-            throw new Error("Get deliverable files failed")
-        }
-
-        return response.json() as Promise<DeliverableFileResponse[]>
-    }
-
     const handleSubmitPackage = async () => {
+        if (isSubmitting) return
+
         const files = packageFileSlots
             .map((slot) => draftFiles[slot.type])
             .filter(Boolean) as DeliverableFile[]
 
         if (files.length !== packageFileSlots.length) return
+        if (!normalizedWorkspaceId) return
         if (!note.trim()) return
         if (!releaseDay.trim()) return
 
         try {
-            setSubmitting(true)
-
             if (modalMode === "edit" && latestPackage) {
-                const newPackage = await resubmitSubmissionPackage({
-                    packageId: latestPackage.packageId,
-                    notes: note.trim(),
-                    files: files.map((file) => ({
-                        fileName: file.fileName,
-                        fileUrl: file.previewUrl,
-                        fileSize: file.fileSize,
-                        fileType: file.fileType,
-                    })),
-                })
+                const currentPackageId = latestPackage.packageId.trim()
 
-                setLatestPackage({
-                    packageId: newPackage.packageId,
-                    version: newPackage.version,
-                    status: newPackage.status,
-                    submittedAt: newPackage.submittedAt ?? getCurrentTime(),
-                    note: newPackage.notes ?? note.trim(),
-                    releaseDay: Number(releaseDay),
-                    files,
+                if (!currentPackageId) return
+
+                await resubmitSubmissionMutation.mutateAsync({
+                    packageId: currentPackageId,
+                    workspaceId: normalizedWorkspaceId,
+                    request: {
+                        currentPackageId,
+                        notes: note.trim(),
+                        updatedFiles: files.map(mapSubmissionFileRequest),
+                    },
                 })
 
                 setOpenModal(false)
                 return
             }
 
-            const newPackage = await createSubmissionPackage(files)
-
-            setLatestPackage({
-                packageId: newPackage.packageId,
-                version: newPackage.version,
-                status: newPackage.status,
-                submittedAt: newPackage.submittedAt ?? getCurrentTime(),
-                note: newPackage.notes ?? note.trim(),
-                releaseDay: Number(releaseDay),
-                files,
+            await createSubmissionMutation.mutateAsync({
+                request: {
+                    workspaceId: normalizedWorkspaceId,
+                    notes: note.trim(),
+                    customReleaseDays: Number(releaseDay),
+                    files: files.map(mapSubmissionFileRequest),
+                },
             })
 
             setDraftFiles({})
             setOpenModal(false)
         } catch (error) {
             console.error(error)
-            alert("Submit package failed. Please try again.")
-        } finally {
-            setSubmitting(false)
+            alert(getRequestErrorMessage(error))
         }
-    }
-
-
-    const createSubmissionPackage = async (files: DeliverableFile[]) => {
-        const payload = {
-            workspaceId,
-            notes: note.trim(),
-            customReleaseDays: Number(releaseDay),
-            files: files.map((file) => ({
-                fileName: file.fileName,
-                fileUrl: file.previewUrl,
-                fileSize: file.fileSize,
-                fileType: file.fileType,
-            })),
-        }
-
-        const accessToken = localStorage.getItem("accessToken")
-
-        const response = await fetch(
-            `${process.env.NEXT_PUBLIC_API_BASE_URL}/workspace/api/v1/submission-packages`,
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${accessToken}`,
-                },
-                body: JSON.stringify(payload),
-            }
-        )
-
-        if (!response.ok) {
-            throw new Error("Submit package failed")
-        }
-
-        return response.json()
     }
 
     const isEditMode = modalMode === "edit"
@@ -458,7 +404,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                 </div>
 
                 <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-                    {!latestPackage && (
+                    {!isPackageReadLoading && !isPackageReadError && !latestPackage && (
                         <button
                             type="button"
                             onClick={openCreateModal}
@@ -506,7 +452,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                             </div>
                         </div>
 
-                        {latestFiles.length === 0 ? (
+                        {isPackageReadLoading ? (
                             <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-4">
                                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400">
                                     <FileText className="h-5 w-5" />
@@ -514,10 +460,38 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
                                 <div>
                                     <p className="text-sm font-medium text-slate-600">
-                                        No package submitted yet
+                                        Loading submitted packages...
                                     </p>
                                     <p className="text-xs text-slate-400">
-                                        Create a package to upload deliverables.
+                                        Checking the latest package for this workspace.
+                                    </p>
+                                </div>
+                            </div>
+                        ) : isPackageReadError ? (
+                            <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-4">
+                                <p className="text-sm font-medium text-rose-700">
+                                    Unable to load submitted packages
+                                </p>
+                                <p className="mt-1 text-xs leading-relaxed text-rose-600">
+                                    {getRequestErrorMessage(packageReadError)}
+                                </p>
+                            </div>
+                        ) : latestFiles.length === 0 ? (
+                            <div className="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-4">
+                                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-slate-400">
+                                    <FileText className="h-5 w-5" />
+                                </div>
+
+                                <div>
+                                    <p className="text-sm font-medium text-slate-600">
+                                        {latestPackage
+                                            ? "No files in this package"
+                                            : "No package submitted yet"}
+                                    </p>
+                                    <p className="text-xs text-slate-400">
+                                        {latestPackage
+                                            ? "This package does not contain deliverable files."
+                                            : "Create a package to upload deliverables."}
                                     </p>
                                 </div>
                             </div>
@@ -772,12 +746,12 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
                                         uploadedCount !== 4 ||
                                         !note.trim() ||
                                         !releaseDay.trim() ||
-                                        submitting ||
+                                        isSubmitting ||
                                         uploadingType !== null
                                     }
                                     className="h-11 rounded-xl bg-[var(--primary)] px-5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {submitting
+                                    {isSubmitting
                                         ? "Submitting..."
                                         : isEditMode
                                             ? "Update Package"

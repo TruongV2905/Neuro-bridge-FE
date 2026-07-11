@@ -1,7 +1,11 @@
 import api from "@/configs/api";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
 import { createMutationHook, createQueryHook } from "@/hooks/userAPI";
 import {
   ApplyJobPostRequest,
+  ChangeJobPostStatusMutationVariables,
+  ChangeJobPostStatusResponse,
   ExpertAppliedJobPostsResponse,
   ExpertProposal,
   JobPost,
@@ -9,19 +13,25 @@ import {
   JobPostAnalyzeResponse,
   JobPostApplicant,
   JobPostListItem,
+  JobPostStatus,
   ProposalUnlock,
   RecommendExpertsRequest,
+  UpdateJobPostMutationVariables,
+  UpdateJobPostRequest,
   UpdateProposalRequest,
   UpdateProposalUnlockRequest,
 } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
 import type { APIResponse, PageResponse } from "@/types/common.starter";
+import type { AxiosError } from "axios";
 
 const JOB_POST_ENDPOINT = "/jobpost/job-post";
 const APPLY_JOB_POST_ENDPOINT = "/jobpost/apply-job-post";
 const PROPOSAL_ENDPOINT = "/jobpost/proposal";
 const PROPOSAL_UNLOCK_ENDPOINT = "/jobpost/proposal-unlock";
 const SKILL_ENDPOINT = "/identity/skill";
+
+type JobPostApiError = AxiosError<APIResponse<null>>;
 
 export const jobPostKeys = {
   all: ["job-posts"],
@@ -68,6 +78,68 @@ export const useCreateJobPost = createMutationHook<unknown, CreateJobPostPayload
   url: JOB_POST_ENDPOINT,
   method: "POST",
 });
+
+export async function updateJobPost(
+  jobPostId: string,
+  request: UpdateJobPostRequest,
+) {
+  const { data } = await api.put<APIResponse<JobPost>>(
+    `${JOB_POST_ENDPOINT}/${encodeURIComponent(jobPostId)}`,
+    request,
+  );
+
+  return data;
+}
+
+export async function changeJobPostStatus(
+  jobPostId: string,
+  status: JobPostStatus,
+) {
+  const { data } = await api.patch<APIResponse<ChangeJobPostStatusResponse>>(
+    `${JOB_POST_ENDPOINT}/${encodeURIComponent(jobPostId)}/status`,
+    undefined,
+    {
+      params: {
+        jobPostStatus: status,
+      },
+    },
+  );
+
+  return data;
+}
+
+export function useUpdateJobPost() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    APIResponse<JobPost>,
+    JobPostApiError,
+    UpdateJobPostMutationVariables
+  >({
+    mutationFn: ({ jobPostId, request }) => updateJobPost(jobPostId, request),
+    retry: 0,
+    onSuccess: async (_data, { jobPostId }) => {
+      await invalidateJobPostReadQueries(queryClient, jobPostId);
+    },
+  });
+}
+
+export function useChangeJobPostStatus() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    APIResponse<ChangeJobPostStatusResponse>,
+    JobPostApiError,
+    ChangeJobPostStatusMutationVariables
+  >({
+    mutationFn: ({ jobPostId, status }) =>
+      changeJobPostStatus(jobPostId, status),
+    retry: 0,
+    onSuccess: async (_data, { jobPostId }) => {
+      await invalidateJobPostReadQueries(queryClient, jobPostId);
+    },
+  });
+}
 
 export const useGetClientJobPosts = createQueryHook<
   PageResponse<JobPostListItem>
@@ -154,3 +226,20 @@ export const useUpdateProposalUnlock = createMutationHook<
     jobPostKeys.proposalUnlockDetail,
   ],
 });
+
+function invalidateJobPostReadQueries(
+  queryClient: QueryClient,
+  jobPostId: string,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: [...jobPostKeys.detail, { id: jobPostId }],
+    }),
+    queryClient.invalidateQueries({
+      queryKey: jobPostKeys.clientList,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: jobPostKeys.publicList,
+    }),
+  ]);
+}

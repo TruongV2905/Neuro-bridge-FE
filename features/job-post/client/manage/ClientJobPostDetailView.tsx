@@ -33,8 +33,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import { useGetJobPostById } from "@/services/job-post.service";
-import type { JobPostListItem } from "@/types/job-post.type";
+import {
+  useGetJobPostById,
+  useChangeJobPostStatus,
+  useUpdateJobPost,
+} from "@/services/job-post.service";
+import type {
+  JobPostListItem,
+  UpdateJobPostRequest,
+} from "@/types/job-post.type";
 import { ClientApplicantsSection } from "./components/ClientApplicantsSection";
 import {
   formatBudgetRange,
@@ -51,6 +58,13 @@ type EditFormState = {
   budgetFrom: string;
   budgetTo: string;
   estimatedDays: string;
+};
+
+type EditFormErrors = Partial<Record<keyof EditFormState, string>>;
+
+type ActionMessage = {
+  tone: "success" | "error";
+  text: string;
 };
 
 type WorkspaceTab = "Overview" | "Applicants";
@@ -86,6 +100,9 @@ export function ClientJobPostDetailView() {
       key={apiJob.id}
       initialJob={apiJob}
       jobPostId={jobId}
+      refreshJobPost={async () => {
+        await refetch();
+      }}
     />
   );
 }
@@ -93,16 +110,24 @@ export function ClientJobPostDetailView() {
 function ClientJobPostDetailContent({
   initialJob,
   jobPostId,
+  refreshJobPost,
 }: {
   initialJob: JobPostListItem;
   jobPostId: string;
+  refreshJobPost: () => Promise<void>;
 }) {
-  const [job, setJob] = useState<JobPostListItem>(initialJob);
+  const [jobOverride, setJobOverride] = useState<JobPostListItem | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
-  const [savedMessage, setSavedMessage] = useState("");
+  const [actionMessage, setActionMessage] = useState<ActionMessage | null>(
+    null,
+  );
+  const [formErrors, setFormErrors] = useState<EditFormErrors>({});
   const [activeWorkspace, setActiveWorkspace] =
     useState<WorkspaceTab>("Overview");
+  const updateJobPostMutation = useUpdateJobPost();
+  const changeJobPostStatusMutation = useChangeJobPostStatus();
+  const job = jobOverride ?? initialJob;
 
   const [form, setForm] = useState<EditFormState>(() =>
     buildFormState(initialJob),
@@ -111,54 +136,114 @@ function ClientJobPostDetailContent({
   const statusMeta = getStatusMeta(job.status);
   const StatusIcon = statusMeta.icon;
   const applicants = job.expertApplyCodes?.length ?? 0;
+  const isStatusMutationPending = changeJobPostStatusMutation.isPending;
+  const statusActionLabel =
+    job.status === "PUBLIC"
+      ? "Unpublish"
+      : job.status === "ASSIGNED"
+        ? "Assigned"
+        : "Publish";
+  const statusPendingLabel =
+    job.status === "PUBLIC" ? "Unpublishing..." : "Publishing...";
 
   const handleEdit = () => {
-    setSavedMessage("");
+    setActionMessage(null);
+    setFormErrors({});
     setForm(buildFormState(job));
     setIsEditing(true);
   };
 
   const handleCancel = () => {
-    setForm(buildFormState(job));
+    if (updateJobPostMutation.isPending) return;
+
+    setJobOverride(null);
+    setForm(buildFormState(initialJob));
+    setFormErrors({});
+    setActionMessage(null);
     setIsEditing(false);
   };
 
-  const handleSave = () => {
-    const nextJob = {
-      ...job,
-      title: form.title.trim() || job.title,
-      description: form.description.trim() || job.description,
-      requiredSkillIds: parseSkillIds(form.requiredSkillIds),
-      preferredSkillIds: parseSkillIds(form.preferredSkillIds),
-      budgetFrom: toPositiveNumber(form.budgetFrom),
-      budgetTo: toPositiveNumber(form.budgetTo),
-      estimatedDays: toPositiveNumber(form.estimatedDays),
-    };
+  const handleSave = async () => {
+    if (updateJobPostMutation.isPending) return;
 
-    // TODO: Replace this local state save with the jobpost update API when
-    // the backend exposes a safe detail/update endpoint.
-    setJob(nextJob);
-    setIsEditing(false);
-    setSavedMessage("Changes saved locally for this session.");
+    const validation = buildUpdateJobPostRequest(form);
+    setFormErrors(validation.errors);
+
+    if (!validation.request) {
+      setActionMessage({
+        tone: "error",
+        text: "Please fix the highlighted fields before saving.",
+      });
+      return;
+    }
+
+    setActionMessage(null);
+
+    try {
+      const response = await updateJobPostMutation.mutateAsync({
+        jobPostId,
+        request: validation.request,
+      });
+      const updatedJob = response.result;
+
+      setJobOverride(updatedJob);
+      setForm(buildFormState(updatedJob));
+      setIsEditing(false);
+      setFormErrors({});
+      setActionMessage({
+        tone: "success",
+        text: "Jobpost updated successfully.",
+      });
+    } catch (error) {
+      setActionMessage({
+        tone: "error",
+        text: getMutationErrorMessage(error),
+      });
+    }
   };
 
-  const handleTogglePublish = () => {
-    if (job.status === "ASSIGNED") return;
+  const handleTogglePublish = async () => {
+    if (
+      isEditing ||
+      updateJobPostMutation.isPending ||
+      isStatusMutationPending ||
+      job.status === "ASSIGNED"
+    ) {
+      return;
+    }
 
-    setJob((current) => ({
-      ...current,
-      status: current.status === "PUBLIC" ? "PRIVATE" : "PUBLIC",
-    }));
-    setSavedMessage(
-      job.status === "PUBLIC"
-        ? "Jobpost marked private locally."
-        : "Jobpost published locally.",
-    );
+    const nextStatus = job.status === "PUBLIC" ? "PRIVATE" : "PUBLIC";
+
+    setActionMessage(null);
+
+    try {
+      await changeJobPostStatusMutation.mutateAsync({
+        jobPostId,
+        status: nextStatus,
+      });
+      await refreshJobPost();
+      setJobOverride(null);
+      setActionMessage({
+        tone: "success",
+        text:
+          nextStatus === "PUBLIC"
+            ? "Jobpost published successfully."
+            : "Jobpost unpublished successfully.",
+      });
+    } catch (error) {
+      setActionMessage({
+        tone: "error",
+        text: getMutationErrorMessage(error),
+      });
+    }
   };
 
   const handleArchive = () => {
     setIsArchived(true);
-    setSavedMessage("Archive action is staged locally. No jobpost was deleted.");
+    setActionMessage({
+      tone: "success",
+      text: "Archive action is staged locally. No jobpost was deleted.",
+    });
   };
 
   return (
@@ -255,15 +340,19 @@ function ClientJobPostDetailContent({
                   <Button
                     type="button"
                     onClick={handleSave}
+                    disabled={updateJobPostMutation.isPending}
                     className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.28)] hover:from-indigo-600 hover:to-violet-600"
                   >
                     <Save className="mr-2 h-4 w-4" />
-                    Save Changes
+                    {updateJobPostMutation.isPending
+                      ? "Saving..."
+                      : "Save Changes"}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={handleCancel}
+                    disabled={updateJobPostMutation.isPending}
                     className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm font-bold text-slate-700"
                   >
                     <X className="mr-2 h-4 w-4" />
@@ -274,6 +363,7 @@ function ClientJobPostDetailContent({
                 <Button
                   type="button"
                   onClick={handleEdit}
+                  disabled={isStatusMutationPending}
                   className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.28)] hover:from-indigo-600 hover:to-violet-600"
                 >
                   <Pencil className="mr-2 h-4 w-4" />
@@ -284,7 +374,12 @@ function ClientJobPostDetailContent({
               <Button
                 type="button"
                 variant="outline"
-                disabled={job.status === "ASSIGNED"}
+                disabled={
+                  isEditing ||
+                  updateJobPostMutation.isPending ||
+                  isStatusMutationPending ||
+                  job.status === "ASSIGNED"
+                }
                 onClick={handleTogglePublish}
                 className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 hover:bg-slate-50"
               >
@@ -293,11 +388,9 @@ function ClientJobPostDetailContent({
                 ) : (
                   <Eye className="mr-2 h-4 w-4 text-sky-500" />
                 )}
-                {job.status === "PUBLIC"
-                  ? "Make Private"
-                  : job.status === "ASSIGNED"
-                    ? "Assigned"
-                    : "Publish"}
+                {isStatusMutationPending
+                  ? statusPendingLabel
+                  : statusActionLabel}
               </Button>
 
               <Button
@@ -322,9 +415,16 @@ function ClientJobPostDetailContent({
               </Button>
             </div>
 
-            {savedMessage && (
-              <div className="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
-                {savedMessage}
+            {actionMessage && (
+              <div
+                className={cn(
+                  "mt-5 rounded-2xl border px-4 py-3 text-sm font-semibold",
+                  actionMessage.tone === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-rose-200 bg-rose-50 text-rose-700",
+                )}
+              >
+                {actionMessage.text}
               </div>
             )}
 
@@ -348,7 +448,19 @@ function ClientJobPostDetailContent({
               {activeWorkspace === "Applicants" ? (
                 <ClientApplicantsSection jobPostId={jobPostId} />
               ) : isEditing ? (
-                <EditForm form={form} onChange={setForm} />
+                <EditForm
+                  form={form}
+                  errors={formErrors}
+                  onChange={(nextForm) => {
+                    setForm(nextForm);
+                    if (Object.keys(formErrors).length > 0) {
+                      setFormErrors({});
+                    }
+                    if (actionMessage?.tone === "error") {
+                      setActionMessage(null);
+                    }
+                  }}
+                />
               ) : (
                 <Overview job={job} statusLabel={statusMeta.label} />
               )}
@@ -502,9 +614,11 @@ function Overview({
 
 function EditForm({
   form,
+  errors,
   onChange,
 }: {
   form: EditFormState;
+  errors: EditFormErrors;
   onChange: React.Dispatch<React.SetStateAction<EditFormState>>;
 }) {
   const setField = (field: keyof EditFormState, value: string) => {
@@ -520,6 +634,7 @@ function EditForm({
           onChange={(event) => setField("title", event.target.value)}
           className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
         />
+        <FieldError message={errors.title} />
       </Field>
 
       <Field label="Description" htmlFor="description">
@@ -529,6 +644,7 @@ function EditForm({
           onChange={(event) => setField("description", event.target.value)}
           className="min-h-36 rounded-xl border-slate-200 bg-white px-4 py-3 text-sm leading-6"
         />
+        <FieldError message={errors.description} />
       </Field>
 
       <div className="grid gap-5 md:grid-cols-2">
@@ -542,6 +658,7 @@ function EditForm({
             placeholder="Example: 1, 3, 7"
             className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
           />
+          <FieldError message={errors.requiredSkillIds} />
         </Field>
         <Field label="Preferred skills" htmlFor="preferredSkillIds">
           <Input
@@ -553,6 +670,7 @@ function EditForm({
             placeholder="Example: 9, 12"
             className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
           />
+          <FieldError message={errors.preferredSkillIds} />
         </Field>
       </div>
 
@@ -565,6 +683,7 @@ function EditForm({
             onChange={(event) => setField("budgetFrom", event.target.value)}
             className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
           />
+          <FieldError message={errors.budgetFrom} />
         </Field>
         <Field label="Budget to" htmlFor="budgetTo">
           <Input
@@ -574,6 +693,7 @@ function EditForm({
             onChange={(event) => setField("budgetTo", event.target.value)}
             className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
           />
+          <FieldError message={errors.budgetTo} />
         </Field>
         <Field label="Estimated days" htmlFor="estimatedDays">
           <Input
@@ -583,10 +703,17 @@ function EditForm({
             onChange={(event) => setField("estimatedDays", event.target.value)}
             className="h-11 rounded-xl border-slate-200 bg-white px-4 text-sm"
           />
+          <FieldError message={errors.estimatedDays} />
         </Field>
       </div>
     </div>
   );
+}
+
+function FieldError({ message }: { message?: string }) {
+  if (!message) return null;
+
+  return <p className="text-xs font-semibold text-rose-600">{message}</p>;
 }
 
 function Field({
@@ -767,14 +894,131 @@ function buildFormState(job: JobPostListItem): EditFormState {
   };
 }
 
-function parseSkillIds(value: string) {
-  return value
-    .split(",")
-    .map((item) => Number(item.trim()))
-    .filter((item) => Number.isFinite(item) && item > 0);
+function buildUpdateJobPostRequest(form: EditFormState): {
+  request: UpdateJobPostRequest | null;
+  errors: EditFormErrors;
+} {
+  const errors: EditFormErrors = {};
+  const title = form.title.trim();
+  const description = form.description.trim();
+  const requiredSkillIds = parseSkillIds(form.requiredSkillIds);
+  const preferredSkillIds = parseSkillIds(form.preferredSkillIds);
+  const budgetFrom = parseFiniteNumber(form.budgetFrom);
+  const budgetTo = parseFiniteNumber(form.budgetTo);
+  const estimatedDays = parseFiniteNumber(form.estimatedDays);
+
+  if (!title) {
+    errors.title = "Title is required.";
+  }
+
+  if (!description) {
+    errors.description = "Description is required.";
+  }
+
+  if (!requiredSkillIds) {
+    errors.requiredSkillIds =
+      "Required skills must be numeric IDs separated by commas.";
+  }
+
+  if (!preferredSkillIds) {
+    errors.preferredSkillIds =
+      "Preferred skills must be numeric IDs separated by commas.";
+  }
+
+  if (budgetFrom === null) {
+    errors.budgetFrom = "Budget from must be a valid number.";
+  } else if (budgetFrom < 0) {
+    errors.budgetFrom = "Budget from cannot be negative.";
+  }
+
+  if (budgetTo === null) {
+    errors.budgetTo = "Budget to must be a valid number.";
+  } else if (budgetTo < 0) {
+    errors.budgetTo = "Budget to cannot be negative.";
+  }
+
+  if (
+    budgetFrom !== null &&
+    budgetTo !== null &&
+    budgetFrom >= 0 &&
+    budgetTo >= 0 &&
+    budgetFrom > budgetTo
+  ) {
+    errors.budgetFrom = "Budget from must be less than or equal to budget to.";
+    errors.budgetTo = "Budget to must be greater than or equal to budget from.";
+  }
+
+  if (estimatedDays === null) {
+    errors.estimatedDays = "Estimated days must be a valid number.";
+  } else if (estimatedDays <= 0) {
+    errors.estimatedDays = "Estimated days must be greater than 0.";
+  }
+
+  if (
+    Object.keys(errors).length > 0 ||
+    !requiredSkillIds ||
+    !preferredSkillIds ||
+    budgetFrom === null ||
+    budgetTo === null ||
+    estimatedDays === null
+  ) {
+    return { request: null, errors };
+  }
+
+  return {
+    request: {
+      title,
+      description,
+      requiredSkillIds,
+      preferredSkillIds,
+      budgetFrom,
+      budgetTo,
+      estimatedDays,
+    },
+    errors,
+  };
 }
 
-function toPositiveNumber(value: string) {
+function parseSkillIds(value: string) {
+  const normalized = value.trim();
+
+  if (!normalized) return [];
+
+  const ids = normalized.split(",").map((item) => {
+    const trimmed = item.trim();
+    const parsed = Number(trimmed);
+
+    return {
+      isValid:
+        trimmed.length > 0 &&
+        Number.isInteger(parsed) &&
+        parsed > 0,
+      value: parsed,
+    };
+  });
+
+  if (ids.some((item) => !item.isValid)) return null;
+
+  return ids.map((item) => item.value);
+}
+
+function parseFiniteNumber(value: string) {
+  if (!value.trim()) return null;
+
   const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getMutationErrorMessage(error: unknown) {
+  const apiError = error as {
+    response?: { data?: { message?: string } };
+    message?: string;
+  };
+
+  return (
+    apiError.response?.data?.message ||
+    apiError.message ||
+    "Unable to update this jobpost. Please try again."
+  );
 }

@@ -99,6 +99,28 @@ export type RecommendExpertsRequest = JobPostAnalyzeRequest & {
   preferredSkillIds: number[];
 };
 
+export type UpdateJobPostRequest = {
+  title: string;
+  description: string;
+  requiredSkillIds: number[];
+  preferredSkillIds: number[];
+  budgetFrom: number;
+  budgetTo: number;
+  estimatedDays: number;
+};
+
+export type UpdateJobPostMutationVariables = {
+  jobPostId: string;
+  request: UpdateJobPostRequest;
+};
+
+export type ChangeJobPostStatusResponse = Record<string, never>;
+
+export type ChangeJobPostStatusMutationVariables = {
+  jobPostId: string;
+  status: JobPostStatus;
+};
+
 export type ExpertApplyRequest = {
   jobPostId: string;
   proposedBudget: number;

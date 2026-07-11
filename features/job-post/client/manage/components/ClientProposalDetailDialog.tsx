@@ -1,6 +1,7 @@
 "use client";
 
 import { isAxiosError } from "axios";
+import { useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -11,6 +12,16 @@ import {
   WalletCards,
 } from "lucide-react";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -22,7 +33,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetProposalUnlockByProposalId } from "@/services/job-post.service";
-import { useGetMyWallet } from "@/services/payment.service";
+import {
+  useGetMyWallet,
+  usePayProposalByWallet,
+} from "@/services/payment.service";
 import type {
   ClientProposalDialogSummary,
   ProposalUnlock,
@@ -43,8 +57,13 @@ export function ClientProposalDetailDialog({
   open,
   onOpenChange,
 }: ClientProposalDetailDialogProps) {
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
+  const [paymentFlow, setPaymentFlow] = useState<PaymentFlowState | null>(
+    null,
+  );
   const proposal = proposalSummary?.proposal;
   const proposalId = proposal?.id.trim() ?? "";
+  const expertCode = proposalSummary?.expertApply.expertCode.trim() ?? "";
   const hasProposal = Boolean(proposalSummary && proposal);
   const shouldLoadProtectedDetail = open && proposalId.length > 0;
   const unlockQuery = useGetProposalUnlockByProposalId(
@@ -64,8 +83,11 @@ export function ClientProposalDetailDialog({
   const proposalUnlockErrorStatus = unlockQuery.isError
     ? getResponseStatus(unlockQuery.error)
     : undefined;
+  const isPaymentRequired = proposalUnlockErrorStatus === 400;
   const hasBlockingProposalUnlockError =
     unlockQuery.isError && proposalUnlockErrorStatus !== 400;
+  const activePaymentFlow =
+    paymentFlow?.proposalId === proposalId ? paymentFlow : null;
   const walletQuery = useGetMyWallet({
     enabled: open && hasProposal && !isUnlocked && !hasBlockingProposalUnlockError,
   });
@@ -87,6 +109,10 @@ export function ClientProposalDetailDialog({
     walletBalance !== null &&
     hasValidUnlockCost &&
     walletBalance >= unlockCostValue;
+  const expectedRemainingBalance =
+    walletBalance !== null && hasValidUnlockCost
+      ? walletBalance - unlockCostValue
+      : null;
   const unlockReadinessState = getUnlockReadinessState({
     hasProposal,
     hasSufficientBalance,
@@ -97,9 +123,116 @@ export function ClientProposalDetailDialog({
       walletQuery.isError || (walletQuery.isSuccess && walletBalance === null),
     isWalletLoading: walletQuery.isLoading || walletQuery.isFetching,
   });
+  const paymentMutation = usePayProposalByWallet();
+  const isPaymentPending = paymentMutation.isPending;
+  const isPaymentDetailSyncPending =
+    activePaymentFlow?.kind === "loading_detail" ||
+    activePaymentFlow?.kind === "unlock_refetch_failed" ||
+    activePaymentFlow?.kind === "success";
+  const canSubmitWalletUnlock =
+    open &&
+    unlockReadinessState === "READY_TO_UNLOCK" &&
+    isPaymentRequired &&
+    proposalId.length > 0 &&
+    expertCode.length > 0 &&
+    hasValidUnlockCost &&
+    walletBalance !== null &&
+    hasSufficientBalance &&
+    !isPaymentPending &&
+    !isPaymentDetailSyncPending;
+  const shouldShowUnlockCta = hasProposal && !isUnlocked;
+  const unlockCtaLabel = isPaymentPending ? "Unlocking..." : "Unlock with Wallet";
+
+  const handleOpenPaymentConfirm = () => {
+    if (!canSubmitWalletUnlock) return;
+
+    setPaymentFlow(null);
+    setPaymentConfirmOpen(true);
+  };
+
+  const handleConfirmPayment = async () => {
+    const currentProposalId = proposalId;
+
+    if (!canSubmitWalletUnlock || unlockCostValue === null) {
+      setPaymentConfirmOpen(false);
+      setPaymentFlow({
+        kind: "payment_error",
+        message: "Wallet unlock is no longer available for this proposal.",
+        proposalId: currentProposalId,
+      });
+      return;
+    }
+
+    try {
+      await paymentMutation.mutateAsync({
+        amount: unlockCostValue,
+        description: `Unlock proposal ${currentProposalId}`,
+        expertCode,
+        proposalId: currentProposalId,
+      });
+
+      setPaymentConfirmOpen(false);
+      setPaymentFlow({
+        kind: "loading_detail",
+        proposalId: currentProposalId,
+      });
+
+      await refetchProtectedDetailAfterPayment(currentProposalId);
+    } catch (error) {
+      setPaymentConfirmOpen(false);
+      setPaymentFlow({
+        kind: "payment_error",
+        message: getPaymentErrorMessage(
+          error,
+          "Unable to complete wallet payment.",
+        ),
+        proposalId: currentProposalId,
+      });
+    }
+  };
+
+  const refetchProtectedDetailAfterPayment = async (
+    currentProposalId: string,
+  ) => {
+    setPaymentFlow({
+      kind: "loading_detail",
+      proposalId: currentProposalId,
+    });
+
+    const refetchResult = await unlockQuery.refetch();
+    const strategyDetail = refetchResult.data?.result?.strategyDetail;
+
+    if (isUsableStrategyDetail(strategyDetail)) {
+      setPaymentFlow({
+        kind: "success",
+        message: "Unlock completed. Strategy Detail is ready.",
+        proposalId: currentProposalId,
+      });
+      return;
+    }
+
+    setPaymentFlow({
+      kind: "unlock_refetch_failed",
+      message:
+        "Payment completed, but Strategy Detail could not be loaded yet.",
+      proposalId: currentProposalId,
+    });
+  };
+
+  const handleRetryProtectedDetailAfterPayment = () => {
+    if (!proposalId) return;
+
+    void refetchProtectedDetailAfterPayment(proposalId);
+  };
+
+  const handleDialogOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && isPaymentPending) return;
+
+    onOpenChange(nextOpen);
+  };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-2xl">
         <DialogHeader className="border-b border-slate-100 px-6 py-5">
           <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
@@ -184,8 +317,15 @@ export function ClientProposalDetailDialog({
             />
 
             <UnlockReadinessSection
+              canSubmitWalletUnlock={canSubmitWalletUnlock}
+              isPaymentPending={isPaymentPending}
+              onOpenPaymentConfirm={handleOpenPaymentConfirm}
+              onRetryProtectedDetail={handleRetryProtectedDetailAfterPayment}
+              paymentFlow={activePaymentFlow}
+              showUnlockCta={shouldShowUnlockCta}
               state={unlockReadinessState}
               unlockCost={hasValidUnlockCost ? unlockCostValue : null}
+              unlockCtaLabel={unlockCtaLabel}
               proposalUnlockError={unlockQuery.error}
               walletBalance={walletBalance}
               walletError={walletQuery.error}
@@ -201,19 +341,50 @@ export function ClientProposalDetailDialog({
         )}
 
         <DialogFooter className="m-0 px-6 py-4">
-          {hasProposal && (
-            <Button type="button" variant="outline" disabled>
-              Unlock with Wallet
+          {shouldShowUnlockCta && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={!canSubmitWalletUnlock}
+              onClick={handleOpenPaymentConfirm}
+            >
+              {unlockCtaLabel}
             </Button>
           )}
           <DialogClose asChild>
-            <Button type="button">Close</Button>
+            <Button type="button" disabled={isPaymentPending}>
+              Close
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>
+
+      <PaymentConfirmationDialog
+        expectedRemainingBalance={expectedRemainingBalance}
+        loading={isPaymentPending}
+        onConfirm={handleConfirmPayment}
+        onOpenChange={(nextOpen) => {
+          if (isPaymentPending) return;
+
+          setPaymentConfirmOpen(nextOpen);
+        }}
+        open={paymentConfirmOpen}
+        unlockCost={hasValidUnlockCost ? unlockCostValue : null}
+        walletBalance={walletBalance}
+      />
     </Dialog>
   );
 }
+
+type PaymentFlowState = {
+  kind:
+    | "payment_error"
+    | "loading_detail"
+    | "unlock_refetch_failed"
+    | "success";
+  message?: string;
+  proposalId: string;
+};
 
 type UnlockReadinessState =
   | "NO_PROPOSAL"
@@ -253,15 +424,29 @@ function getUnlockReadinessState({
 }
 
 function UnlockReadinessSection({
+  canSubmitWalletUnlock,
+  isPaymentPending,
+  onOpenPaymentConfirm,
+  onRetryProtectedDetail,
+  paymentFlow,
+  showUnlockCta,
   state,
   unlockCost,
+  unlockCtaLabel,
   proposalUnlockError,
   walletBalance,
   walletError,
   onRetryWallet,
 }: {
+  canSubmitWalletUnlock: boolean;
+  isPaymentPending: boolean;
+  onOpenPaymentConfirm: () => void;
+  onRetryProtectedDetail: () => void;
+  paymentFlow: PaymentFlowState | null;
+  showUnlockCta: boolean;
   state: UnlockReadinessState;
   unlockCost: number | null;
+  unlockCtaLabel: string;
   proposalUnlockError: unknown;
   walletBalance: number | null;
   walletError: unknown;
@@ -286,14 +471,17 @@ function UnlockReadinessSection({
           </p>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          disabled
-          className="h-10 rounded-xl border-slate-200 px-4 text-sm font-bold"
-        >
-          Unlock with Wallet
-        </Button>
+        {showUnlockCta && (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={!canSubmitWalletUnlock}
+            onClick={onOpenPaymentConfirm}
+            className="h-10 rounded-xl border-slate-200 px-4 text-sm font-bold"
+          >
+            {unlockCtaLabel}
+          </Button>
+        )}
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -338,7 +526,122 @@ function UnlockReadinessSection({
           </Button>
         )}
       </div>
+
+      {paymentFlow && (
+        <PaymentFlowMessage
+          flow={paymentFlow}
+          isPaymentPending={isPaymentPending}
+          onRetryProtectedDetail={onRetryProtectedDetail}
+        />
+      )}
     </section>
+  );
+}
+
+function PaymentConfirmationDialog({
+  expectedRemainingBalance,
+  loading,
+  onConfirm,
+  onOpenChange,
+  open,
+  unlockCost,
+  walletBalance,
+}: {
+  expectedRemainingBalance: number | null;
+  loading: boolean;
+  onConfirm: () => void | Promise<void>;
+  onOpenChange: (open: boolean) => void;
+  open: boolean;
+  unlockCost: number | null;
+  walletBalance: number | null;
+}) {
+  return (
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent className="max-w-[420px] rounded-2xl">
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-lg font-semibold text-slate-900">
+            Unlock with Wallet
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-sm leading-6 text-slate-500">
+            Confirm this wallet payment to unlock the protected proposal
+            strategy detail.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="grid gap-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-3 text-sm">
+          <PaymentConfirmRow
+            label="Unlock Cost"
+            value={formatOptionalMoney(unlockCost)}
+          />
+          <PaymentConfirmRow
+            label="Wallet Balance"
+            value={formatOptionalMoney(walletBalance)}
+          />
+          <PaymentConfirmRow
+            label="Remaining Balance"
+            value={formatOptionalMoney(expectedRemainingBalance)}
+          />
+        </div>
+
+        <AlertDialogFooter className="mt-4 gap-2 sm:gap-2">
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={loading}
+            onClick={(event) => {
+              event.preventDefault();
+              void onConfirm();
+            }}
+          >
+            {loading ? "Unlocking..." : "Confirm Unlock"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function PaymentConfirmRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4">
+      <span className="font-semibold text-slate-500">{label}</span>
+      <span className="font-extrabold text-slate-950">{value}</span>
+    </div>
+  );
+}
+
+function PaymentFlowMessage({
+  flow,
+  isPaymentPending,
+  onRetryProtectedDetail,
+}: {
+  flow: PaymentFlowState;
+  isPaymentPending: boolean;
+  onRetryProtectedDetail: () => void;
+}) {
+  const copy = getPaymentFlowCopy(flow);
+  const className = getUnlockReadinessToneClassName(copy.tone);
+
+  return (
+    <div className={className}>
+      <p>{copy.message}</p>
+      {flow.kind === "unlock_refetch_failed" && (
+        <Button
+          type="button"
+          variant="outline"
+          disabled={isPaymentPending}
+          onClick={onRetryProtectedDetail}
+          className="mt-3 h-9 rounded-xl border-amber-200 bg-white text-xs font-bold text-amber-700"
+        >
+          Retry loading Strategy Detail
+        </Button>
+      )}
+    </div>
   );
 }
 
@@ -400,7 +703,7 @@ function getUnlockReadinessCopy(
       return {
         description:
           "The current wallet balance is sufficient for this proposal unlock.",
-        status: "The payment action is prepared but remains inactive until Phase 2D.",
+        status: "Confirm the wallet payment to unlock protected Strategy Detail.",
         title: "Ready to unlock",
         tone: "success" as const,
       };
@@ -413,6 +716,34 @@ function getUnlockReadinessCopy(
         status: "Unlock with Wallet is disabled because this is not a normal locked Proposal state.",
         title: getProposalUnlockBlockingTitle(proposalUnlockError),
         tone: "danger" as const,
+      };
+  }
+}
+
+function getPaymentFlowCopy(flow: PaymentFlowState) {
+  switch (flow.kind) {
+    case "payment_error":
+      return {
+        message:
+          flow.message || "Wallet payment failed. The proposal remains locked.",
+        tone: "danger" as const,
+      };
+    case "loading_detail":
+      return {
+        message: "Payment completed. Loading Strategy Detail...",
+        tone: "neutral" as const,
+      };
+    case "unlock_refetch_failed":
+      return {
+        message:
+          flow.message ||
+          "Payment completed, but Strategy Detail could not be loaded yet.",
+        tone: "warning" as const,
+      };
+    case "success":
+      return {
+        message: flow.message || "Unlock completed. Strategy Detail is ready.",
+        tone: "success" as const,
       };
   }
 }
@@ -440,6 +771,10 @@ function getWalletBalancePlaceholder(state: UnlockReadinessState) {
   if (state === "PROPOSAL_UNLOCK_ERROR") return "Not checked";
 
   return "Wallet unavailable";
+}
+
+function formatOptionalMoney(value: number | null) {
+  return value === null ? "Unavailable" : formatApplicantMoney(value);
 }
 
 function ProtectedDetailSection({
@@ -590,10 +925,22 @@ function getProposalUnlockBlockingTitle(error: unknown) {
   return "Unlock status unavailable";
 }
 
+function getPaymentErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+
+  return fallback;
+}
+
 function getWalletErrorMessage(error: unknown, fallback: string) {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || error.message || fallback;
   }
 
   return fallback;
+}
+
+function isUsableStrategyDetail(value: unknown) {
+  return typeof value === "string" && value.trim().length > 0;
 }

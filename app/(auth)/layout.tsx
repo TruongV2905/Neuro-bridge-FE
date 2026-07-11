@@ -1,5 +1,5 @@
 import React from "react";
-import AuthFormTransition from "@/components/auth/AuthFormTransition";
+import { AuthFormTransition } from "@/features/auth";
 
 function AuthLayout({
   children,

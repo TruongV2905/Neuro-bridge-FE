@@ -1,33 +1,11 @@
+import type { AvailableAI } from "@/features/available-ai/types"
+
 export interface HomepageGalleryImage {
   src: string
   alt: string
 }
 
-export interface HomepageActivity {
-  name: string
-  status: "Available" | "Trending" | "Sold"
-  type:
-    | "AI Automation"
-    | "Computer Vision"
-    | "AI Agent"
-    | "NLP"
-    | "Recommendation System"
-    | "Deep Learning"
-  successScore: number
-  description: string
-  techStacks: string[]
-  author: {
-    name: string
-    avatarUrl?: string
-    checked?: boolean
-  }
-  budget: string
-}
-
-export interface HomepageGroup {
-  title: string
-  image: string
-}
+export type HomepageActivity = AvailableAI
 
 export interface HomepageBenefit {
   icon: string
@@ -37,5 +15,9 @@ export interface HomepageBenefit {
 
 export interface HomepageArticle {
   title: string
+  source: string
+  description?: string
   image: string
+  href: string
+  kind?: string
 }

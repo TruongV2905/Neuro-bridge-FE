@@ -9,6 +9,7 @@ import {
   HandshakeIcon,
   HomeIcon,
   LayoutDashboardIcon,
+  MessageCircleIcon,
   PlusCircleIcon,
   SearchIcon,
   SparklesIcon,
@@ -69,6 +70,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Hiring",
         url: "/client/dashboard/hiring",
         icon: HandshakeIcon,
+      },
+      {
+        title: "Chat",
+        url: "/client/dashboard/chat",
+        icon: MessageCircleIcon,
       },
       {
         title: "Project",

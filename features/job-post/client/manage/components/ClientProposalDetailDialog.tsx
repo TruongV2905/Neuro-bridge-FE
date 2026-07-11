@@ -1,7 +1,15 @@
 "use client";
 
 import { isAxiosError } from "axios";
-import { CalendarDays, Clock4, LockKeyhole, User } from "lucide-react";
+import {
+  CalendarDays,
+  CheckCircle2,
+  Clock4,
+  CreditCard,
+  LockKeyhole,
+  User,
+  WalletCards,
+} from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +22,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useGetProposalUnlockByProposalId } from "@/services/job-post.service";
+import { useGetMyWallet } from "@/services/payment.service";
 import type {
   ClientProposalDialogSummary,
   ProposalUnlock,
@@ -36,6 +45,7 @@ export function ClientProposalDetailDialog({
 }: ClientProposalDetailDialogProps) {
   const proposal = proposalSummary?.proposal;
   const proposalId = proposal?.id.trim() ?? "";
+  const hasProposal = Boolean(proposalSummary && proposal);
   const shouldLoadProtectedDetail = open && proposalId.length > 0;
   const unlockQuery = useGetProposalUnlockByProposalId(
     { proposalId },
@@ -48,9 +58,37 @@ export function ClientProposalDetailDialog({
   const proposalUnlock = shouldLoadProtectedDetail
     ? unlockQuery.data?.result
     : undefined;
+  const isUnlocked = Boolean(proposalUnlock?.strategyDetail);
+  const walletQuery = useGetMyWallet({
+    enabled: open && hasProposal && !isUnlocked,
+  });
+  const wallet = walletQuery.data?.result;
   const unlockCost = proposal
     ? resolveApplicantUnlockCost(proposal)
     : { value: null, source: "unavailable" as const };
+  const unlockCostValue = unlockCost.value;
+  const hasValidUnlockCost =
+    typeof unlockCostValue === "number" &&
+    Number.isFinite(unlockCostValue) &&
+    unlockCostValue >= 0;
+  const walletBalance =
+    typeof wallet?.walletBalance === "number" &&
+    Number.isFinite(wallet.walletBalance)
+      ? wallet.walletBalance
+      : null;
+  const hasSufficientBalance =
+    walletBalance !== null &&
+    hasValidUnlockCost &&
+    walletBalance >= unlockCostValue;
+  const unlockReadinessState = getUnlockReadinessState({
+    hasProposal,
+    hasSufficientBalance,
+    hasValidUnlockCost,
+    isUnlocked,
+    isWalletError:
+      walletQuery.isError || (walletQuery.isSuccess && walletBalance === null),
+    isWalletLoading: walletQuery.isLoading || walletQuery.isFetching,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -137,14 +175,15 @@ export function ClientProposalDetailDialog({
               }}
             />
 
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <p className="text-sm font-bold text-amber-800">
-                Unlock/payment unavailable
-              </p>
-              <p className="mt-1 text-xs leading-5 text-amber-700">
-                A safe payment or proposal-purchase endpoint is not available.
-              </p>
-            </div>
+            <UnlockReadinessSection
+              state={unlockReadinessState}
+              unlockCost={hasValidUnlockCost ? unlockCostValue : null}
+              walletBalance={walletBalance}
+              walletError={walletQuery.error}
+              onRetryWallet={() => {
+                void walletQuery.refetch();
+              }}
+            />
           </div>
         ) : (
           <div className="px-6 py-8 text-sm font-semibold text-slate-500">
@@ -153,9 +192,11 @@ export function ClientProposalDetailDialog({
         )}
 
         <DialogFooter className="m-0 px-6 py-4">
-          <Button type="button" variant="outline" disabled>
-            Unlock/payment unavailable
-          </Button>
+          {hasProposal && (
+            <Button type="button" variant="outline" disabled>
+              Unlock with Wallet
+            </Button>
+          )}
           <DialogClose asChild>
             <Button type="button">Close</Button>
           </DialogClose>
@@ -163,6 +204,215 @@ export function ClientProposalDetailDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+type UnlockReadinessState =
+  | "NO_PROPOSAL"
+  | "UNLOCKED"
+  | "WALLET_LOADING"
+  | "WALLET_ERROR"
+  | "INVALID_UNLOCK_COST"
+  | "INSUFFICIENT_BALANCE"
+  | "READY_TO_UNLOCK";
+
+function getUnlockReadinessState({
+  hasProposal,
+  hasSufficientBalance,
+  hasValidUnlockCost,
+  isUnlocked,
+  isWalletError,
+  isWalletLoading,
+}: {
+  hasProposal: boolean;
+  hasSufficientBalance: boolean;
+  hasValidUnlockCost: boolean;
+  isUnlocked: boolean;
+  isWalletError: boolean;
+  isWalletLoading: boolean;
+}): UnlockReadinessState {
+  if (!hasProposal) return "NO_PROPOSAL";
+  if (isUnlocked) return "UNLOCKED";
+  if (isWalletLoading) return "WALLET_LOADING";
+  if (isWalletError) return "WALLET_ERROR";
+  if (!hasValidUnlockCost) return "INVALID_UNLOCK_COST";
+
+  return hasSufficientBalance ? "READY_TO_UNLOCK" : "INSUFFICIENT_BALANCE";
+}
+
+function UnlockReadinessSection({
+  state,
+  unlockCost,
+  walletBalance,
+  walletError,
+  onRetryWallet,
+}: {
+  state: UnlockReadinessState;
+  unlockCost: number | null;
+  walletBalance: number | null;
+  walletError: unknown;
+  onRetryWallet: () => void;
+}) {
+  const copy = getUnlockReadinessCopy(state, walletError);
+  const toneClassName = getUnlockReadinessToneClassName(copy.tone);
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-xs font-extrabold uppercase tracking-wider text-slate-400">
+            <WalletCards className="h-4 w-4" />
+            Wallet unlock readiness
+          </div>
+          <p className="mt-2 text-sm font-bold text-slate-950">
+            {copy.title}
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            {copy.description}
+          </p>
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          disabled
+          className="h-10 rounded-xl border-slate-200 px-4 text-sm font-bold"
+        >
+          Unlock with Wallet
+        </Button>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <DetailMetric
+          icon={<LockKeyhole className="h-4 w-4" />}
+          label="Unlock cost"
+          value={
+            unlockCost === null
+              ? "Unlock cost unavailable"
+              : formatApplicantMoney(unlockCost)
+          }
+        />
+        <DetailMetric
+          icon={<CreditCard className="h-4 w-4" />}
+          label="Wallet balance"
+          value={
+            walletBalance === null
+              ? getWalletBalancePlaceholder(state)
+              : formatApplicantMoney(walletBalance)
+          }
+        />
+      </div>
+
+      <div className={toneClassName}>
+        <div className="flex items-start gap-2">
+          {copy.tone === "success" ? (
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
+          ) : (
+            <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" />
+          )}
+          <p>{copy.status}</p>
+        </div>
+
+        {state === "WALLET_ERROR" && (
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onRetryWallet}
+            className="mt-3 h-9 rounded-xl border-rose-200 bg-white text-xs font-bold text-rose-700"
+          >
+            Retry wallet
+          </Button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function getUnlockReadinessCopy(
+  state: UnlockReadinessState,
+  walletError: unknown,
+) {
+  switch (state) {
+    case "NO_PROPOSAL":
+      return {
+        description: "No proposal is available for wallet unlock.",
+        status: "Unlock with Wallet is unavailable.",
+        title: "No proposal",
+        tone: "neutral" as const,
+      };
+    case "UNLOCKED":
+      return {
+        description:
+          "Protected proposal detail is already available from the authorized unlock read.",
+        status: "No additional wallet payment is needed.",
+        title: "Already unlocked",
+        tone: "success" as const,
+      };
+    case "WALLET_LOADING":
+      return {
+        description: "Reading the current wallet balance...",
+        status: "Unlock with Wallet is disabled while wallet data loads.",
+        title: "Checking wallet",
+        tone: "neutral" as const,
+      };
+    case "WALLET_ERROR":
+      return {
+        description: getWalletErrorMessage(
+          walletError,
+          "Unable to load current wallet balance.",
+        ),
+        status: "Wallet balance is unavailable, so payment cannot be prepared.",
+        title: "Wallet unavailable",
+        tone: "danger" as const,
+      };
+    case "INVALID_UNLOCK_COST":
+      return {
+        description:
+          "The proposal unlock cost is missing or invalid in the proposal summary.",
+        status: "Payment information is unavailable.",
+        title: "Unlock cost unavailable",
+        tone: "danger" as const,
+      };
+    case "INSUFFICIENT_BALANCE":
+      return {
+        description:
+          "The current wallet balance is below the proposal unlock cost.",
+        status: "Unlock with Wallet will stay disabled until a later top-up flow exists.",
+        title: "Insufficient wallet balance",
+        tone: "warning" as const,
+      };
+    case "READY_TO_UNLOCK":
+      return {
+        description:
+          "The current wallet balance is sufficient for this proposal unlock.",
+        status: "The payment action is prepared but remains inactive until Phase 2D.",
+        title: "Ready to unlock",
+        tone: "success" as const,
+      };
+  }
+}
+
+function getUnlockReadinessToneClassName(
+  tone: "danger" | "neutral" | "success" | "warning",
+) {
+  const baseClassName = "mt-4 rounded-2xl px-4 py-3 text-sm font-semibold";
+
+  switch (tone) {
+    case "danger":
+      return `${baseClassName} border border-rose-200 bg-rose-50 text-rose-700`;
+    case "success":
+      return `${baseClassName} border border-emerald-200 bg-emerald-50 text-emerald-700`;
+    case "warning":
+      return `${baseClassName} border border-amber-200 bg-amber-50 text-amber-700`;
+    case "neutral":
+      return `${baseClassName} border border-slate-200 bg-slate-50 text-slate-600`;
+  }
+}
+
+function getWalletBalancePlaceholder(state: UnlockReadinessState) {
+  if (state === "WALLET_LOADING") return "Loading wallet...";
+  if (state === "UNLOCKED") return "Not required";
+
+  return "Wallet unavailable";
 }
 
 function ProtectedDetailSection({
@@ -314,6 +564,14 @@ function getResponseStatus(error: unknown) {
 }
 
 function getProposalUnlockErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+
+  return fallback;
+}
+
+function getWalletErrorMessage(error: unknown, fallback: string) {
   if (isAxiosError<{ message?: string }>(error)) {
     return error.response?.data?.message || error.message || fallback;
   }

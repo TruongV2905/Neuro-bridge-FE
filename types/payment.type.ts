@@ -22,17 +22,26 @@ export type UpdateMyWalletBankInfoRequest = {
   bankName: string;
 };
 
-export type WalletResponse = {
+export type PayProposalByWalletRequest = {
+  amount: number;
+  expertCode: string;
+  proposalId: string;
+  description?: string;
+};
+
+export type UserWallet = {
   id: string;
   userCode: string;
   walletBalance: number;
   totalEarned: number;
   totalWithdrawn: number;
   status: WalletStatus;
-  bankName: string;
-  accountNumber: string;
-  accountHolderName: string;
+  bankName: string | null;
+  accountNumber: string | null;
+  accountHolderName: string | null;
 };
+
+export type WalletResponse = UserWallet;
 
 export type PaymentTransaction = {
   id: string;

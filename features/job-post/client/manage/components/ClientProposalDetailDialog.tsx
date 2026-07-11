@@ -51,16 +51,23 @@ export function ClientProposalDetailDialog({
     { proposalId },
     {
       enabled: shouldLoadProtectedDetail,
-      retry: (failureCount, queryError) =>
-        shouldRetryProposalUnlockQuery(failureCount, queryError),
+      refetchInterval: false,
+      refetchOnReconnect: false,
+      refetchOnWindowFocus: false,
+      retry: false,
     },
   );
   const proposalUnlock = shouldLoadProtectedDetail
     ? unlockQuery.data?.result
     : undefined;
   const isUnlocked = Boolean(proposalUnlock?.strategyDetail);
+  const proposalUnlockErrorStatus = unlockQuery.isError
+    ? getResponseStatus(unlockQuery.error)
+    : undefined;
+  const hasBlockingProposalUnlockError =
+    unlockQuery.isError && proposalUnlockErrorStatus !== 400;
   const walletQuery = useGetMyWallet({
-    enabled: open && hasProposal && !isUnlocked,
+    enabled: open && hasProposal && !isUnlocked && !hasBlockingProposalUnlockError,
   });
   const wallet = walletQuery.data?.result;
   const unlockCost = proposal
@@ -84,6 +91,7 @@ export function ClientProposalDetailDialog({
     hasProposal,
     hasSufficientBalance,
     hasValidUnlockCost,
+    hasBlockingProposalUnlockError,
     isUnlocked,
     isWalletError:
       walletQuery.isError || (walletQuery.isSuccess && walletBalance === null),
@@ -178,6 +186,7 @@ export function ClientProposalDetailDialog({
             <UnlockReadinessSection
               state={unlockReadinessState}
               unlockCost={hasValidUnlockCost ? unlockCostValue : null}
+              proposalUnlockError={unlockQuery.error}
               walletBalance={walletBalance}
               walletError={walletQuery.error}
               onRetryWallet={() => {
@@ -213,12 +222,14 @@ type UnlockReadinessState =
   | "WALLET_ERROR"
   | "INVALID_UNLOCK_COST"
   | "INSUFFICIENT_BALANCE"
-  | "READY_TO_UNLOCK";
+  | "READY_TO_UNLOCK"
+  | "PROPOSAL_UNLOCK_ERROR";
 
 function getUnlockReadinessState({
   hasProposal,
   hasSufficientBalance,
   hasValidUnlockCost,
+  hasBlockingProposalUnlockError,
   isUnlocked,
   isWalletError,
   isWalletLoading,
@@ -226,12 +237,14 @@ function getUnlockReadinessState({
   hasProposal: boolean;
   hasSufficientBalance: boolean;
   hasValidUnlockCost: boolean;
+  hasBlockingProposalUnlockError: boolean;
   isUnlocked: boolean;
   isWalletError: boolean;
   isWalletLoading: boolean;
 }): UnlockReadinessState {
   if (!hasProposal) return "NO_PROPOSAL";
   if (isUnlocked) return "UNLOCKED";
+  if (hasBlockingProposalUnlockError) return "PROPOSAL_UNLOCK_ERROR";
   if (isWalletLoading) return "WALLET_LOADING";
   if (isWalletError) return "WALLET_ERROR";
   if (!hasValidUnlockCost) return "INVALID_UNLOCK_COST";
@@ -242,17 +255,19 @@ function getUnlockReadinessState({
 function UnlockReadinessSection({
   state,
   unlockCost,
+  proposalUnlockError,
   walletBalance,
   walletError,
   onRetryWallet,
 }: {
   state: UnlockReadinessState;
   unlockCost: number | null;
+  proposalUnlockError: unknown;
   walletBalance: number | null;
   walletError: unknown;
   onRetryWallet: () => void;
 }) {
-  const copy = getUnlockReadinessCopy(state, walletError);
+  const copy = getUnlockReadinessCopy(state, walletError, proposalUnlockError);
   const toneClassName = getUnlockReadinessToneClassName(copy.tone);
 
   return (
@@ -330,6 +345,7 @@ function UnlockReadinessSection({
 function getUnlockReadinessCopy(
   state: UnlockReadinessState,
   walletError: unknown,
+  proposalUnlockError: unknown,
 ) {
   switch (state) {
     case "NO_PROPOSAL":
@@ -388,6 +404,16 @@ function getUnlockReadinessCopy(
         title: "Ready to unlock",
         tone: "success" as const,
       };
+    case "PROPOSAL_UNLOCK_ERROR":
+      return {
+        description: getProposalUnlockErrorMessage(
+          proposalUnlockError,
+          "Unable to check protected proposal detail.",
+        ),
+        status: "Unlock with Wallet is disabled because this is not a normal locked Proposal state.",
+        title: getProposalUnlockBlockingTitle(proposalUnlockError),
+        tone: "danger" as const,
+      };
   }
 }
 
@@ -411,6 +437,7 @@ function getUnlockReadinessToneClassName(
 function getWalletBalancePlaceholder(state: UnlockReadinessState) {
   if (state === "WALLET_LOADING") return "Loading wallet...";
   if (state === "UNLOCKED") return "Not required";
+  if (state === "PROPOSAL_UNLOCK_ERROR") return "Not checked";
 
   return "Wallet unavailable";
 }
@@ -532,27 +559,10 @@ function formatDateTime(value: string) {
   }).format(date);
 }
 
-function shouldRetryProposalUnlockQuery(
-  failureCount: number,
-  error: unknown,
-) {
-  const status = getResponseStatus(error);
-
-  if (status === 400 || status === 401 || status === 403) {
-    return false;
-  }
-
-  if (!status || status >= 500) {
-    return failureCount < 2;
-  }
-
-  return false;
-}
-
 function isProtectedDetailLocked(error: unknown) {
   const status = getResponseStatus(error);
 
-  return status === 400 || status === 401 || status === 403;
+  return status === 400;
 }
 
 function getResponseStatus(error: unknown) {
@@ -569,6 +579,15 @@ function getProposalUnlockErrorMessage(error: unknown, fallback: string) {
   }
 
   return fallback;
+}
+
+function getProposalUnlockBlockingTitle(error: unknown) {
+  const status = getResponseStatus(error);
+
+  if (status === 401) return "Authentication required";
+  if (status === 403) return "Access not authorized";
+
+  return "Unlock status unavailable";
 }
 
 function getWalletErrorMessage(error: unknown, fallback: string) {

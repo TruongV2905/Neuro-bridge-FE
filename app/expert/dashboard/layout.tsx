@@ -2,14 +2,13 @@
 
 import { WorkspaceSideBar } from "@/components/layout/ClientSideBar";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { NotificationBell } from "@/features/notification";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BellIcon } from "lucide-react"; // import { AppSidebar } from "@/components/layout/client/Sidebar";
 
 export default function ClientDashboardLayout({
   children,
@@ -34,15 +33,7 @@ export default function ClientDashboardLayout({
             </div>
 
             <div className="flex items-center gap-4">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="relative h-11 w-11 rounded-full"
-              >
-                <BellIcon className="!h-6 !w-6" />
-
-                <span className="absolute right-2.5 top-2.5 h-2.5 w-2.5 rounded-full bg-red-500" />
-              </Button>
+              <NotificationBell />
 
               <Avatar className="h-11 w-11">
                 <AvatarImage src="/avatars/shadcn.jpg" alt="Client" />

@@ -5,7 +5,6 @@ import {
   type User,
   type UserFilterRequest,
 } from "@/types/user/user.type";
-import type { UserSchema } from "@/schemas/user.schema";
 import {
   useFilterUsers,
   userKeys,
@@ -15,7 +14,7 @@ import type { UseCrudHook, UseCrudParams } from "@/types/dasboard";
 import { skillKeys } from "@/services/skill.service";
 import { useQueryClient } from "@tanstack/react-query";
 
-export const useUserCrud: UseCrudHook<User, UserSchema> = (
+export const useUserCrud: UseCrudHook<User> = (
   params: UseCrudParams,
 ) => {
   const queryClient = useQueryClient();

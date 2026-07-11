@@ -85,7 +85,7 @@ function ExpertRegisterForm() {
 
   const skillOptions = useMemo<MultiSelectOption[]>(() => {
     const skills =
-      skillsQuery.data?.pages.flatMap((page: any) => page.result.data) ?? [];
+      skillsQuery.data?.pages.flatMap((page) => page.result.data) ?? [];
 
     const skillMap = new Map<number, SkillResponse>();
 

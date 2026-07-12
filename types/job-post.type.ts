@@ -121,6 +121,13 @@ export type ChangeJobPostStatusMutationVariables = {
   status: JobPostStatus;
 };
 
+export type HireExpertResponse = {
+  workspaceId: string;
+  jobPostId: string;
+  expertCode: string;
+  message: string;
+};
+
 export type ExpertApplyRequest = {
   jobPostId: string;
   proposedBudget: number;

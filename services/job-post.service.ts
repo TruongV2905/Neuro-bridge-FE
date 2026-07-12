@@ -7,6 +7,7 @@ import {
   ChangeJobPostStatusMutationVariables,
   ChangeJobPostStatusResponse,
   ExpertAppliedJobPostsResponse,
+  HireExpertResponse,
   ExpertProposal,
   JobPost,
   JobPostAnalyzeRequest,
@@ -27,6 +28,7 @@ import type { AxiosError } from "axios";
 
 const JOB_POST_ENDPOINT = "/jobpost/job-post";
 const APPLY_JOB_POST_ENDPOINT = "/jobpost/apply-job-post";
+const HIRE_ENDPOINT = "/jobpost/job-posts";
 const PROPOSAL_ENDPOINT = "/jobpost/proposal";
 const PROPOSAL_UNLOCK_ENDPOINT = "/jobpost/proposal-unlock";
 const SKILL_ENDPOINT = "/identity/skill";
@@ -43,6 +45,7 @@ export const jobPostKeys = {
   detail: ["job-posts", "detail"],
   apply: ["job-posts", "apply"],
   applicants: ["job-posts", "applicants"],
+  hire: ["job-posts", "hire"],
   expertProposals: ["job-posts", "expert", "proposals"],
   proposalDetail: ["job-posts", "proposal", "detail"],
   proposalUnlockDetail: ["job-posts", "proposal-unlock", "detail"],
@@ -174,6 +177,20 @@ export const useGetJobPostApplicants = createQueryHook<JobPostApplicant[]>(
   jobPostKeys.applicants,
   `${APPLY_JOB_POST_ENDPOINT}/:jobPostId/applies`,
 );
+
+export const useHireExpert = createMutationHook<
+  HireExpertResponse,
+  Record<string, never>
+>({
+  url: `${HIRE_ENDPOINT}/:jobPostId/expert-applies/:expertApplyId/hire`,
+  method: "POST",
+  queryKeyToInvalidate: [
+    jobPostKeys.clientList,
+    jobPostKeys.detail,
+    jobPostKeys.applicants,
+    jobPostKeys.hire,
+  ],
+});
 
 export async function fetchJobPostApplicants(jobPostId: string) {
   const { data } = await api.get<APIResponse<JobPostApplicant[]>>(

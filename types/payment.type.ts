@@ -29,6 +29,11 @@ export type PayProposalByWalletRequest = {
   description?: string;
 };
 
+export type DepositWalletByVnPayRequest = {
+  depositAmount: number;
+  description?: string;
+};
+
 export type UserWallet = {
   id: string;
   userCode: string;

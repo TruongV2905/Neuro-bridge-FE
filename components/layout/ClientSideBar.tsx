@@ -13,6 +13,7 @@ import {
   PlusCircleIcon,
   SearchIcon,
   SparklesIcon,
+  WalletCardsIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -77,6 +78,11 @@ const WORKSPACE_CONFIG: Record<
         icon: MessageCircleIcon,
       },
       {
+        title: "Wallet",
+        url: "/client/dashboard/wallet",
+        icon: WalletCardsIcon,
+      },
+      {
         title: "Project",
         url: "/client/dashboard/projects",
         icon: FolderIcon,
@@ -100,6 +106,11 @@ const WORKSPACE_CONFIG: Record<
         title: "My Applications",
         url: "/expert/dashboard/my-applications",
         icon: SparklesIcon,
+      },
+      {
+        title: "Wallet",
+        url: "/expert/dashboard/wallet",
+        icon: WalletCardsIcon,
       },
       {
         title: "Browse Jobpost",

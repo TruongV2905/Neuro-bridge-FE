@@ -13,6 +13,7 @@ import {
 } from "@/hooks/userAPI";
 import type { APIResponse } from "@/types/common.starter";
 import type {
+  DepositWalletByVnPayRequest,
   MyPaymentTransactionsParams,
   PayProposalByWalletRequest,
   PaymentTransaction,
@@ -96,6 +97,25 @@ export async function payProposalByWallet(
   return data;
 }
 
+export async function depositWalletByVnPay(
+  request: DepositWalletByVnPayRequest,
+): Promise<APIResponse<string>> {
+  const { depositAmount, description } = request;
+
+  const { data } = await api.post<APIResponse<string>>(
+    `${WALLET_ENDPOINT}/deposit/vnpay`,
+    undefined,
+    {
+      params: {
+        depositAmount,
+        ...(description ? { description } : {}),
+      },
+    },
+  );
+
+  return data;
+}
+
 // TODO: Confirm GET /payment-transactions/mine parameter convention with BE.
 // Swagger currently shows a GET request body, while the existing API helper
 // safely supports query params only for GET requests.
@@ -165,6 +185,43 @@ export function usePayProposalByWallet(
         }),
         queryClient.invalidateQueries({
           queryKey: paymentKeys.transactionsFilter,
+        }),
+      ]);
+
+      options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useDepositWalletByVnPay(
+  options?: Omit<
+    UseMutationOptions<
+      APIResponse<string>,
+      PaymentApiError,
+      DepositWalletByVnPayRequest,
+      unknown
+    >,
+    "mutationFn" | "retry"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    APIResponse<string>,
+    PaymentApiError,
+    DepositWalletByVnPayRequest,
+    unknown
+  >({
+    ...options,
+    mutationFn: depositWalletByVnPay,
+    retry: 0,
+    onSuccess: async (data, variables, onMutateResult, context) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: paymentKeys.walletMine,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: paymentKeys.myTransactions,
         }),
       ]);
 

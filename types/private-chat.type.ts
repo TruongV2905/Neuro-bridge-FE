@@ -5,7 +5,7 @@ export type ChatSessionStatus =
   | "CLOSED"
   | "BLOCKED";
 
-export type ChatSessionType = "DIRECT" | "GROUP";
+export type ChatSessionType = "DIRECT" | "GROUP" | "PROJECT";
 
 export type ChatSessionParticipant = {
   code: string;

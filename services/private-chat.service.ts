@@ -193,11 +193,11 @@ export function useSendChatMessage() {
 
     onSuccess: (_response, variables) => {
       queryClient.invalidateQueries({
-        queryKey: [
-          ...privateChatKeys.all,
-          "messages",
+        queryKey: privateChatKeys.messages(
           variables.chatSessionId,
-        ],
+          0,
+          30,
+        ),
       })
     },
   })
@@ -238,6 +238,27 @@ export function useBlockChatSession() {
         privateChatKeys.session(sessionId),
         response,
       )
+
+      queryClient.setQueryData<
+        APIResponse<ChatSession[]> | undefined
+      >(privateChatKeys.sessions(), (current) => {
+        if (!current?.result) {
+          return current
+        }
+
+        return {
+          ...current,
+          result: current.result.map((chatSession) =>
+            chatSession.id === sessionId
+              ? response.result
+              : chatSession,
+          ),
+        }
+      })
+
+      queryClient.invalidateQueries({
+        queryKey: privateChatKeys.sessions(),
+      })
     },
   })
 }

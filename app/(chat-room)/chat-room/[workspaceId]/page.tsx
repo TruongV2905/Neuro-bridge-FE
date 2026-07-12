@@ -1,14 +1,15 @@
-"use client"
+import { WorkspaceDetailView } from "@/features/workspace"
 
-import { useParams } from "next/navigation"
+type WorkspaceDetailPageProps = {
+  params: Promise<{
+    workspaceId: string
+  }>
+}
 
-import { WorkspaceChatRoomView } from "@/features/workspace"
+export default async function WorkspaceDetailPage({
+  params,
+}: WorkspaceDetailPageProps) {
+  const { workspaceId } = await params
 
-export default function ChatRoomPage() {
-  const params = useParams<{ workspaceId?: string | string[] }>()
-  const workspaceId = Array.isArray(params.workspaceId)
-    ? params.workspaceId[0]
-    : params.workspaceId ?? ""
-
-  return <WorkspaceChatRoomView workspaceId={workspaceId} />
+  return <WorkspaceDetailView workspaceId={workspaceId} />
 }

@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef } from "react"
 import { useRouter } from "next/navigation"
+import { useSelector } from "react-redux"
 
 import {
   useBlockChatSession,
@@ -14,7 +15,13 @@ import type {
   ChatMessage,
   ChatUser,
 } from "@/types/chat.types"
-import type { PrivateConversation } from "@/types/private-chat.type"
+import type {
+  ChatSession,
+  ChatSessionParticipant,
+  PrivateConversation,
+} from "@/types/private-chat.type"
+import type { RootState } from "@/redux/store"
+import type { UserResponse } from "@/types/user/user.type"
 
 import { ConversationList } from "./components/ConversationList"
 import { PrivateChatComposer } from "./components/PrivateChatComposer"
@@ -32,7 +39,7 @@ const privateChatMedia = [
 ]
 
 type PrivateChatViewProps = {
-  sessionId: string
+  sessionId?: string
 }
 
 export function PrivateChatView({
@@ -40,26 +47,34 @@ export function PrivateChatView({
 }: PrivateChatViewProps) {
   const router = useRouter()
   const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const authenticatedUser = useSelector(
+    (state: RootState) => state.user,
+  ) as UserResponse | null
+  const currentUserCode =
+    authenticatedUser?.code?.trim() ?? ""
+  const selectedSessionId = sessionId?.trim() ?? ""
 
-  // GET /api/chat/chat/sessions/mine
   const sessionsQuery = useMyChatSessions()
-
-  // GET /api/chat/chat/sessions/{id}
-  const sessionQuery = useChatSessionById(sessionId)
-
-  // GET /api/chat/chat/sessions/{id}/messages
-  const messagesQuery = useChatMessages(sessionId, 0, 30)
+  const sessionQuery =
+    useChatSessionById(selectedSessionId)
+  const session = sessionQuery.data?.result
+  const canLoadMessages =
+    Boolean(selectedSessionId) &&
+    session?.id === selectedSessionId
+  const messagesQuery =
+    useChatMessages(
+      canLoadMessages ? selectedSessionId : null,
+      0,
+      30,
+    )
 
   const sendMessageMutation = useSendChatMessage()
   const blockSessionMutation = useBlockChatSession()
-
-  const session = sessionQuery.data?.result
 
   const conversations = useMemo<PrivateConversation[]>(() => {
     const sessions = sessionsQuery.data?.result ?? []
 
     return [...sessions]
-      .filter((chatSession) => chatSession.type === "DIRECT")
       .sort((a, b) => {
         return (
           new Date(b.createdAt).getTime() -
@@ -67,28 +82,27 @@ export function PrivateChatView({
         )
       })
       .map((chatSession) => {
-        const expert = chatSession.participants.find(
-          (participant) =>
-            participant.role?.toUpperCase() === "EXPERT",
-        )
+        const partnerParticipant =
+          getPartnerParticipant(
+            chatSession,
+            currentUserCode,
+          )
+
+        const participant =
+          partnerParticipant
+            ? mapParticipantToChatUser(
+                partnerParticipant,
+                chatSession.status,
+              )
+            : getUnavailableChatUser(
+                chatSession.status,
+              )
 
         return {
           id: chatSession.id,
-          participant: {
-            id: expert?.code ?? "",
-            name: expert?.fullName || "Unknown expert",
-            avatarUrl:
-              expert?.avatarUrl || "/img/default-avatar.png",
-            role: "expert",
-            status:
-              chatSession.status === "ACTIVE"
-                ? "Online"
-                : "Offline",
-          },
+          participant,
           status: chatSession.status,
           createdAt: chatSession.createdAt,
-
-          // API sessions/mine hiện chưa trả lastMessage.
           lastMessage: "Open conversation",
           lastMessageTime: formatConversationDate(
             chatSession.createdAt,
@@ -96,55 +110,57 @@ export function PrivateChatView({
           unreadCount: 0,
         }
       })
-  }, [sessionsQuery.data])
+  }, [sessionsQuery.data, currentUserCode])
+
+  const authenticatedParticipant = useMemo(() => {
+    if (!session || !currentUserCode) {
+      return null
+    }
+
+    return (
+      session.participants.find(
+        (participant) =>
+          participant.code?.trim() === currentUserCode,
+      ) ?? null
+    )
+  }, [session, currentUserCode])
 
   const currentUser = useMemo<ChatUser | null>(() => {
-    const client = session?.participants.find(
-      (participant) =>
-        participant.role?.toUpperCase() === "CLIENT",
-    )
-
-    if (!client) {
+    if (!authenticatedParticipant || !session) {
       return null
     }
 
-    return {
-      id: client.code,
-      name: client.fullName || "Client",
-      avatarUrl:
-        client.avatarUrl || "/img/default-avatar.png",
-      role: "client",
-      status:
-        session?.status === "ACTIVE"
-          ? "Online"
-          : "Offline",
-    }
-  }, [session])
+    return mapParticipantToChatUser(
+      authenticatedParticipant,
+      session.status,
+    )
+  }, [authenticatedParticipant, session])
 
   const partner = useMemo<ChatUser | null>(() => {
-    const expert = session?.participants.find(
-      (participant) =>
-        participant.role?.toUpperCase() === "EXPERT",
-    )
-
-    if (!expert) {
+    if (!session || !currentUserCode) {
       return null
     }
 
-    return {
-      id: expert.code,
-      name: expert.fullName || "Expert",
-      avatarUrl:
-        expert.avatarUrl || "/img/default-avatar.png",
-      role: "expert",
-      status:
-        session?.status === "ACTIVE"
-          ? "Online"
-          : "Offline",
+    const partnerParticipant = getPartnerParticipant(
+      session,
+      currentUserCode,
+    )
+
+    if (!partnerParticipant) {
+      return null
     }
-  }, [session])
+
+    return mapParticipantToChatUser(
+      partnerParticipant,
+      session.status,
+    )
+  }, [session, currentUserCode])
 
   const messages = useMemo<ChatMessage[]>(() => {
+    if (!selectedSessionId || !currentUserCode) {
+      return []
+    }
+
     const apiMessages =
       messagesQuery.data?.result?.data ?? []
 
@@ -160,32 +176,33 @@ export function PrivateChatView({
 
         return timeA - timeB
       })
-      .map((message) => {
-        const isClientMessage =
-          message.senderRole?.toUpperCase() === "CLIENT"
-
-        return {
-          id: message.id,
-          senderId: isClientMessage
-            ? currentUser?.id ?? message.senderCode
-            : message.senderCode,
-          type: "text",
-          content: message.content,
-          time: formatMessageTime(message.createdAt),
-        }
-      })
-  }, [messagesQuery.data, currentUser])
+      .map((message) => ({
+        id: message.id,
+        senderId: message.senderCode,
+        type: "text",
+        content: message.content,
+        time: formatMessageTime(message.createdAt),
+      }))
+  }, [
+    messagesQuery.data,
+    selectedSessionId,
+    currentUserCode,
+  ])
 
   useEffect(() => {
+    if (!selectedSessionId) {
+      return
+    }
+
     messagesEndRef.current?.scrollIntoView({
       behavior: "smooth",
     })
-  }, [messages.length])
+  }, [messages.length, selectedSessionId])
 
   function handleSelectConversation(
     conversationId: string,
   ) {
-    if (conversationId === sessionId) {
+    if (conversationId === selectedSessionId) {
       return
     }
 
@@ -197,7 +214,12 @@ export function PrivateChatView({
   async function handleSendMessage(
     content: string,
   ): Promise<boolean> {
-    if (!session || session.status !== "ACTIVE") {
+    if (
+      !session ||
+      !currentUser ||
+      !partner ||
+      session.status !== "ACTIVE"
+    ) {
       return false
     }
 
@@ -215,7 +237,7 @@ export function PrivateChatView({
       )
 
       window.alert(
-        "Không thể gửi tin nhắn. Vui lòng thử lại.",
+        "Khong the gui tin nhan. Vui long thu lai.",
       )
 
       return false
@@ -257,13 +279,17 @@ export function PrivateChatView({
       <div className="mx-auto flex h-full max-w-[1600px] min-h-0 overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-md backdrop-blur-sm">
         <ConversationList
           conversations={conversations}
-          selectedConversationId={sessionId}
+          selectedConversationId={
+            selectedSessionId || null
+          }
           onSelectConversation={handleSelectConversation}
           isLoading={sessionsQuery.isLoading}
         />
 
         <section className="flex min-w-0 flex-1 overflow-hidden">
-          {sessionQuery.isLoading ? (
+          {!selectedSessionId ? (
+            <ChatContentState message="Select a conversation to start chatting." />
+          ) : sessionQuery.isLoading ? (
             <ChatContentState message="Loading chat session..." />
           ) : sessionQuery.isError ? (
             <ChatErrorState
@@ -372,6 +398,79 @@ export function PrivateChatView({
       </div>
     </div>
   )
+}
+
+function getPartnerParticipant(
+  session: ChatSession,
+  currentUserCode: string,
+) {
+  if (!currentUserCode) {
+    return null
+  }
+
+  const isCurrentUserParticipant =
+    session.participants.some(
+      (participant) =>
+        participant.code?.trim() === currentUserCode,
+    )
+
+  if (!isCurrentUserParticipant) {
+    return null
+  }
+
+  return (
+    session.participants.find(
+      (participant) =>
+        participant.code?.trim() !== currentUserCode,
+    ) ?? null
+  )
+}
+
+function mapParticipantToChatUser(
+  participant: ChatSessionParticipant,
+  sessionStatus: ChatSession["status"],
+): ChatUser {
+  return {
+    id: participant.code,
+    name:
+      participant.fullName ||
+      getParticipantFallbackName(participant),
+    avatarUrl:
+      participant.avatarUrl ||
+      "/img/default-avatar.png",
+    role:
+      participant.role?.toUpperCase() === "CLIENT"
+        ? "client"
+        : "expert",
+    status:
+      sessionStatus === "ACTIVE"
+        ? "Online"
+        : "Offline",
+  }
+}
+
+function getUnavailableChatUser(
+  sessionStatus: ChatSession["status"],
+): ChatUser {
+  return {
+    id: "",
+    name: "Unknown participant",
+    avatarUrl: "/img/default-avatar.png",
+    role: "expert",
+    status:
+      sessionStatus === "ACTIVE"
+        ? "Online"
+        : "Offline",
+  }
+}
+
+function getParticipantFallbackName(
+  participant: ChatSessionParticipant,
+) {
+  const normalizedRole =
+    participant.role?.toLowerCase() || "participant"
+
+  return `Unknown ${normalizedRole}`
 }
 
 type ChatContentStateProps = {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BriefcaseIcon,
+  FileSignatureIcon,
   FolderIcon,
   HandshakeIcon,
   HomeIcon,
@@ -73,6 +74,11 @@ const WORKSPACE_CONFIG: Record<
         icon: HandshakeIcon,
       },
       {
+        title: "Contracts",
+        url: "/client/dashboard/contracts",
+        icon: FileSignatureIcon,
+      },
+      {
         title: "Chat",
         url: "/client/dashboard/chat",
         icon: MessageCircleIcon,
@@ -111,6 +117,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Wallet",
         url: "/expert/dashboard/wallet",
         icon: WalletCardsIcon,
+      },
+      {
+        title: "Contracts",
+        url: "/expert/dashboard/contracts",
+        icon: FileSignatureIcon,
       },
       {
         title: "Browse Jobpost",

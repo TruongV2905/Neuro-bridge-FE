@@ -5,6 +5,7 @@ export type NotificationItem = {
   message: string;
   resourceId: string | null;
   workspaceId: string | null;
+  deeplink?: string | null;
   createdAt: string;
   read: boolean;
 };

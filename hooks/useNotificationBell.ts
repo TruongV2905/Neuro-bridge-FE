@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 
 import { NOTIFICATION_PREVIEW_LIMIT } from "@/features/notification/constants/notification.constants";
@@ -12,13 +13,16 @@ import {
   useMarkAllNotificationsAsRead,
   useMarkNotificationAsRead,
 } from "@/services/notification.service";
+import type { NotificationItem } from "@/types/notification.type";
 import type { UserResponse } from "@/types/user/user.type";
+import { resolveNotificationHref } from "@/utils/notification.utils";
 
 type CurrentUserWithId = UserResponse & {
   id?: string;
 };
 
 export function useNotificationBell() {
+  const router = useRouter();
   const currentUser = useSelector(
     (state: RootState) => state.user,
   ) as CurrentUserWithId | null;
@@ -58,6 +62,18 @@ export function useNotificationBell() {
     markAsReadMutation.mutate(notificationId);
   };
 
+  const handleOpenNotification = (notification: NotificationItem) => {
+    if (!notification.read) {
+      markAsReadMutation.mutate(notification.id);
+    }
+
+    const href = resolveNotificationHref(notification, currentUser?.role);
+
+    if (href) {
+      router.push(href);
+    }
+  };
+
   return {
     unreadCount,
     visibleNotifications,
@@ -71,6 +87,7 @@ export function useNotificationBell() {
     canMarkAllAsRead: !!userId && unreadCount > 0,
     refetch,
     handleMarkAsRead,
+    handleOpenNotification,
     handleMarkAllAsRead,
   };
 }

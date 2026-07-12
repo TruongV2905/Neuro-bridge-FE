@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   BriefcaseBusiness,
@@ -18,6 +19,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { saveContractHireContext } from "@/features/contract/contractStorage";
 import { cn } from "@/lib/utils";
 import {
   useGetClientJobPosts,
@@ -60,6 +62,7 @@ const DEFAULT_STATE: HiringFilterState = {
 };
 
 export function ClientHiringView() {
+  const router = useRouter();
   const [state, setState] = useState<HiringFilterState>(DEFAULT_STATE);
   const [searchInput, setSearchInput] = useState(DEFAULT_STATE.search);
   const [selectedJobId, setSelectedJobId] = useState<string>("");
@@ -116,18 +119,23 @@ export function ClientHiringView() {
 
     try {
       const response = await hireExpert.mutateAsync({
-        pathParams: {
-          jobPostId: selectedJob.id,
-          expertApplyId: applicant.expertApply.id,
-        },
+        jobPostId: selectedJob.id,
+        expertApplyId: applicant.expertApply.id,
       });
 
-      toast.success(
-        response.result?.message ||
-          response.message ||
-          "Expert hired successfully.",
-      );
+      toast.success(response.message || "Contract created successfully.");
       await Promise.all([jobPostsQuery.refetch(), applicantsQuery.refetch()]);
+
+      if (response.contractId) {
+        saveContractHireContext(response.contractId, {
+          jobPostId: selectedJob.id,
+          expertApplyId: applicant.expertApply.id,
+          expertCode: response.expertCode || applicant.expertApply.expertCode,
+        });
+        router.push(
+          `/client/dashboard/contracts/${response.contractId}?jobPostId=${selectedJob.id}&expertApplyId=${applicant.expertApply.id}`,
+        );
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to hire this expert."));
     }
@@ -209,8 +217,8 @@ export function ClientHiringView() {
                     "Please try again.",
                   )}
                   pendingExpertApplyId={
-                    hireExpert.variables?.pathParams?.expertApplyId
-                      ? String(hireExpert.variables.pathParams.expertApplyId)
+                    hireExpert.variables?.expertApplyId
+                      ? String(hireExpert.variables.expertApplyId)
                       : ""
                   }
                   isHiring={hireExpert.isPending}
@@ -807,3 +815,4 @@ function getErrorMessage(error: unknown, fallback: string) {
 
   return apiError.response?.data?.message || apiError.message || fallback;
 }
+

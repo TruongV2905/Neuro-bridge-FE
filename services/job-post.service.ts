@@ -7,6 +7,7 @@ import {
   ChangeJobPostStatusMutationVariables,
   ChangeJobPostStatusResponse,
   ExpertAppliedJobPostsResponse,
+  HireExpertMutationVariables,
   HireExpertResponse,
   ExpertProposal,
   JobPost,
@@ -178,19 +179,50 @@ export const useGetJobPostApplicants = createQueryHook<JobPostApplicant[]>(
   `${APPLY_JOB_POST_ENDPOINT}/:jobPostId/applies`,
 );
 
-export const useHireExpert = createMutationHook<
-  HireExpertResponse,
-  Record<string, never>
->({
-  url: `${HIRE_ENDPOINT}/:jobPostId/expert-applies/:expertApplyId/hire`,
-  method: "POST",
-  queryKeyToInvalidate: [
-    jobPostKeys.clientList,
-    jobPostKeys.detail,
-    jobPostKeys.applicants,
-    jobPostKeys.hire,
-  ],
-});
+export async function hireExpert({
+  jobPostId,
+  expertApplyId,
+}: HireExpertMutationVariables) {
+  const { data } = await api.post<HireExpertResponse>(
+    `${HIRE_ENDPOINT}/${encodeURIComponent(jobPostId)}/expert-applies/${encodeURIComponent(expertApplyId)}/hire`,
+  );
+
+  return data;
+}
+
+export function useHireExpert() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    HireExpertResponse,
+    JobPostApiError,
+    HireExpertMutationVariables
+  >({
+    mutationFn: hireExpert,
+    retry: 0,
+    onSuccess: async (_data, { jobPostId }) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: jobPostKeys.clientList,
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: jobPostKeys.detail,
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: jobPostKeys.applicants,
+          exact: false,
+        }),
+        queryClient.invalidateQueries({
+          queryKey: jobPostKeys.hire,
+          exact: false,
+        }),
+        invalidateJobPostReadQueries(queryClient, jobPostId),
+      ]);
+    },
+  });
+}
 
 export async function fetchJobPostApplicants(jobPostId: string) {
   const { data } = await api.get<APIResponse<JobPostApplicant[]>>(

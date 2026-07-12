@@ -122,10 +122,17 @@ export type ChangeJobPostStatusMutationVariables = {
 };
 
 export type HireExpertResponse = {
-  workspaceId: string;
+  contractId?: string | null;
+  workspaceId?: string | null;
   jobPostId: string;
   expertCode: string;
   message: string;
+  shortfallAmount?: number | null;
+};
+
+export type HireExpertMutationVariables = {
+  jobPostId: string;
+  expertApplyId: string;
 };
 
 export type ExpertApplyRequest = {

@@ -1,30 +1,27 @@
-import { BellIcon } from "lucide-react";
+import { BellIcon, ExternalLink } from "lucide-react";
 
 import { formatNotificationTime } from "@/utils/notification.utils";
 import type { NotificationItem } from "@/types/notification.type";
 
 type NotificationRowProps = {
   notification: NotificationItem;
-  onMarkAsRead: (notificationId: string) => void;
+  onOpen: (notification: NotificationItem) => void;
   isMarking: boolean;
 };
 
 export function NotificationRow({
   notification,
-  onMarkAsRead,
+  onOpen,
   isMarking,
 }: NotificationRowProps) {
   const createdAtLabel = formatNotificationTime(notification.createdAt);
+  const hasDeeplink = Boolean(notification.deeplink?.trim());
 
   return (
     <button
       type="button"
       className="flex w-full gap-3 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-70"
-      onClick={() => {
-        if (!notification.read) {
-          onMarkAsRead(notification.id);
-        }
-      }}
+      onClick={() => onOpen(notification)}
       disabled={isMarking}
     >
       <span
@@ -53,6 +50,13 @@ export function NotificationRow({
         <span className="mt-1 line-clamp-2 block text-xs leading-5 text-slate-500">
           {notification.message || "You have a new notification."}
         </span>
+
+        {hasDeeplink && (
+          <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600">
+            Open related page
+            <ExternalLink className="h-3 w-3" />
+          </span>
+        )}
       </span>
 
       {!notification.read && (

@@ -26,7 +26,7 @@ export function NotificationBell() {
     isMarkingAll,
     canMarkAllAsRead,
     refetch,
-    handleMarkAsRead,
+    handleOpenNotification,
     handleMarkAllAsRead,
   } = useNotificationBell();
 
@@ -131,7 +131,7 @@ export function NotificationBell() {
               <NotificationRow
                 key={notification.id}
                 notification={notification}
-                onMarkAsRead={handleMarkAsRead}
+                onOpen={handleOpenNotification}
                 isMarking={isMarkingOne}
               />
             ))}

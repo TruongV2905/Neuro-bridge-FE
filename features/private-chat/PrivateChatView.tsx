@@ -75,7 +75,6 @@ export function PrivateChatView({
     const sessions = sessionsQuery.data?.result ?? []
 
     return [...sessions]
-      .filter((chatSession) => chatSession.type === "DIRECT")
       .sort((a, b) => {
         return (
           new Date(b.createdAt).getTime() -

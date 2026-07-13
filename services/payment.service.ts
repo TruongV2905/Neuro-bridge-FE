@@ -13,6 +13,7 @@ import {
 } from "@/hooks/userAPI";
 import type { APIResponse } from "@/types/common.starter";
 import type {
+  ConfirmVnPayDepositRequest,
   DepositWalletByVnPayRequest,
   MyPaymentTransactionsParams,
   PayProposalByWalletRequest,
@@ -109,6 +110,25 @@ export async function depositWalletByVnPay(
       params: {
         depositAmount,
         ...(description ? { description } : {}),
+      },
+    },
+  );
+
+  return data;
+}
+
+export async function confirmVnPayDeposit(
+  request: ConfirmVnPayDepositRequest,
+): Promise<APIResponse<null>> {
+  const { depositAmount, transactionId } = request;
+
+  const { data } = await api.post<APIResponse<null>>(
+    `${WALLET_ENDPOINT}/deposit/success`,
+    undefined,
+    {
+      params: {
+        depositAmount,
+        transactionId,
       },
     },
   );
@@ -224,6 +244,41 @@ export function useDepositWalletByVnPay(
           queryKey: paymentKeys.myTransactions,
         }),
       ]);
+
+      options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
+
+export function useConfirmVnPayDeposit(
+  options?: Omit<
+    UseMutationOptions<
+      APIResponse<null>,
+      PaymentApiError,
+      ConfirmVnPayDepositRequest,
+      unknown
+    >,
+    "mutationFn" | "retry"
+  >,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    APIResponse<null>,
+    PaymentApiError,
+    ConfirmVnPayDepositRequest,
+    unknown
+  >({
+    ...options,
+    mutationFn: confirmVnPayDeposit,
+    retry: 0,
+    onSuccess: (data, variables, onMutateResult, context) => {
+      queryClient.invalidateQueries({
+        queryKey: paymentKeys.walletMine,
+      });
+      queryClient.invalidateQueries({
+        queryKey: paymentKeys.myTransactions,
+      });
 
       options?.onSuccess?.(data, variables, onMutateResult, context);
     },

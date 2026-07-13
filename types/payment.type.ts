@@ -34,6 +34,11 @@ export type DepositWalletByVnPayRequest = {
   description?: string;
 };
 
+export type ConfirmVnPayDepositRequest = {
+  depositAmount: number;
+  transactionId: string;
+};
+
 export type UserWallet = {
   id: string;
   userCode: string;

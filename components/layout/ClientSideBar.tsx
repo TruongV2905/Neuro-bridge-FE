@@ -104,11 +104,6 @@ const WORKSPACE_CONFIG: Record<
         icon: LayoutDashboardIcon,
       },
       {
-        title: "My Services",
-        url: "/expert/dashboard/my-services",
-        icon: SparklesIcon,
-      },
-      {
         title: "My Applications",
         url: "/expert/dashboard/my-applications",
         icon: SparklesIcon,
@@ -132,6 +127,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Project",
         url: "/expert/dashboard/projects",
         icon: FolderIcon,
+      },
+      {
+        title: "Chat",
+        url: "/expert/dashboard/chat",
+        icon: MessageCircleIcon,
       },
     ],
   },

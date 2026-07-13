@@ -53,6 +53,9 @@ export type SendChatMessageRequest = {
   content: string
 }
 
+export type CreateWorkspaceChatSessionRequest = {
+  workspaceId: string
+}
 
 export type PrivateConversation = {
   id: string

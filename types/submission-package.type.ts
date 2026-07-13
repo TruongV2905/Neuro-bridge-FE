@@ -88,6 +88,13 @@ export type ResubmitSubmissionPackageRequest = {
   updatedFiles: SubmissionFileRequest[];
 };
 
+export type RejectSubmissionPackageRequest = {
+  packageId: string;
+  feedback: string;
+};
+
+export type SubmissionReviewResponse = SubmissionPackageSummary;
+
 export type CreateSubmissionPackageMutationVariables = {
   request: CreateSubmissionPackageRequest;
 };
@@ -100,4 +107,10 @@ export type ResubmitSubmissionPackageMutationVariables = {
   packageId: string;
   workspaceId: string;
   request: ResubmitSubmissionPackageRequest;
+};
+
+export type RejectSubmissionPackageMutationVariables = {
+  packageId: string;
+  workspaceId: string;
+  feedback: string;
 };

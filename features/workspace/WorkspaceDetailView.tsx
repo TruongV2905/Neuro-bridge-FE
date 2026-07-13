@@ -582,7 +582,12 @@ function WorkspaceSubmissionSection({
         </SubmissionPanelFrame>
       ) : isClient ? (
         <SubmissionPanelFrame>
-          <ClientProjectSubmissionPanel workspaceId={workspaceId} />
+          <ClientProjectSubmissionPanel
+            workspaceId={workspaceId}
+            workspaceStatus={workspaceStatus}
+            projectStatus={projectStatus}
+            onRevisionAccepted={onSubmissionAccepted}
+          />
         </SubmissionPanelFrame>
       ) : (
         <SectionNotice
@@ -638,7 +643,7 @@ function SubmissionPanelFrame({
   children: ReactNode
 }) {
   return (
-    <div className="[&>aside]:!flex [&>aside]:!h-[640px] [&>aside]:!w-full [&>aside]:!rounded-2xl [&>aside]:!border-slate-200/70 [&>aside]:!shadow-sm">
+    <div className="[&>aside]:!flex [&>aside]:!w-full [&>aside]:!rounded-2xl [&>aside]:!border-slate-200/70 [&>aside]:!shadow-sm">
       {children}
     </div>
   )

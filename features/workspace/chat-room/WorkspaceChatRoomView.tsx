@@ -37,6 +37,7 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
     isLoading: isWorkspaceLoading,
     isError: isWorkspaceError,
     error: workspaceError,
+    refetch: refetchWorkspace,
   } = useWorkspaceDetail(normalizedWorkspaceId)
 
   const isExpert = user?.role === UserRole.EXPERT
@@ -129,7 +130,12 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
           </section>
 
           {isExpert && normalizedWorkspaceId && (
-            <ProjectSubmissionPanel workspaceId={normalizedWorkspaceId} />
+            <ProjectSubmissionPanel
+              workspaceId={normalizedWorkspaceId}
+              workspaceStatus={workspace?.status}
+              projectStatus={workspace?.projectStatus}
+              onSubmissionAccepted={() => refetchWorkspace()}
+            />
           )}
 
           {canRenderClientSubmissionPanel && (

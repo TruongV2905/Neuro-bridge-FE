@@ -6,31 +6,52 @@ import type {
   CreateSubmissionPackageMutationVariables,
   CreateSubmissionPackageRequest,
   DeliverableFile,
+  ExpertSubmitWorkspacePackageMutationVariables,
+  ExpertSubmitWorkspacePackageRequest,
+  ExpertSubmitWorkspacePackageResponse,
   ResubmitSubmissionPackageMutationVariables,
   ResubmitSubmissionPackageRequest,
   SubmissionFileType,
   SubmissionPackageDetail,
   SubmissionPackageSummary,
 } from "@/types/submission-package.type";
+import { workspaceKeys } from "./workspace.service";
 
 const SUBMISSION_PACKAGE_ENDPOINT =
   "/workspace/api/v1/submission-packages";
 const DELIVERABLE_FILE_ENDPOINT =
   "/workspace/api/v1/deliverable-files";
 const FILE_TYPE_ENDPOINT = "/workspace/api/v1/file-types";
+const EXPERT_WORKSPACE_SUBMIT_ENDPOINT =
+  "/workspace/api/v1/workspaces/expert/submit";
 
 type SubmissionReadError = AxiosError;
 type SubmissionMutationError = AxiosError;
 
 export const submissionPackageKeys = {
   all: ["submission-package"] as const,
-  workspace: (workspaceId: string) =>
-    [...submissionPackageKeys.all, "workspace", workspaceId] as const,
-  detail: (packageId: string) =>
-    [...submissionPackageKeys.all, "detail", packageId] as const,
-  files: (packageId: string) =>
-    [...submissionPackageKeys.all, "files", packageId] as const,
-  fileTypes: ["submission-package", "file-types"] as const,
+  user: (userCode: string) =>
+    [...submissionPackageKeys.all, "user", userCode] as const,
+  workspace: (userCode: string, workspaceId: string) =>
+    [
+      ...submissionPackageKeys.user(userCode),
+      "workspace",
+      workspaceId,
+    ] as const,
+  detail: (userCode: string, packageId: string) =>
+    [
+      ...submissionPackageKeys.user(userCode),
+      "detail",
+      packageId,
+    ] as const,
+  files: (userCode: string, packageId: string) =>
+    [
+      ...submissionPackageKeys.user(userCode),
+      "files",
+      packageId,
+    ] as const,
+  fileTypes: (userCode: string) =>
+    [...submissionPackageKeys.user(userCode), "file-types"] as const,
 };
 
 export async function getSubmissionPackagesByWorkspace(workspaceId: string) {
@@ -65,6 +86,17 @@ export async function getSubmissionFileTypes() {
   return data;
 }
 
+export async function submitExpertWorkspacePackage(
+  request: ExpertSubmitWorkspacePackageRequest,
+) {
+  const { data } = await api.post<ExpertSubmitWorkspacePackageResponse>(
+    EXPERT_WORKSPACE_SUBMIT_ENDPOINT,
+    request,
+  );
+
+  return data;
+}
+
 export async function createSubmissionPackage(
   request: CreateSubmissionPackageRequest,
 ) {
@@ -89,57 +121,120 @@ export async function resubmitSubmissionPackage(
 }
 
 export function useSubmissionPackagesByWorkspace(
+  userCode?: string | null,
   workspaceId?: string | null,
 ) {
+  const normalizedUserCode = normalizeIdentifier(userCode);
   const normalizedWorkspaceId = normalizeIdentifier(workspaceId);
 
   return useQuery<SubmissionPackageSummary[], SubmissionReadError>({
-    queryKey: normalizedWorkspaceId
-      ? submissionPackageKeys.workspace(normalizedWorkspaceId)
-      : submissionPackageKeys.workspace(""),
+    queryKey:
+      normalizedUserCode && normalizedWorkspaceId
+        ? submissionPackageKeys.workspace(
+            normalizedUserCode,
+            normalizedWorkspaceId,
+          )
+        : submissionPackageKeys.workspace("", ""),
     queryFn: () =>
       getSubmissionPackagesByWorkspace(normalizedWorkspaceId ?? ""),
-    enabled: Boolean(normalizedWorkspaceId),
+    enabled: Boolean(normalizedUserCode) && Boolean(normalizedWorkspaceId),
     retry: 0,
   });
 }
 
-export function useSubmissionPackageDetail(packageId?: string | null) {
+export function useSubmissionPackageDetail(
+  userCode?: string | null,
+  packageId?: string | null,
+) {
+  const normalizedUserCode = normalizeIdentifier(userCode);
   const normalizedPackageId = normalizeIdentifier(packageId);
 
   return useQuery<SubmissionPackageDetail, SubmissionReadError>({
-    queryKey: normalizedPackageId
-      ? submissionPackageKeys.detail(normalizedPackageId)
-      : submissionPackageKeys.detail(""),
+    queryKey:
+      normalizedUserCode && normalizedPackageId
+        ? submissionPackageKeys.detail(normalizedUserCode, normalizedPackageId)
+        : submissionPackageKeys.detail("", ""),
     queryFn: () => getSubmissionPackageDetail(normalizedPackageId ?? ""),
-    enabled: Boolean(normalizedPackageId),
+    enabled: Boolean(normalizedUserCode) && Boolean(normalizedPackageId),
     retry: 0,
   });
 }
 
-export function useDeliverableFilesByPackage(packageId?: string | null) {
+export function useDeliverableFilesByPackage(
+  userCode?: string | null,
+  packageId?: string | null,
+) {
+  const normalizedUserCode = normalizeIdentifier(userCode);
   const normalizedPackageId = normalizeIdentifier(packageId);
 
   return useQuery<DeliverableFile[], SubmissionReadError>({
-    queryKey: normalizedPackageId
-      ? submissionPackageKeys.files(normalizedPackageId)
-      : submissionPackageKeys.files(""),
+    queryKey:
+      normalizedUserCode && normalizedPackageId
+        ? submissionPackageKeys.files(normalizedUserCode, normalizedPackageId)
+        : submissionPackageKeys.files("", ""),
     queryFn: () => getDeliverableFilesByPackage(normalizedPackageId ?? ""),
-    enabled: Boolean(normalizedPackageId),
+    enabled: Boolean(normalizedUserCode) && Boolean(normalizedPackageId),
     retry: 0,
   });
 }
 
-export function useSubmissionFileTypes() {
+export function useSubmissionFileTypes(userCode?: string | null) {
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
   return useQuery<SubmissionFileType[], SubmissionReadError>({
-    queryKey: submissionPackageKeys.fileTypes,
+    queryKey: normalizedUserCode
+      ? submissionPackageKeys.fileTypes(normalizedUserCode)
+      : submissionPackageKeys.fileTypes(""),
     queryFn: getSubmissionFileTypes,
+    enabled: Boolean(normalizedUserCode),
     retry: 0,
   });
 }
 
-export function useCreateSubmissionPackage() {
+export function useSubmitExpertWorkspacePackage(userCode?: string | null) {
   const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    ExpertSubmitWorkspacePackageResponse,
+    SubmissionMutationError,
+    ExpertSubmitWorkspacePackageMutationVariables
+  >({
+    mutationFn: ({ request }) => submitExpertWorkspacePackage(request),
+    retry: 0,
+    onSuccess: async (createdPackage, { request }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            request.workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            createdPackage.packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.files(
+            normalizedUserCode,
+            createdPackage.packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(request.workspaceId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useCreateSubmissionPackage(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
 
   return useMutation<
     SubmissionPackageSummary,
@@ -149,23 +244,35 @@ export function useCreateSubmissionPackage() {
     mutationFn: ({ request }) => createSubmissionPackage(request),
     retry: 0,
     onSuccess: async (createdPackage, { request }) => {
-      await Promise.all([
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.workspace(request.workspaceId),
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            request.workspaceId,
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.detail(createdPackage.packageId),
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            createdPackage.packageId,
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.files(createdPackage.packageId),
+          queryKey: submissionPackageKeys.files(
+            normalizedUserCode,
+            createdPackage.packageId,
+          ),
         }),
       ]);
     },
   });
 }
 
-export function useResubmitSubmissionPackage() {
+export function useResubmitSubmissionPackage(userCode?: string | null) {
   const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
 
   return useMutation<
     SubmissionPackageSummary,
@@ -176,21 +283,35 @@ export function useResubmitSubmissionPackage() {
       resubmitSubmissionPackage(packageId, request),
     retry: 0,
     onSuccess: async (submittedPackage, { packageId, workspaceId }) => {
-      await Promise.all([
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.workspace(workspaceId),
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.detail(packageId),
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            packageId,
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.files(packageId),
+          queryKey: submissionPackageKeys.files(normalizedUserCode, packageId),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.detail(submittedPackage.packageId),
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            submittedPackage.packageId,
+          ),
         }),
         queryClient.invalidateQueries({
-          queryKey: submissionPackageKeys.files(submittedPackage.packageId),
+          queryKey: submissionPackageKeys.files(
+            normalizedUserCode,
+            submittedPackage.packageId,
+          ),
         }),
       ]);
     },

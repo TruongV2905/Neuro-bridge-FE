@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 
 import {
+  getCanonicalChatSessions,
   useBlockChatSession,
   useChatMessages,
   useChatSessionById,
@@ -18,6 +19,7 @@ import type {
 import type {
   ChatSession,
   ChatSessionParticipant,
+  ChatApiMessage,
   PrivateConversation,
 } from "@/types/private-chat.type"
 import type { RootState } from "@/redux/store"
@@ -55,6 +57,8 @@ export function PrivateChatView({
   ) as UserResponse | null
   const currentUserCode =
     authenticatedUser?.code?.trim() ?? ""
+  const currentUserRole =
+    authenticatedUser?.role?.trim() ?? ""
   const selectedSessionId = sessionId?.trim() ?? ""
 
   const chatRouteBase = getChatRouteBase(
@@ -86,7 +90,9 @@ export function PrivateChatView({
     useBlockChatSession(currentUserCode)
 
   const conversations = useMemo<PrivateConversation[]>(() => {
-    const sessions = sessionsQuery.data?.result ?? []
+    const sessions = getCanonicalChatSessions(
+      sessionsQuery.data?.result ?? [],
+    )
 
     return [...sessions]
       .sort((a, b) => {
@@ -192,7 +198,12 @@ export function PrivateChatView({
       })
       .map((message) => ({
         id: message.id,
-        senderId: message.senderCode,
+        senderId: resolveMessageSenderId({
+          message,
+          session,
+          currentUserCode,
+          currentUserRole,
+        }),
         type: "text",
         content: message.content,
         time: formatMessageTime(message.createdAt),
@@ -201,6 +212,8 @@ export function PrivateChatView({
     messagesQuery.data,
     selectedSessionId,
     currentUserCode,
+    currentUserRole,
+    session,
   ])
 
   useEffect(() => {
@@ -478,6 +491,70 @@ function getUnavailableChatUser(
         ? "Online"
         : "Offline",
   }
+}
+
+function resolveMessageSenderId({
+  message,
+  session,
+  currentUserCode,
+  currentUserRole,
+}: {
+  message: ChatApiMessage
+  session?: ChatSession
+  currentUserCode: string
+  currentUserRole: string
+}) {
+  const senderCode = message.senderCode?.trim()
+
+  if (senderCode) {
+    return senderCode
+  }
+
+  if (
+    !session ||
+    !currentUserCode ||
+    !isTwoPartyChatSession(session)
+  ) {
+    return ""
+  }
+
+  const normalizedSenderRole = normalizeRole(
+    message.senderRole,
+  )
+  const normalizedCurrentUserRole =
+    normalizeRole(currentUserRole)
+
+  if (!normalizedSenderRole) {
+    return ""
+  }
+
+  if (
+    normalizedSenderRole ===
+    normalizedCurrentUserRole
+  ) {
+    return currentUserCode
+  }
+
+  const senderParticipant =
+    session.participants.find(
+      (participant) =>
+        normalizeRole(participant.role) ===
+        normalizedSenderRole,
+    )
+
+  return senderParticipant?.code?.trim() ?? ""
+}
+
+function isTwoPartyChatSession(session: ChatSession) {
+  return (
+    (session.type === "DIRECT" ||
+      session.type === "PROJECT") &&
+    session.participants.length === 2
+  )
+}
+
+function normalizeRole(role?: string | null) {
+  return role?.trim().toUpperCase() ?? ""
 }
 
 function getChatRouteBase(role?: UserRole | null) {

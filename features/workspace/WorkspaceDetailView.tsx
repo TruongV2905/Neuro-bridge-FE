@@ -1,6 +1,6 @@
 "use client"
 
-import type { ComponentType, ReactNode } from "react"
+import { useState, type ComponentType, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import {
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { RootState } from "@/redux/store"
+import { useCreateWorkspaceChatSession } from "@/services/private-chat.service"
 import { useWorkspaceDetail } from "@/services/workspace.service"
 import type {
   WorkspaceDetail,
@@ -53,8 +54,13 @@ export function WorkspaceDetailView({
     (state: RootState) => state.user,
   ) as UserResponse | null
   const role = user?.role
+  const currentUserCode = user?.code?.trim() ?? ""
 
   const workspaceQuery = useWorkspaceDetail(normalizedWorkspaceId)
+  const createWorkspaceChatSessionMutation =
+    useCreateWorkspaceChatSession(currentUserCode)
+  const [openChatError, setOpenChatError] =
+    useState<string | null>(null)
   const workspace = workspaceQuery.data
   const handleBack = () => {
     const projectBaseRoute = getProjectBaseRoute(role)
@@ -65,6 +71,48 @@ export function WorkspaceDetailView({
     }
 
     router.back()
+  }
+  const chatRouteBase = getChatRouteBase(role)
+  const canOpenChat =
+    Boolean(chatRouteBase) &&
+    Boolean(normalizedWorkspaceId) &&
+    Boolean(currentUserCode)
+  const openChatErrorMessage =
+    openChatError ??
+    getChatMutationErrorMessage(
+      createWorkspaceChatSessionMutation.error,
+    )
+
+  const handleOpenChat = () => {
+    if (
+      createWorkspaceChatSessionMutation.isPending ||
+      !canOpenChat ||
+      !chatRouteBase
+    ) {
+      return
+    }
+
+    setOpenChatError(null)
+
+    createWorkspaceChatSessionMutation.mutate(
+      {
+        workspaceId: normalizedWorkspaceId,
+      },
+      {
+        onSuccess: (response) => {
+          const sessionId = response.result?.id?.trim()
+
+          if (!sessionId) {
+            setOpenChatError(
+              "Chat session was created, but no usable session ID was returned. Please try again.",
+            )
+            return
+          }
+
+          router.push(`${chatRouteBase}/${encodeURIComponent(sessionId)}`)
+        },
+      },
+    )
   }
 
   if (!normalizedWorkspaceId) {
@@ -145,7 +193,14 @@ export function WorkspaceDetailView({
           </div>
 
           <div className="space-y-6">
-            <WorkspaceQuickActions />
+            <WorkspaceQuickActions
+              canOpenChat={canOpenChat}
+              isOpeningChat={
+                createWorkspaceChatSessionMutation.isPending
+              }
+              openChatError={openChatErrorMessage}
+              onOpenChat={handleOpenChat}
+            />
             <WorkspaceSubmissionSection
               workspaceId={workspace.workspaceId}
               role={role}
@@ -320,13 +375,25 @@ function WorkspaceMembers({
   )
 }
 
-function WorkspaceQuickActions() {
+function WorkspaceQuickActions({
+  canOpenChat,
+  isOpeningChat,
+  openChatError,
+  onOpenChat,
+}: {
+  canOpenChat: boolean
+  isOpeningChat: boolean
+  openChatError?: string | null
+  onOpenChat: () => void
+}) {
   const actions: WorkspaceAction[] = [
     {
       title: "Open Chat",
-      description: "Workspace chat session creation will be connected in the next phase.",
+      description: canOpenChat
+        ? "Create or open the PROJECT chat session for this workspace."
+        : "Workspace chat is available for Client and Expert accounts only.",
       icon: MessageCircle,
-      state: "Not connected",
+      state: canOpenChat ? "Ready" : "Unavailable",
     },
     {
       title: "Proposal Strategy",
@@ -353,8 +420,23 @@ function WorkspaceQuickActions() {
           <button
             key={action.title}
             type="button"
-            disabled
-            className="flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 text-left opacity-80"
+            disabled={
+              action.title !== "Open Chat" ||
+              !canOpenChat ||
+              isOpeningChat
+            }
+            onClick={
+              action.title === "Open Chat" ? onOpenChat : undefined
+            }
+            className={cn(
+              "flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 text-left transition",
+              action.title === "Open Chat" && canOpenChat
+                ? "hover:border-indigo-200 hover:bg-indigo-50/50"
+                : "opacity-80",
+              isOpeningChat && action.title === "Open Chat"
+                ? "cursor-wait opacity-70"
+                : "",
+            )}
           >
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
               <action.icon className="h-5 w-5" />
@@ -362,10 +444,14 @@ function WorkspaceQuickActions() {
             <span className="min-w-0 flex-1">
               <span className="flex items-center justify-between gap-3">
                 <span className="text-sm font-extrabold text-slate-900">
-                  {action.title}
+                  {action.title === "Open Chat" && isOpeningChat
+                    ? "Opening Chat..."
+                    : action.title}
                 </span>
                 <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {action.state}
+                  {action.title === "Open Chat" && isOpeningChat
+                    ? "Opening"
+                    : action.state}
                 </span>
               </span>
               <span className="mt-1 block text-xs leading-5 text-slate-500">
@@ -375,6 +461,15 @@ function WorkspaceQuickActions() {
           </button>
         ))}
       </div>
+      {openChatError && (
+        <div className="mt-4">
+          <SectionNotice
+            tone="warning"
+            title="Chat could not open"
+            message={openChatError}
+          />
+        </div>
+      )}
     </WorkspaceCard>
   )
 }
@@ -844,4 +939,48 @@ function getProjectBaseRoute(role?: UserRole) {
   }
 
   return null
+}
+
+function getChatRouteBase(role?: UserRole) {
+  if (role === UserRole.CLIENT) {
+    return "/client/dashboard/chat"
+  }
+
+  if (role === UserRole.EXPERT) {
+    return "/expert/dashboard/chat"
+  }
+
+  return null
+}
+
+function getChatMutationErrorMessage(error: unknown) {
+  if (!error) {
+    return null
+  }
+
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error
+  ) {
+    const response = (
+      error as {
+        response?: {
+          data?: {
+            message?: string
+          }
+        }
+      }
+    ).response
+
+    if (response?.data?.message) {
+      return response.data.message
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return "Unable to open Workspace chat. Please try again."
 }

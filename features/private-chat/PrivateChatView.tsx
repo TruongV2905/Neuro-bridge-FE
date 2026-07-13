@@ -21,7 +21,10 @@ import type {
   PrivateConversation,
 } from "@/types/private-chat.type"
 import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user/user.type"
+import {
+  UserRole,
+  type UserResponse,
+} from "@/types/user/user.type"
 
 import { ConversationList } from "./components/ConversationList"
 import { PrivateChatComposer } from "./components/PrivateChatComposer"
@@ -54,9 +57,17 @@ export function PrivateChatView({
     authenticatedUser?.code?.trim() ?? ""
   const selectedSessionId = sessionId?.trim() ?? ""
 
-  const sessionsQuery = useMyChatSessions()
+  const chatRouteBase = getChatRouteBase(
+    authenticatedUser?.role,
+  )
+
+  const sessionsQuery =
+    useMyChatSessions(currentUserCode)
   const sessionQuery =
-    useChatSessionById(selectedSessionId)
+    useChatSessionById(
+      selectedSessionId,
+      currentUserCode,
+    )
   const session = sessionQuery.data?.result
   const canLoadMessages =
     Boolean(selectedSessionId) &&
@@ -66,10 +77,13 @@ export function PrivateChatView({
       canLoadMessages ? selectedSessionId : null,
       0,
       30,
+      currentUserCode,
     )
 
-  const sendMessageMutation = useSendChatMessage()
-  const blockSessionMutation = useBlockChatSession()
+  const sendMessageMutation =
+    useSendChatMessage(currentUserCode)
+  const blockSessionMutation =
+    useBlockChatSession(currentUserCode)
 
   const conversations = useMemo<PrivateConversation[]>(() => {
     const sessions = sessionsQuery.data?.result ?? []
@@ -206,9 +220,11 @@ export function PrivateChatView({
       return
     }
 
-    router.push(
-      `/client/dashboard/chat/${conversationId}`,
-    )
+    if (!chatRouteBase) {
+      return
+    }
+
+    router.push(`${chatRouteBase}/${conversationId}`)
   }
 
   async function handleSendMessage(
@@ -462,6 +478,18 @@ function getUnavailableChatUser(
         ? "Online"
         : "Offline",
   }
+}
+
+function getChatRouteBase(role?: UserRole | null) {
+  if (role === UserRole.CLIENT) {
+    return "/client/dashboard/chat"
+  }
+
+  if (role === UserRole.EXPERT) {
+    return "/expert/dashboard/chat"
+  }
+
+  return null
 }
 
 function getParticipantFallbackName(

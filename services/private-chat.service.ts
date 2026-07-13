@@ -11,6 +11,7 @@ import type {
   ChatApiMessage,
   ChatMessagesResult,
   ChatSession,
+  CreateWorkspaceChatSessionRequest,
   SendChatMessageRequest,
 } from "@/types/private-chat.type"
 
@@ -21,19 +22,29 @@ type PrivateChatApiError = AxiosError<APIResponse<null>>
 export const privateChatKeys = {
   all: ["private-chat"] as const,
 
-  sessions: () =>
-    [...privateChatKeys.all, "sessions"] as const,
+  user: (userCode: string) =>
+    [...privateChatKeys.all, "user", userCode] as const,
 
-  session: (sessionId: string) =>
-    [...privateChatKeys.all, "session", sessionId] as const,
+  sessions: (userCode: string) =>
+    [...privateChatKeys.user(userCode), "sessions"] as const,
+
+  session: (userCode: string, sessionId: string) =>
+    [
+      ...privateChatKeys.user(userCode),
+      "session",
+      sessionId,
+    ] as const,
 
   messages: (
+    userCode: string,
     sessionId: string,
     page: number,
     size: number,
   ) =>
     [
       ...privateChatKeys.all,
+      "user",
+      userCode,
       "messages",
       sessionId,
       page,
@@ -51,13 +62,20 @@ export async function getMyChatSessions(): Promise<
   return data
 }
 
-export function useMyChatSessions() {
+export function useMyChatSessions(
+  userCode?: string | null,
+) {
+  const normalizedUserCode = normalizeUserCode(userCode)
+
   return useQuery<
     APIResponse<ChatSession[]>,
     PrivateChatApiError
   >({
-    queryKey: privateChatKeys.sessions(),
+    queryKey: privateChatKeys.sessions(
+      normalizedUserCode,
+    ),
     queryFn: getMyChatSessions,
+    enabled: Boolean(normalizedUserCode),
     retry: 0,
   })
 }
@@ -84,20 +102,25 @@ export async function getChatSessionById(
 
 export function useChatSessionById(
   sessionId?: string | null,
+  userCode?: string | null,
 ) {
   const normalizedSessionId =
     sessionId?.trim() ?? ""
+  const normalizedUserCode = normalizeUserCode(userCode)
 
   return useQuery<
     APIResponse<ChatSession>,
     PrivateChatApiError
   >({
     queryKey: privateChatKeys.session(
+      normalizedUserCode,
       normalizedSessionId,
     ),
     queryFn: () =>
       getChatSessionById(normalizedSessionId),
-    enabled: Boolean(normalizedSessionId),
+    enabled:
+      Boolean(normalizedUserCode) &&
+      Boolean(normalizedSessionId),
     retry: 0,
   })
 }
@@ -134,15 +157,18 @@ export function useChatMessages(
   sessionId?: string | null,
   page = 0,
   size = 30,
+  userCode?: string | null,
 ) {
   const normalizedSessionId =
     sessionId?.trim() ?? ""
+  const normalizedUserCode = normalizeUserCode(userCode)
 
   return useQuery<
     APIResponse<ChatMessagesResult>,
     PrivateChatApiError
   >({
     queryKey: privateChatKeys.messages(
+      normalizedUserCode,
       normalizedSessionId,
       page,
       size,
@@ -153,8 +179,64 @@ export function useChatMessages(
         page,
         size,
       ),
-    enabled: Boolean(normalizedSessionId),
+    enabled:
+      Boolean(normalizedUserCode) &&
+      Boolean(normalizedSessionId),
     retry: 0,
+  })
+}
+
+export async function createWorkspaceChatSession(
+  payload: CreateWorkspaceChatSessionRequest,
+): Promise<APIResponse<ChatSession>> {
+  const normalizedWorkspaceId = payload.workspaceId.trim()
+
+  if (!normalizedWorkspaceId) {
+    throw new Error("Workspace ID is required")
+  }
+
+  const { data } = await api.post<
+    APIResponse<ChatSession>
+  >(`${CHAT_ENDPOINT}/sessions`, {
+    workspaceId: normalizedWorkspaceId,
+  })
+
+  return data
+}
+
+export function useCreateWorkspaceChatSession(
+  userCode?: string | null,
+) {
+  const queryClient = useQueryClient()
+  const normalizedUserCode = normalizeUserCode(userCode)
+
+  return useMutation<
+    APIResponse<ChatSession>,
+    PrivateChatApiError,
+    CreateWorkspaceChatSessionRequest
+  >({
+    mutationFn: createWorkspaceChatSession,
+    retry: 0,
+
+    onSuccess: (response) => {
+      if (normalizedUserCode) {
+        queryClient.invalidateQueries({
+          queryKey: privateChatKeys.sessions(
+            normalizedUserCode,
+          ),
+        })
+      }
+
+      if (response.result?.id && normalizedUserCode) {
+        queryClient.setQueryData(
+          privateChatKeys.session(
+            normalizedUserCode,
+            response.result.id,
+          ),
+          response,
+        )
+      }
+    },
   })
 }
 
@@ -181,8 +263,11 @@ export async function sendChatMessage(
   return data
 }
 
-export function useSendChatMessage() {
+export function useSendChatMessage(
+  userCode?: string | null,
+) {
   const queryClient = useQueryClient()
+  const normalizedUserCode = normalizeUserCode(userCode)
 
   return useMutation<
     APIResponse<ChatApiMessage>,
@@ -192,13 +277,16 @@ export function useSendChatMessage() {
     mutationFn: sendChatMessage,
 
     onSuccess: (_response, variables) => {
-      queryClient.invalidateQueries({
-        queryKey: privateChatKeys.messages(
-          variables.chatSessionId,
-          0,
-          30,
-        ),
-      })
+      if (normalizedUserCode) {
+        queryClient.invalidateQueries({
+          queryKey: privateChatKeys.messages(
+            normalizedUserCode,
+            variables.chatSessionId,
+            0,
+            30,
+          ),
+        })
+      }
     },
   })
 }
@@ -223,8 +311,11 @@ export async function blockChatSession(
   return data
 }
 
-export function useBlockChatSession() {
+export function useBlockChatSession(
+  userCode?: string | null,
+) {
   const queryClient = useQueryClient()
+  const normalizedUserCode = normalizeUserCode(userCode)
 
   return useMutation<
     APIResponse<ChatSession>,
@@ -234,32 +325,48 @@ export function useBlockChatSession() {
     mutationFn: blockChatSession,
 
     onSuccess: (response, sessionId) => {
+      if (!normalizedUserCode) {
+        return
+      }
+
       queryClient.setQueryData(
-        privateChatKeys.session(sessionId),
+        privateChatKeys.session(
+          normalizedUserCode,
+          sessionId,
+        ),
         response,
       )
 
       queryClient.setQueryData<
         APIResponse<ChatSession[]> | undefined
-      >(privateChatKeys.sessions(), (current) => {
-        if (!current?.result) {
-          return current
-        }
+      >(
+        privateChatKeys.sessions(normalizedUserCode),
+        (current) => {
+          if (!current?.result) {
+            return current
+          }
 
-        return {
-          ...current,
-          result: current.result.map((chatSession) =>
-            chatSession.id === sessionId
-              ? response.result
-              : chatSession,
-          ),
-        }
-      })
+          return {
+            ...current,
+            result: current.result.map((chatSession) =>
+              chatSession.id === sessionId
+                ? response.result
+                : chatSession,
+            ),
+          }
+        },
+      )
 
       queryClient.invalidateQueries({
-        queryKey: privateChatKeys.sessions(),
+        queryKey: privateChatKeys.sessions(
+          normalizedUserCode,
+        ),
       })
     },
   })
+}
+
+function normalizeUserCode(userCode?: string | null) {
+  return userCode?.trim() ?? ""
 }
 

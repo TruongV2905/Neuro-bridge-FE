@@ -54,6 +54,34 @@ export type CreateSubmissionPackageRequest = {
   customReleaseDays: number;
 };
 
+export type ExpertSubmitWorkspacePackageRequest = {
+  workspaceId: string;
+  notes: string;
+  files: SubmissionFileRequest[];
+  customReleaseDays: number | null;
+};
+
+export type ExpertSubmitWorkspaceDeliverableFile = {
+  fileId: string;
+  fileName: string;
+  fileUrl: string;
+  fileSize: string;
+  fileType: SubmissionFileType;
+};
+
+export type ExpertSubmitWorkspacePackageResponse = {
+  packageId: string;
+  workspaceId: string;
+  version: number;
+  notes: string | null;
+  submittedAt: string;
+  reviewedAt: string | null;
+  autoReleaseAt: string | null;
+  status: string;
+  feedback: string | null;
+  files: ExpertSubmitWorkspaceDeliverableFile[];
+};
+
 export type ResubmitSubmissionPackageRequest = {
   currentPackageId: string;
   notes: string;
@@ -62,6 +90,10 @@ export type ResubmitSubmissionPackageRequest = {
 
 export type CreateSubmissionPackageMutationVariables = {
   request: CreateSubmissionPackageRequest;
+};
+
+export type ExpertSubmitWorkspacePackageMutationVariables = {
+  request: ExpertSubmitWorkspacePackageRequest;
 };
 
 export type ResubmitSubmissionPackageMutationVariables = {

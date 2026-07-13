@@ -272,6 +272,9 @@ export function WorkspaceDetailView({
             <WorkspaceSubmissionSection
               workspaceId={workspace.workspaceId}
               role={role}
+              workspaceStatus={workspace.status}
+              projectStatus={workspace.projectStatus}
+              onSubmissionAccepted={() => workspaceQuery.refetch()}
             />
           </div>
         </div>
@@ -549,9 +552,15 @@ function WorkspaceQuickActions({
 function WorkspaceSubmissionSection({
   workspaceId,
   role,
+  workspaceStatus,
+  projectStatus,
+  onSubmissionAccepted,
 }: {
   workspaceId: string
   role?: UserRole
+  workspaceStatus?: string | null
+  projectStatus?: string | null
+  onSubmissionAccepted?: () => Promise<unknown> | unknown
 }) {
   const isClient = role === UserRole.CLIENT
   const isExpert = role === UserRole.EXPERT
@@ -564,7 +573,12 @@ function WorkspaceSubmissionSection({
     >
       {isExpert ? (
         <SubmissionPanelFrame>
-          <ProjectSubmissionPanel workspaceId={workspaceId} />
+          <ProjectSubmissionPanel
+            workspaceId={workspaceId}
+            workspaceStatus={workspaceStatus}
+            projectStatus={projectStatus}
+            onSubmissionAccepted={onSubmissionAccepted}
+          />
         </SubmissionPanelFrame>
       ) : isClient ? (
         <SubmissionPanelFrame>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import type { ReactNode } from "react"
+import { useSelector } from "react-redux"
 import {
     Code2,
     Database,
@@ -14,6 +15,7 @@ import {
     X,
 } from "lucide-react"
 
+import type { RootState } from "@/redux/store"
 import {
     useSubmissionPackageDetail,
     useSubmissionPackagesByWorkspace,
@@ -23,6 +25,8 @@ import type {
     SubmissionFileType,
     SubmissionPackageSummary,
 } from "@/types/submission-package.type"
+import type { UserResponse } from "@/types/user/user.type"
+import { sortSubmissionPackagesByLatest } from "../utils/submission-package-ordering"
 
 type ClientProjectSubmissionPanelProps = {
     workspaceId: string
@@ -60,11 +64,15 @@ const fileSlots: FileSlot[] = [
 export function ClientProjectSubmissionPanel({
     workspaceId,
 }: ClientProjectSubmissionPanelProps) {
+    const user = useSelector(
+        (state: RootState) => state.user,
+    ) as UserResponse | null
+    const currentUserCode = user?.code?.trim() ?? ""
     const normalizedWorkspaceId = workspaceId.trim()
     const packageListQuery =
-        useSubmissionPackagesByWorkspace(normalizedWorkspaceId)
+        useSubmissionPackagesByWorkspace(currentUserCode, normalizedWorkspaceId)
     const sortedPackages = useMemo(
-        () => getPackagesSortedByLatest(packageListQuery.data ?? []),
+        () => sortSubmissionPackagesByLatest(packageListQuery.data ?? []),
         [packageListQuery.data]
     )
     const latestPackage = sortedPackages[0] ?? null
@@ -81,7 +89,7 @@ export function ClientProjectSubmissionPanel({
 
     const selectedDetailPackageId = selectedPackageSummary?.packageId ?? ""
     const packageDetailQuery =
-        useSubmissionPackageDetail(selectedDetailPackageId)
+        useSubmissionPackageDetail(currentUserCode, selectedDetailPackageId)
     const selectedPackageDetail =
         packageDetailQuery.data?.packageId === selectedDetailPackageId
             ? packageDetailQuery.data
@@ -692,16 +700,6 @@ function FilePreviewModal({
             </div>
         </div>
     )
-}
-
-function getPackagesSortedByLatest(packages: SubmissionPackageSummary[]) {
-    return [...packages].sort((left, right) => {
-        const versionDelta = safeNumber(right.version) - safeNumber(left.version)
-
-        if (versionDelta !== 0) return versionDelta
-
-        return getTimeValue(right.submittedAt) - getTimeValue(left.submittedAt)
-    })
 }
 
 function getFilesSortedBySlot(files: DeliverableFile[]) {

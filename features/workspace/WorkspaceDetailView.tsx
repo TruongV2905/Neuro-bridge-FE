@@ -23,7 +23,11 @@ import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 import type { RootState } from "@/redux/store"
-import { useCreateWorkspaceChatSession } from "@/services/private-chat.service"
+import {
+  findCanonicalProjectChatSession,
+  useCreateWorkspaceChatSession,
+  useMyChatSessions,
+} from "@/services/private-chat.service"
 import { useWorkspaceDetail } from "@/services/workspace.service"
 import type {
   WorkspaceDetail,
@@ -57,10 +61,16 @@ export function WorkspaceDetailView({
   const currentUserCode = user?.code?.trim() ?? ""
 
   const workspaceQuery = useWorkspaceDetail(normalizedWorkspaceId)
+  const workspaceChatSessionsQuery =
+    useMyChatSessions(currentUserCode, {
+      enabled: false,
+    })
   const createWorkspaceChatSessionMutation =
     useCreateWorkspaceChatSession(currentUserCode)
   const [openChatError, setOpenChatError] =
     useState<string | null>(null)
+  const [isCheckingChatSession, setIsCheckingChatSession] =
+    useState(false)
   const workspace = workspaceQuery.data
   const handleBack = () => {
     const projectBaseRoute = getProjectBaseRoute(role)
@@ -77,15 +87,18 @@ export function WorkspaceDetailView({
     Boolean(chatRouteBase) &&
     Boolean(normalizedWorkspaceId) &&
     Boolean(currentUserCode)
+  const isOpeningChat =
+    isCheckingChatSession ||
+    createWorkspaceChatSessionMutation.isPending
   const openChatErrorMessage =
     openChatError ??
-    getChatMutationErrorMessage(
+    getChatErrorMessage(
       createWorkspaceChatSessionMutation.error,
     )
 
-  const handleOpenChat = () => {
+  const handleOpenChat = async () => {
     if (
-      createWorkspaceChatSessionMutation.isPending ||
+      isOpeningChat ||
       !canOpenChat ||
       !chatRouteBase
     ) {
@@ -93,26 +106,77 @@ export function WorkspaceDetailView({
     }
 
     setOpenChatError(null)
+    createWorkspaceChatSessionMutation.reset()
 
-    createWorkspaceChatSessionMutation.mutate(
-      {
-        workspaceId: normalizedWorkspaceId,
-      },
-      {
-        onSuccess: (response) => {
-          const sessionId = response.result?.id?.trim()
+    try {
+      setIsCheckingChatSession(true)
 
-          if (!sessionId) {
-            setOpenChatError(
-              "Chat session was created, but no usable session ID was returned. Please try again.",
-            )
-            return
-          }
+      const sessionsResult =
+        await workspaceChatSessionsQuery.refetch()
 
-          router.push(`${chatRouteBase}/${encodeURIComponent(sessionId)}`)
-        },
-      },
-    )
+      if (sessionsResult.isError) {
+        setOpenChatError(
+          getChatErrorMessage(sessionsResult.error),
+        )
+        return
+      }
+
+      const existingSession =
+        findCanonicalProjectChatSession(
+          sessionsResult.data?.result ?? [],
+          normalizedWorkspaceId,
+        )
+
+      if (existingSession) {
+        const existingSessionId =
+          existingSession.id?.trim()
+
+        if (!existingSessionId) {
+          setOpenChatError(
+            "Workspace chat exists, but no usable session ID was returned. Please try again.",
+          )
+          return
+        }
+
+        router.push(
+          `${chatRouteBase}/${encodeURIComponent(
+            existingSessionId,
+          )}`,
+        )
+        return
+      }
+
+      if (role !== UserRole.CLIENT) {
+        setOpenChatError(
+          "Workspace chat has not been initialized by the Client yet.",
+        )
+        return
+      }
+
+      const response =
+        await createWorkspaceChatSessionMutation.mutateAsync(
+          {
+            workspaceId: normalizedWorkspaceId,
+          },
+        )
+
+      const sessionId = response.result?.id?.trim()
+
+      if (!sessionId) {
+        setOpenChatError(
+          "Chat session was created, but no usable session ID was returned. Please try again.",
+        )
+        return
+      }
+
+      router.push(
+        `${chatRouteBase}/${encodeURIComponent(sessionId)}`,
+      )
+    } catch (error) {
+      setOpenChatError(getChatErrorMessage(error))
+    } finally {
+      setIsCheckingChatSession(false)
+    }
   }
 
   if (!normalizedWorkspaceId) {
@@ -195,9 +259,13 @@ export function WorkspaceDetailView({
           <div className="space-y-6">
             <WorkspaceQuickActions
               canOpenChat={canOpenChat}
-              isOpeningChat={
-                createWorkspaceChatSessionMutation.isPending
-              }
+              isOpeningChat={isOpeningChat}
+              openChatStatus={getOpenChatStatus({
+                role,
+                isCheckingChatSession,
+                isCreatingChatSession:
+                  createWorkspaceChatSessionMutation.isPending,
+              })}
               openChatError={openChatErrorMessage}
               onOpenChat={handleOpenChat}
             />
@@ -378,19 +446,23 @@ function WorkspaceMembers({
 function WorkspaceQuickActions({
   canOpenChat,
   isOpeningChat,
+  openChatStatus,
   openChatError,
   onOpenChat,
 }: {
   canOpenChat: boolean
   isOpeningChat: boolean
+  openChatStatus: string
   openChatError?: string | null
   onOpenChat: () => void
 }) {
   const actions: WorkspaceAction[] = [
     {
       title: "Open Chat",
-      description: canOpenChat
-        ? "Create or open the PROJECT chat session for this workspace."
+      description: isOpeningChat
+        ? openChatStatus
+        : canOpenChat
+          ? "Open the canonical PROJECT chat session for this workspace."
         : "Workspace chat is available for Client and Expert accounts only.",
       icon: MessageCircle,
       state: canOpenChat ? "Ready" : "Unavailable",
@@ -953,7 +1025,34 @@ function getChatRouteBase(role?: UserRole) {
   return null
 }
 
-function getChatMutationErrorMessage(error: unknown) {
+function getOpenChatStatus({
+  role,
+  isCheckingChatSession,
+  isCreatingChatSession,
+}: {
+  role?: UserRole
+  isCheckingChatSession: boolean
+  isCreatingChatSession: boolean
+}) {
+  if (isCheckingChatSession) {
+    return "Checking existing Chat session..."
+  }
+
+  if (
+    role === UserRole.CLIENT &&
+    isCreatingChatSession
+  ) {
+    return "Creating Chat session..."
+  }
+
+  if (isCreatingChatSession) {
+    return "Opening Chat..."
+  }
+
+  return "Opening Chat..."
+}
+
+function getChatErrorMessage(error: unknown) {
   if (!error) {
     return null
   }

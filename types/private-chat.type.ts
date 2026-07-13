@@ -27,7 +27,7 @@ export type ChatSession = {
 export type ChatApiMessage = {
   id: string
   chatSessionId: string
-  senderCode: string
+  senderCode?: string | null
   senderRole: "CLIENT" | "EXPERT" | "ADMIN" | string
   content: string
   createdAt?: string

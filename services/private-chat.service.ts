@@ -19,6 +19,10 @@ const CHAT_ENDPOINT = "/chat/chat"
 
 type PrivateChatApiError = AxiosError<APIResponse<null>>
 
+type UseMyChatSessionsOptions = {
+  enabled?: boolean
+}
+
 export const privateChatKeys = {
   all: ["private-chat"] as const,
 
@@ -64,6 +68,7 @@ export async function getMyChatSessions(): Promise<
 
 export function useMyChatSessions(
   userCode?: string | null,
+  options?: UseMyChatSessionsOptions,
 ) {
   const normalizedUserCode = normalizeUserCode(userCode)
 
@@ -75,7 +80,9 @@ export function useMyChatSessions(
       normalizedUserCode,
     ),
     queryFn: getMyChatSessions,
-    enabled: Boolean(normalizedUserCode),
+    enabled:
+      Boolean(normalizedUserCode) &&
+      (options?.enabled ?? true),
     retry: 0,
   })
 }
@@ -366,7 +373,135 @@ export function useBlockChatSession(
   })
 }
 
+export function getCanonicalChatSessions(
+  sessions: ChatSession[],
+) {
+  const projectSessionsByWorkspace =
+    new Map<string, ChatSession>()
+  const canonicalSessions: ChatSession[] = []
+
+  for (const session of sessions) {
+    const normalizedWorkspaceId =
+      normalizeWorkspaceId(session.workspaceId)
+
+    if (
+      session.type !== "PROJECT" ||
+      !normalizedWorkspaceId
+    ) {
+      canonicalSessions.push(session)
+      continue
+    }
+
+    const current =
+      projectSessionsByWorkspace.get(
+        normalizedWorkspaceId,
+      )
+
+    if (
+      !current ||
+      compareCanonicalProjectSessions(
+        session,
+        current,
+      ) < 0
+    ) {
+      projectSessionsByWorkspace.set(
+        normalizedWorkspaceId,
+        session,
+      )
+    }
+  }
+
+  const seenProjectWorkspaceIds = new Set<string>()
+
+  for (const session of sessions) {
+    const normalizedWorkspaceId =
+      normalizeWorkspaceId(session.workspaceId)
+
+    if (
+      session.type !== "PROJECT" ||
+      !normalizedWorkspaceId
+    ) {
+      continue
+    }
+
+    if (
+      seenProjectWorkspaceIds.has(
+        normalizedWorkspaceId,
+      )
+    ) {
+      continue
+    }
+
+    seenProjectWorkspaceIds.add(normalizedWorkspaceId)
+    canonicalSessions.push(
+      projectSessionsByWorkspace.get(
+        normalizedWorkspaceId,
+      ) ?? session,
+    )
+  }
+
+  return canonicalSessions
+}
+
+export function findCanonicalProjectChatSession(
+  sessions: ChatSession[],
+  workspaceId?: string | null,
+) {
+  const normalizedWorkspaceId =
+    normalizeWorkspaceId(workspaceId)
+
+  if (!normalizedWorkspaceId) {
+    return null
+  }
+
+  return (
+    getCanonicalChatSessions(sessions).find(
+      (session) =>
+        session.type === "PROJECT" &&
+        normalizeWorkspaceId(
+          session.workspaceId,
+        ) === normalizedWorkspaceId,
+    ) ?? null
+  )
+}
+
 function normalizeUserCode(userCode?: string | null) {
   return userCode?.trim() ?? ""
+}
+
+function normalizeWorkspaceId(
+  workspaceId?: string | null,
+) {
+  return workspaceId?.trim().toLowerCase() ?? ""
+}
+
+function compareCanonicalProjectSessions(
+  left: ChatSession,
+  right: ChatSession,
+) {
+  const leftTime = getValidTimestamp(left.createdAt)
+  const rightTime = getValidTimestamp(right.createdAt)
+
+  if (leftTime !== null && rightTime !== null) {
+    if (leftTime !== rightTime) {
+      return leftTime - rightTime
+    }
+  } else if (leftTime !== null) {
+    return -1
+  } else if (rightTime !== null) {
+    return 1
+  }
+
+  return left.id.localeCompare(right.id)
+}
+
+function getValidTimestamp(value?: string | null) {
+  if (!value) {
+    return null
+  }
+
+  const timestamp = new Date(value).getTime()
+
+  return Number.isFinite(timestamp) ? timestamp : null
 }
 

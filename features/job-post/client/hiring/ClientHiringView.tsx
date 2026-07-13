@@ -11,6 +11,7 @@ import {
   Loader2,
   RefreshCw,
   Search,
+  UserRound,
   Users,
 } from "lucide-react";
 import { toast } from "react-toastify";
@@ -26,6 +27,7 @@ import {
   useGetJobPostApplicants,
   useHireExpert,
 } from "@/services/job-post.service";
+import { useGetUserByCode } from "@/services/user.service";
 import type {
   JobPostApplicant,
   JobPostListItem,
@@ -577,22 +579,41 @@ function HiringApplicantCard({
 }) {
   const { expertApply, proposal } = applicant;
   const unlockCost = resolveApplicantUnlockCost(proposal);
+  const expertQuery = useGetUserByCode(
+    { code: expertApply.expertCode },
+    { enabled: Boolean(expertApply.expertCode) },
+  );
+  const expertName = getExpertDisplayName(
+    expertQuery.data?.result?.fullName,
+    expertQuery.isLoading,
+  );
 
   return (
-    <article className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40">
+    <article className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-indigo-100 hover:shadow-md hover:shadow-slate-200/60">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
             Expert
           </p>
-          <h3 className="mt-1 text-base font-extrabold text-slate-950">
-            {expertApply.expertCode}
+          <h3 className="mt-1 truncate text-base font-extrabold text-slate-950">
+            {expertName}
           </h3>
+          <Button
+            asChild
+            variant="link"
+            className="mt-1 h-auto p-0 text-xs font-bold text-indigo-600"
+          >
+            <Link href={getExpertProfileHref(expertApply.expertCode)}>
+              View profile
+              <ArrowRight className="ml-1 h-3.5 w-3.5" />
+            </Link>
+          </Button>
         </div>
         <Badge
           variant="outline"
           className="rounded-full border-indigo-200 bg-indigo-50 text-indigo-700"
         >
+          <UserRound className="mr-1 h-3.5 w-3.5" />
           Applied
         </Badge>
       </div>
@@ -611,27 +632,43 @@ function HiringApplicantCard({
       <div className="mt-4 flex-1 rounded-2xl border border-slate-100 bg-slate-50/70 p-4">
         {proposal ? (
           <>
-            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Proposal
-            </p>
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                Proposal
+              </p>
+              <Badge
+                variant="outline"
+                className="rounded-full border-emerald-200 bg-emerald-50 text-[11px] font-bold text-emerald-700"
+              >
+                Strategy included
+              </Badge>
+            </div>
             <h4 className="mt-2 line-clamp-2 text-sm font-extrabold text-slate-950">
               {proposal.title}
             </h4>
             <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
               {proposal.strategySummary || "No strategy summary was provided."}
             </p>
-            <p className="mt-3 text-xs font-bold text-slate-500">
-              Unlock cost:{" "}
-              <span className="text-slate-950">
+            <div className="mt-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                Unlock cost
+              </p>
+              <p className="mt-1 text-xs font-extrabold text-slate-950">
                 {unlockCost.value === null
                   ? "Unavailable"
                   : formatApplicantMoney(unlockCost.value)}
-              </span>
-            </p>
+              </p>
+            </div>
           </>
         ) : (
-          <div className="flex h-full items-center text-sm font-semibold text-slate-500">
-            Basic application - no proposal supplied.
+          <div className="flex h-full flex-col justify-center gap-2 text-sm font-semibold text-slate-500">
+            <Badge
+              variant="outline"
+              className="w-fit rounded-full border-slate-200 bg-white text-[11px] font-bold text-slate-600"
+            >
+              Basic application
+            </Badge>
+            <p>No proposal supplied yet.</p>
           </div>
         )}
       </div>
@@ -656,6 +693,17 @@ function HiringApplicantCard({
       </Button>
     </article>
   );
+}
+
+function getExpertDisplayName(fullName: string | undefined, isLoading: boolean) {
+  if (fullName?.trim()) return fullName.trim();
+  if (isLoading) return "Loading expert...";
+
+  return "Expert applicant";
+}
+
+function getExpertProfileHref(expertCode: string) {
+  return `/experts/${encodeURIComponent(expertCode)}`;
 }
 
 function HiringPagination({

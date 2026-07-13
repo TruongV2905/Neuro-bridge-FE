@@ -88,11 +88,10 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
     { code: partnerCode ?? "" },
     { enabled: Boolean(partnerCode) },
   );
-  const partnerName = getPartnerDisplayName(
-    partnerQuery.data?.result?.fullName,
-    partnerCode,
-    role,
-  );
+  const counterpartyLabel = role === "client" ? "Expert" : "Client";
+  const partnerName = partnerQuery.isLoading
+    ? "Loading profile..."
+    : getPartnerDisplayName(partnerQuery.data?.result?.fullName, role);
 
   useEffect(() => {
     if (!contractId) return;
@@ -237,8 +236,12 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
               <span className="text-slate-800">Contract signing</span>
             </div>
             <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">
-              Contract with {partnerName}
+              Contract details
             </h1>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              {counterpartyLabel}:{" "}
+              <span className="text-slate-800">{partnerName}</span>
+            </p>
           </div>
 
           <Button
@@ -306,16 +309,15 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <TermCard label="Job ID" value={contract.jobId} />
-              <TermCard label="Partner" value={partnerName} />
-              <TermCard
-                label="Proposal unlock ID"
-                value={contract.proposalUnlockId ?? "No protected proposal"}
-              />
+              <TermCard label="Project" value={projectSummary.title} />
               <TermCard label="Contract value" value={projectSummary.budget} />
               <TermCard
+                label={contract.deadline ? "Deadline" : "Timeline"}
+                value={projectSummary.timeline}
+              />
+              <TermCard
                 label="Workspace"
-                value={contract.workspaceId ?? "Not created yet"}
+                value={contract.workspaceId ? "Created" : "Not created yet"}
               />
             </div>
 
@@ -703,13 +705,11 @@ function getPartnerCode(
 
 function getPartnerDisplayName(
   fullName: string | undefined,
-  partnerCode: string | null | undefined,
   role: "client" | "expert",
 ) {
   if (fullName?.trim()) return fullName.trim();
-  if (partnerCode?.trim()) return partnerCode.trim();
 
-  return role === "client" ? "selected expert" : "client";
+  return role === "client" ? "Expert profile pending" : "Client profile pending";
 }
 
 function getBackHref(role: "client" | "expert") {

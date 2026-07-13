@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import {
   ArrowRight,
+  BriefcaseBusiness,
   Clock4,
   FileSignature,
   Search,
   Trash2,
+  UserRound,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -194,15 +196,16 @@ function ContractListCard({
     { code: partnerCode ?? "" },
     { enabled: Boolean(partnerCode) },
   );
-  const partnerName = getPartnerDisplayName(
-    partnerQuery.data?.result?.fullName,
-    partnerCode,
-    role,
-  );
-  const projectName = contract?.projectName ?? saved.projectName;
+  const counterpartyLabel = role === "client" ? "Expert" : "Client";
+  const partnerName = partnerQuery.isLoading
+    ? "Loading profile..."
+    : getPartnerDisplayName(partnerQuery.data?.result?.fullName, role);
+  const projectName =
+    contract?.projectName ?? saved.projectName ?? "Contract workspace";
+  const contractRef = formatShortId(saved.id);
 
   return (
-    <article className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-5">
+    <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-indigo-100 hover:shadow-md hover:shadow-slate-200/60">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <Badge
@@ -211,14 +214,20 @@ function ContractListCard({
           >
             {isLoading ? "Checking..." : statusMeta.label}
           </Badge>
-          <h2 className="mt-3 truncate text-base font-extrabold text-slate-950">
-            {partnerName}
+          <h2 className="mt-3 line-clamp-2 text-base font-extrabold text-slate-950">
+            {projectName}
           </h2>
-          <p className="mt-1 truncate text-xs font-semibold text-slate-500">
-            {projectName ? `Project: ${projectName}` : `Job: ${jobId}`}
+          <p className="mt-1 flex items-center gap-1.5 truncate text-xs font-semibold text-slate-500">
+            <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+            <span className="truncate">
+              {counterpartyLabel}: {partnerName}
+            </span>
           </p>
-          <p className="mt-1 truncate text-[11px] font-semibold text-slate-400">
-            Contract ID: {saved.id}
+          <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-slate-400">
+            <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              Job ref {formatShortId(jobId)} · Contract {contractRef}
+            </span>
           </p>
         </div>
 
@@ -322,13 +331,17 @@ function getPartnerCode(
 
 function getPartnerDisplayName(
   fullName: string | undefined,
-  partnerCode: string | null | undefined,
   role: ContractRole,
 ) {
   if (fullName?.trim()) return fullName.trim();
-  if (partnerCode?.trim()) return partnerCode.trim();
 
   return role === "client" ? "Selected expert" : "Client";
+}
+
+function formatShortId(value: string) {
+  if (!value || value === "Unknown job") return "pending";
+
+  return value.length <= 8 ? value : value.slice(0, 8);
 }
 
 function getContractStatusMeta(status?: ContractStatus) {

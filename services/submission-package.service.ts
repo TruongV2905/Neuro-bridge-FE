@@ -3,6 +3,7 @@ import type { AxiosError } from "axios";
 
 import api from "@/configs/api";
 import type {
+  ApproveSubmissionPackageMutationVariables,
   CreateSubmissionPackageMutationVariables,
   CreateSubmissionPackageRequest,
   DeliverableFile,
@@ -25,8 +26,7 @@ const SUBMISSION_PACKAGE_ENDPOINT =
 const DELIVERABLE_FILE_ENDPOINT =
   "/workspace/api/v1/deliverable-files";
 const FILE_TYPE_ENDPOINT = "/workspace/api/v1/file-types";
-const EXPERT_WORKSPACE_SUBMIT_ENDPOINT =
-  "/workspace/api/v1/workspaces/expert/submit";
+const EXPERT_WORKSPACE_SUBMIT_ENDPOINT = SUBMISSION_PACKAGE_ENDPOINT;
 
 type SubmissionReadError = AxiosError;
 type SubmissionMutationError = AxiosError;
@@ -133,6 +133,22 @@ export async function rejectSubmissionPackage(
   };
   const { data } = await api.patch<SubmissionReviewResponse>(
     `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/reject`,
+    request,
+  );
+
+  return data;
+}
+
+export async function approveSubmissionPackage(
+  packageId: string,
+  feedback?: string,
+) {
+  const request: RejectSubmissionPackageRequest = {
+    packageId,
+    feedback: feedback?.trim() || "Approved",
+  };
+  const { data } = await api.patch<SubmissionReviewResponse>(
+    `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/approve`,
     request,
   );
 
@@ -348,6 +364,42 @@ export function useRejectSubmissionPackage(userCode?: string | null) {
   >({
     mutationFn: ({ packageId, feedback }) =>
       rejectSubmissionPackage(packageId, feedback),
+    retry: 0,
+    onSuccess: async (_reviewedPackage, { packageId, workspaceId }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(workspaceId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useApproveSubmissionPackage(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    SubmissionReviewResponse,
+    SubmissionMutationError,
+    ApproveSubmissionPackageMutationVariables
+  >({
+    mutationFn: ({ packageId, feedback }) =>
+      approveSubmissionPackage(packageId, feedback),
     retry: 0,
     onSuccess: async (_reviewedPackage, { packageId, workspaceId }) => {
       if (!normalizedUserCode) return;

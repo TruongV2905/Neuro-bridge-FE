@@ -10,8 +10,10 @@ import {
   BriefcaseBusiness,
   CalendarDays,
   FileText,
+  Loader2,
   MessageCircle,
   PackageCheck,
+  Save,
   ShieldCheck,
   Sparkles,
   Users,
@@ -20,15 +22,28 @@ import {
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { RootState } from "@/redux/store"
+import { useUpdateProposalUnlock } from "@/services/job-post.service"
 import {
   findCanonicalProjectChatSession,
   useCreateWorkspaceChatSession,
   useMyChatSessions,
 } from "@/services/private-chat.service"
-import { useWorkspaceDetail } from "@/services/workspace.service"
+import {
+  useProposalStrategy,
+  useUpdateProposalStrategy,
+  useWorkspaceDetail,
+} from "@/services/workspace.service"
 import type {
   WorkspaceDetail,
   WorkspaceParticipant,
@@ -250,7 +265,10 @@ export function WorkspaceDetailView({
               progress={progress}
             />
             <WorkspaceMembers workspace={workspace} />
-            <WorkspaceStrategySection />
+            <WorkspaceStrategySection
+              workspaceId={workspace.workspaceId}
+              role={role}
+            />
             <WorkspaceFinancialSection
               escrowId={workspace.escrowId}
             />
@@ -472,9 +490,9 @@ function WorkspaceQuickActions({
     },
     {
       title: "Proposal Strategy",
-      description: "Collaborative strategy editing needs a Workspace-specific API.",
+      description: "Review the approved strategy below. Experts can update it in this workspace.",
       icon: Sparkles,
-      state: "Pending API",
+      state: "Connected",
     },
     {
       title: "View Contract",
@@ -600,17 +618,249 @@ function WorkspaceSubmissionSection({
   )
 }
 
-function WorkspaceStrategySection() {
+function WorkspaceStrategySection({
+  workspaceId,
+  role,
+}: {
+  workspaceId: string
+  role?: UserRole
+}) {
+  const normalizedWorkspaceId = workspaceId.trim()
+  const isExpert = role === UserRole.EXPERT
+  const isClient = role === UserRole.CLIENT
+  const strategyQuery = useProposalStrategy(normalizedWorkspaceId)
+  const updateStrategyMutation = useUpdateProposalStrategy()
+  const updateProposalUnlockMutation = useUpdateProposalUnlock()
+  const [isStrategyDialogOpen, setIsStrategyDialogOpen] = useState(false)
+  const [draftStrategy, setDraftStrategy] = useState("")
+  const [hasEditedDraft, setHasEditedDraft] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
+  const strategy = strategyQuery.data
+  const strategyDetail = strategy?.strategyDetail?.trim() ?? ""
+  const formValue = hasEditedDraft ? draftStrategy : strategyDetail
+  const isMissingStrategy = strategyQuery.isError && getErrorStatus(strategyQuery.error) === 404
+  const canEdit = isExpert && Boolean(normalizedWorkspaceId)
+  const isSavingStrategy =
+    updateStrategyMutation.isPending || updateProposalUnlockMutation.isPending
+  const saveStrategyError =
+    updateProposalUnlockMutation.error ?? updateStrategyMutation.error
+
+  const handleSubmitStrategy = async () => {
+    if (!canEdit || isSavingStrategy) {
+      return
+    }
+
+    const nextStrategy = formValue.trim()
+
+    if (!nextStrategy) {
+      setFormError("Strategy detail is required.")
+      return
+    }
+
+    setFormError(null)
+
+    try {
+      if (strategy?.proposalUnlockId) {
+        await updateProposalUnlockMutation.mutateAsync({
+          pathParams: {
+            id: strategy.proposalUnlockId,
+          },
+          data: {
+            strategyDetail: nextStrategy,
+            unlockCost: strategy.unlockCost,
+          },
+        })
+        await strategyQuery.refetch()
+      } else {
+        await updateStrategyMutation.mutateAsync({
+          workspaceId: normalizedWorkspaceId,
+          request: {
+            strategyDetail: nextStrategy,
+          },
+        })
+      }
+
+      setHasEditedDraft(false)
+      setDraftStrategy("")
+    } catch {
+      // Error message is rendered from the mutation state below.
+    }
+  }
+
   return (
     <WorkspaceCard
       icon={Sparkles}
       title="Proposal Strategy"
-      description="A Workspace-specific strategy contract has not been connected yet."
+      description={
+        isExpert
+          ? "Create or update the detailed strategy for this workspace."
+          : "Read the approved proposal strategy for this workspace."
+      }
     >
-      <SectionNotice
-        title="Strategy workspace is pending"
-        message="This section is reserved for future collaborative strategy updates. No Apply Proposal or Proposal Unlock API is reused here."
-      />
+      <button
+        type="button"
+        onClick={() => setIsStrategyDialogOpen(true)}
+        className="flex w-full items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+          <Sparkles className="h-5 w-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center justify-between gap-3">
+            <span className="text-sm font-extrabold text-slate-900">
+              {isExpert ? "Edit strategy" : "View strategy"}
+            </span>
+            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              {isExpert ? "Editor" : "Viewer"}
+            </span>
+          </span>
+          <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+            {isExpert
+              ? "Open the proposal-style editor to create or update this workspace strategy."
+              : "Open the proposal strategy viewer for this workspace."}
+          </span>
+        </span>
+      </button>
+
+      <Dialog open={isStrategyDialogOpen} onOpenChange={setIsStrategyDialogOpen}>
+        <DialogContent className="max-h-[min(760px,calc(100vh-2rem))] overflow-hidden rounded-3xl bg-white p-0 shadow-2xl shadow-slate-900/10 sm:max-w-3xl">
+          <div className="max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
+                Proposal Strategy
+              </DialogTitle>
+              <DialogDescription className="leading-6 text-slate-500">
+                {isExpert
+                  ? "Create or update the detailed strategy for this workspace."
+                  : "Read the expert's proposal strategy for this workspace."}
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-5">
+              {strategyQuery.isLoading ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-28 rounded-2xl" />
+                  <Skeleton className="h-10 w-36 rounded-xl" />
+                </div>
+              ) : canEdit ? (
+                <div className="space-y-4">
+                  {isMissingStrategy && (
+                    <SectionNotice
+                      title="No proposal strategy yet"
+                      message="Write the first detailed strategy for this workspace. Saving will create or update the strategy through the Workspace API."
+                    />
+                  )}
+
+                  {strategyQuery.isError && !isMissingStrategy && (
+                    <SectionNotice
+                      tone="warning"
+                      title="Unable to load proposal strategy"
+                      message={getWorkspaceApiErrorMessage(strategyQuery.error)}
+                    />
+                  )}
+
+                  <div>
+                    <label
+                      htmlFor="proposal-strategy-detail"
+                      className="text-xs font-bold uppercase tracking-wider text-slate-400"
+                    >
+                      Detailed strategy
+                    </label>
+                    <Textarea
+                      id="proposal-strategy-detail"
+                      value={formValue}
+                      onChange={(event) => {
+                        setDraftStrategy(event.target.value)
+                        setHasEditedDraft(true)
+                        setFormError(null)
+                      }}
+                      placeholder="Describe the implementation strategy, milestones, risks, and delivery approach..."
+                      className="mt-2 min-h-44 rounded-2xl border-slate-200 bg-slate-50/70 text-sm leading-6 shadow-none focus-visible:border-indigo-300 focus-visible:ring-indigo-100"
+                    />
+                    {formError && (
+                      <p className="mt-2 text-xs font-semibold text-rose-600">
+                        {formError}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">
+                        Unlock cost
+                      </p>
+                      <p className="mt-1 text-xs font-semibold text-slate-500">
+                        {strategy
+                          ? formatMoney(strategy.unlockCost)
+                          : "Cost will stay unchanged when strategy is saved."}
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleSubmitStrategy}
+                      disabled={isSavingStrategy || !formValue.trim()}
+                      className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 px-4 text-sm font-bold text-white"
+                    >
+                      {isSavingStrategy ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-4 w-4" />
+                      )}
+                      Save strategy
+                    </Button>
+                  </div>
+
+                  {saveStrategyError && (
+                    <SectionNotice
+                      tone="warning"
+                      title="Strategy could not be saved"
+                      message={getWorkspaceApiErrorMessage(saveStrategyError)}
+                    />
+                  )}
+                </div>
+              ) : isClient ? (
+                strategy ? (
+                  <div className="space-y-4">
+                    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Detailed strategy
+                      </p>
+                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+                        {strategyDetail || "No detailed strategy is available."}
+                      </p>
+                    </div>
+                    <DetailTile
+                      label="Unlock cost"
+                      value={formatMoney(strategy.unlockCost)}
+                    />
+                  </div>
+                ) : (
+                  <SectionNotice
+                    tone={strategyQuery.isError && !isMissingStrategy ? "warning" : "neutral"}
+                    title={
+                      strategyQuery.isError && !isMissingStrategy
+                        ? "Unable to load proposal strategy"
+                        : "No proposal strategy yet"
+                    }
+                    message={
+                      strategyQuery.isError && !isMissingStrategy
+                        ? getWorkspaceApiErrorMessage(strategyQuery.error)
+                        : "The expert has not shared a proposal strategy for this workspace yet."
+                    }
+                  />
+                )
+              ) : (
+                <SectionNotice
+                  tone="warning"
+                  title="Proposal strategy unavailable"
+                  message="Sign in as the Client or Expert of this workspace to view proposal strategy."
+                />
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </WorkspaceCard>
   )
 }
@@ -995,6 +1245,18 @@ function formatDate(value?: string | null) {
   })
 }
 
+function formatMoney(value?: number | null) {
+  if (!Number.isFinite(value)) {
+    return "Not available"
+  }
+
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
+    maximumFractionDigits: 0,
+  }).format(Number(value))
+}
+
 function shortId(value?: string | null) {
   const normalized = value?.trim()
 
@@ -1101,4 +1363,50 @@ function getChatErrorMessage(error: unknown) {
   }
 
   return "Unable to open Workspace chat. Please try again."
+}
+
+function getErrorStatus(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error
+  ) {
+    return (
+      error as {
+        response?: {
+          status?: number
+        }
+      }
+    ).response?.status
+  }
+
+  return undefined
+}
+
+function getWorkspaceApiErrorMessage(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error
+  ) {
+    const response = (
+      error as {
+        response?: {
+          data?: {
+            message?: string
+          }
+        }
+      }
+    ).response
+
+    if (response?.data?.message) {
+      return response.data.message
+    }
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message
+  }
+
+  return "Please try again."
 }

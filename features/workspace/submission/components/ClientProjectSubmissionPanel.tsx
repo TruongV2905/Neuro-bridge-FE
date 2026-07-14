@@ -18,6 +18,7 @@ import {
 
 import type { RootState } from "@/redux/store"
 import {
+    useApproveSubmissionPackage,
     useRejectSubmissionPackage,
     useSubmissionPackageDetail,
     useSubmissionPackagesByWorkspace,
@@ -38,6 +39,7 @@ type ClientProjectSubmissionPanelProps = {
 }
 
 type ClientReviewActionAvailability = {
+    canApprove: boolean
     canRequestRevision: boolean
     message: string
 }
@@ -86,6 +88,8 @@ export function ClientProjectSubmissionPanel({
         useSubmissionPackagesByWorkspace(currentUserCode, normalizedWorkspaceId)
     const rejectSubmissionPackageMutation =
         useRejectSubmissionPackage(currentUserCode)
+    const approveSubmissionPackageMutation =
+        useApproveSubmissionPackage(currentUserCode)
     const sortedPackages = useMemo(
         () => sortSubmissionPackagesByLatest(packageListQuery.data ?? []),
         [packageListQuery.data]
@@ -140,7 +144,9 @@ export function ClientProjectSubmissionPanel({
         workspaceId: normalizedWorkspaceId,
         latestPackage,
         selectedPackage: selectedPackageSummary,
-        isMutationPending: rejectSubmissionPackageMutation.isPending,
+        isMutationPending:
+            rejectSubmissionPackageMutation.isPending ||
+            approveSubmissionPackageMutation.isPending,
         acceptedRevisionPackageId,
     })
 
@@ -219,6 +225,52 @@ export function ClientProjectSubmissionPanel({
 
             setRevisionFeedback("")
             setOpenRevisionDialog(false)
+        } catch (error) {
+            setRevisionRequestError(getReviewErrorMessage(error))
+        }
+    }
+
+    const handleApprovePackage = async () => {
+        if (approveSubmissionPackageMutation.isPending) return
+
+        setRevisionRequestError(null)
+        setRevisionRefreshWarning(null)
+
+        if (!reviewAvailability.canApprove) {
+            setRevisionRequestError(reviewAvailability.message)
+            return
+        }
+
+        const latestPackageId = latestPackage?.packageId?.trim() ?? ""
+
+        if (!latestPackageId || !normalizedWorkspaceId) {
+            setRevisionRequestError("Package or workspace information is missing.")
+            return
+        }
+
+        try {
+            await approveSubmissionPackageMutation.mutateAsync({
+                packageId: latestPackageId,
+                workspaceId: normalizedWorkspaceId,
+                feedback: "Approved",
+            })
+
+            const refreshResults = await Promise.allSettled([
+                packageListQuery.refetch(),
+                packageDetailQuery.refetch(),
+                Promise.resolve(onRevisionAccepted?.()),
+            ])
+            const hasRefreshFailure = refreshResults.some((result) => {
+                if (result.status === "rejected") return true
+
+                return isRecord(result.value) && result.value.isError === true
+            })
+
+            if (hasRefreshFailure) {
+                setRevisionRefreshWarning(
+                    "Package was approved, but the latest project data could not be refreshed.",
+                )
+            }
         } catch (error) {
             setRevisionRequestError(getReviewErrorMessage(error))
         }
@@ -318,6 +370,8 @@ export function ClientProjectSubmissionPanel({
                                     availability={reviewAvailability}
                                     refreshWarning={revisionRefreshWarning}
                                     requestError={revisionRequestError}
+                                    isApproving={approveSubmissionPackageMutation.isPending}
+                                    onApprove={handleApprovePackage}
                                     onRequestRevision={openRequestRevisionDialog}
                                     hasHistory={sortedPackages.length > 0}
                                     onViewHistory={() => setOpenHistoryModal(true)}
@@ -728,6 +782,8 @@ function ClientReviewAction({
     availability,
     refreshWarning,
     requestError,
+    isApproving,
+    onApprove,
     onRequestRevision,
     hasHistory,
     onViewHistory,
@@ -735,11 +791,13 @@ function ClientReviewAction({
     availability: ClientReviewActionAvailability
     refreshWarning?: string | null
     requestError?: string | null
+    isApproving: boolean
+    onApprove: () => void
     onRequestRevision: () => void
     hasHistory: boolean
     onViewHistory: () => void
 }) {
-    const showAction = availability.canRequestRevision
+    const showAction = availability.canApprove || availability.canRequestRevision
 
     return (
         <div className="my-4 shrink-0 space-y-2">
@@ -763,14 +821,25 @@ function ClientReviewAction({
                                 Latest package is pending Client review.
                             </p>
                             <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                                Review the submitted files before requesting changes.
+                                Review the submitted files, then approve the package or
+                                request changes from the expert.
                             </p>
                         </div>
 
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                            <button
+                                type="button"
+                                onClick={onApprove}
+                                disabled={!availability.canApprove || isApproving}
+                                className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isApproving ? "Approving..." : "Approve Package"}
+                            </button>
+
                             <button
                                 type="button"
                                 onClick={onRequestRevision}
+                                disabled={!availability.canRequestRevision}
                                 className="h-10 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/20"
                             >
                                 Request Revision
@@ -1146,6 +1215,7 @@ function getClientReviewActionAvailability({
 }): ClientReviewActionAvailability {
     if (role !== UserRole.CLIENT) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Only the Client can request revision for a package.",
         }
@@ -1153,6 +1223,7 @@ function getClientReviewActionAvailability({
 
     if (!normalizeText(workspaceId)) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Workspace information is missing, so review actions are locked.",
         }
@@ -1160,6 +1231,7 @@ function getClientReviewActionAvailability({
 
     if (!latestPackage || !selectedPackage) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "No submitted package is available for review yet.",
         }
@@ -1167,6 +1239,7 @@ function getClientReviewActionAvailability({
 
     if (acceptedRevisionPackageId === latestPackage.packageId) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Revision was requested for this package. Waiting for refreshed project data.",
         }
@@ -1174,6 +1247,7 @@ function getClientReviewActionAvailability({
 
     if (isMutationPending) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Revision request is being sent. Please wait.",
         }
@@ -1185,6 +1259,7 @@ function getClientReviewActionAvailability({
 
     if (selectedPackage.packageId !== latestPackage.packageId) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Historical versions are read-only. Review actions are available only for the latest pending package.",
         }
@@ -1195,6 +1270,7 @@ function getClientReviewActionAvailability({
         normalizedPackageStatus === "APPROVED"
     ) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message:
                 normalizedProjectStatus === "COMPLETED"
@@ -1208,6 +1284,7 @@ function getClientReviewActionAvailability({
         normalizedPackageStatus === "REJECTED"
     ) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Revision feedback is available. Waiting for the expert to resubmit.",
         }
@@ -1215,6 +1292,7 @@ function getClientReviewActionAvailability({
 
     if (normalizedProjectStatus === "DISPUTED") {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "This project is disputed, so package review actions are locked.",
         }
@@ -1222,6 +1300,7 @@ function getClientReviewActionAvailability({
 
     if (normalizedWorkspaceStatus !== "ACTIVE") {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "This workspace is read-only for package review.",
         }
@@ -1229,6 +1308,7 @@ function getClientReviewActionAvailability({
 
     if (normalizedProjectStatus !== "UNDER_REVIEW") {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Request Revision is available only while the project is under review.",
         }
@@ -1236,6 +1316,7 @@ function getClientReviewActionAvailability({
 
     if (normalizedPackageStatus !== "PENDING") {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "This package is read-only because it is no longer pending review.",
         }
@@ -1243,12 +1324,14 @@ function getClientReviewActionAvailability({
 
     if (!normalizeText(latestPackage.packageId)) {
         return {
+            canApprove: false,
             canRequestRevision: false,
             message: "Package information is missing, so review actions are locked.",
         }
     }
 
     return {
+        canApprove: true,
         canRequestRevision: true,
         message: "The latest package can be sent back for revision.",
     }

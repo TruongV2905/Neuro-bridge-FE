@@ -20,6 +20,7 @@ import {
 import type { RootState } from "@/redux/store"
 import {
     useDeliverableFilesByPackage,
+    useResubmitSubmissionPackage,
     useSubmissionPackagesByWorkspace,
     useSubmitExpertWorkspacePackage,
 } from "@/services/submission-package.service"
@@ -144,6 +145,8 @@ export function ProjectSubmissionPanel({
         useSubmissionPackagesByWorkspace(currentUserCode, normalizedWorkspaceId)
     const submitWorkspacePackageMutation =
         useSubmitExpertWorkspacePackage(currentUserCode)
+    const resubmitWorkspacePackageMutation =
+        useResubmitSubmissionPackage(currentUserCode)
     const sortedPackageSummaries = useMemo(
         () => sortSubmissionPackagesByLatest(packageListQuery.data ?? []),
         [packageListQuery.data],
@@ -179,7 +182,9 @@ export function ProjectSubmissionPanel({
         packageListQuery.isError || packageFilesQuery.isError
     const packageReadError =
         packageListQuery.error ?? packageFilesQuery.error
-    const isSubmitting = submitWorkspacePackageMutation.isPending
+    const isSubmitting =
+        submitWorkspacePackageMutation.isPending ||
+        resubmitWorkspacePackageMutation.isPending
     const availability = getExpertSubmissionAvailability({
         workspaceStatus,
         projectStatus,
@@ -283,14 +288,28 @@ export function ProjectSubmissionPanel({
         }
 
         try {
-            await submitWorkspacePackageMutation.mutateAsync({
-                request: {
+            const submittedFiles = files.map(mapSubmissionFileRequest)
+
+            if (isEditMode && latestPackageId) {
+                await resubmitWorkspacePackageMutation.mutateAsync({
+                    packageId: latestPackageId,
                     workspaceId: normalizedWorkspaceId,
-                    notes: note.trim(),
-                    customReleaseDays: releaseDayResult.value,
-                    files: files.map(mapSubmissionFileRequest),
-                },
-            })
+                    request: {
+                        currentPackageId: latestPackageId,
+                        notes: note.trim(),
+                        updatedFiles: submittedFiles,
+                    },
+                })
+            } else {
+                await submitWorkspacePackageMutation.mutateAsync({
+                    request: {
+                        workspaceId: normalizedWorkspaceId,
+                        notes: note.trim(),
+                        customReleaseDays: releaseDayResult.value,
+                        files: submittedFiles,
+                    },
+                })
+            }
 
             setHasAcceptedSubmission(true)
 

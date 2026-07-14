@@ -418,12 +418,12 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                     {hireExpert.isPending ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Finalizing...
+                        Initialing...
                       </>
                     ) : (
                       <>
                         <ShieldCheck className="mr-2 h-4 w-4" />
-                        Finalize workspace
+                        Initialize workspace
                       </>
                     )}
                   </Button>

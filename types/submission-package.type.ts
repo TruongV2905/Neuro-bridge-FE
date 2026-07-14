@@ -114,3 +114,9 @@ export type RejectSubmissionPackageMutationVariables = {
   workspaceId: string;
   feedback: string;
 };
+
+export type ApproveSubmissionPackageMutationVariables = {
+  packageId: string;
+  workspaceId: string;
+  feedback?: string;
+};

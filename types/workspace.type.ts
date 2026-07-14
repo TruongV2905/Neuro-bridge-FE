@@ -49,3 +49,13 @@ export type WorkspaceMember = {
   avatarUrl: string | null;
   role: string;
 };
+
+export type ProposalStrategy = {
+  proposalUnlockId: string;
+  strategyDetail: string;
+  unlockCost: number;
+};
+
+export type ProposalStrategyUpdateRequest = {
+  strategyDetail: string;
+};

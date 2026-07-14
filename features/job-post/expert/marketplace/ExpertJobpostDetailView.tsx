@@ -39,6 +39,8 @@ import {
 } from "./marketplace.utils";
 import { ExpertApplyTypeDialog } from "./components/ExpertApplyTypeDialog";
 
+const EXPERT_MARKETPLACE_HREF = "/expert/dashboard/browse-job-posts";
+
 export function ExpertJobpostDetailView() {
   const params = useParams<{ id?: string | string[] }>();
   const jobId = Array.isArray(params.id) ? params.id[0] : params.id ?? "";
@@ -91,7 +93,7 @@ export function ExpertJobpostDetailView() {
               Retry
             </Button>
             <Button asChild className="rounded-xl">
-              <Link href="/expert/dashboard">Back to Marketplace</Link>
+              <Link href={EXPERT_MARKETPLACE_HREF}>Back to Marketplace</Link>
             </Button>
           </div>
         </div>
@@ -106,7 +108,7 @@ export function ExpertJobpostDetailView() {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500">
               <Link
-                href="/expert/dashboard"
+                href={EXPERT_MARKETPLACE_HREF}
                 className="transition hover:text-indigo-600"
               >
                 Marketplace
@@ -124,7 +126,7 @@ export function ExpertJobpostDetailView() {
             asChild
             className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 shadow-sm hover:bg-slate-50"
           >
-            <Link href="/expert/dashboard">
+            <Link href={EXPERT_MARKETPLACE_HREF}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Marketplace
             </Link>

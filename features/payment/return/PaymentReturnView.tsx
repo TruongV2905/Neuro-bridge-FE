@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import {
   AlertTriangle,
@@ -23,6 +23,7 @@ import { UserRole, type UserResponse } from "@/types/user/user.type";
 
 const VNPAY_SUCCESS_CODE = "00";
 const CONFIRM_TIMEOUT_MS = 8000;
+const autoConfirmRequestKeys = new Set<string>();
 
 type ConfirmStatus =
   | "idle"
@@ -38,7 +39,6 @@ export function PaymentReturnView() {
     (state: RootState) => state.user,
   ) as UserResponse | null;
   const confirmMutation = useConfirmVnPayDeposit();
-  const hasConfirmedRef = useRef(false);
   const [confirmStatus, setConfirmStatus] = useState<ConfirmStatus>("idle");
 
   const walletHref =
@@ -71,6 +71,9 @@ export function PaymentReturnView() {
 
   const hasRequiredParams =
     !!paymentResult.paymentTransactionId && paymentResult.amount > 0;
+  const autoConfirmKey = hasRequiredParams
+    ? `${paymentResult.paymentTransactionId}:${paymentResult.amount}`
+    : "";
 
   const transactionQuery = useGetPaymentTransactionById(
     { id: paymentResult.paymentTransactionId },
@@ -78,25 +81,31 @@ export function PaymentReturnView() {
       enabled: hasRequiredParams && paymentResult.isSuccess,
     },
   );
+  const transactionStatus = transactionQuery.data?.result?.status;
+  const hasAutoConfirmStarted = autoConfirmRequestKeys.has(autoConfirmKey);
+  const effectiveConfirmStatus = getEffectiveConfirmStatus({
+    confirmStatus,
+    hasAutoConfirmStarted,
+    isMutationPending: confirmMutation.isPending,
+    isQueryChecking: transactionQuery.isLoading || transactionQuery.isFetching,
+    transactionStatus,
+  });
 
   useEffect(() => {
     if (
-      hasConfirmedRef.current ||
       !hasRequiredParams ||
-      !paymentResult.isSuccess
+      !paymentResult.isSuccess ||
+      !autoConfirmKey ||
+      autoConfirmRequestKeys.has(autoConfirmKey)
     ) {
       return;
     }
 
     if (transactionQuery.isLoading || transactionQuery.isFetching) {
-      setConfirmStatus("checking");
       return;
     }
 
-    const transactionStatus = transactionQuery.data?.result?.status;
     if (transactionStatus === "SUCCESS") {
-      hasConfirmedRef.current = true;
-      setConfirmStatus("confirmed");
       return;
     }
 
@@ -105,16 +114,13 @@ export function PaymentReturnView() {
       transactionStatus !== "PENDING" &&
       transactionStatus !== "SUCCESS"
     ) {
-      hasConfirmedRef.current = true;
-      setConfirmStatus("failed");
       return;
     }
 
-    hasConfirmedRef.current = true;
-    setConfirmStatus("confirming");
+    autoConfirmRequestKeys.add(autoConfirmKey);
     const timeoutId = window.setTimeout(() => {
       setConfirmStatus((current) =>
-        current === "confirming" ? "timeout" : current,
+        current === "confirmed" || current === "failed" ? current : "timeout",
       );
     }, CONFIRM_TIMEOUT_MS);
 
@@ -135,10 +141,19 @@ export function PaymentReturnView() {
         },
       },
     );
-  }, [confirmMutation, hasRequiredParams, paymentResult, transactionQuery]);
+  }, [
+    autoConfirmKey,
+    confirmMutation,
+    hasRequiredParams,
+    paymentResult.amount,
+    paymentResult.isSuccess,
+    paymentResult.paymentTransactionId,
+    transactionQuery,
+    transactionStatus,
+  ]);
 
   const status = getReturnStatus({
-    confirmStatus,
+    confirmStatus: effectiveConfirmStatus,
     hasRequiredParams,
     isVnPaySuccess: paymentResult.isSuccess,
   });
@@ -247,6 +262,50 @@ function ReturnInfo({ label, value }: { label: string; value: string }) {
       <p className="mt-1 break-words font-bold text-slate-950">{value}</p>
     </div>
   );
+}
+
+function getEffectiveConfirmStatus({
+  confirmStatus,
+  hasAutoConfirmStarted,
+  isMutationPending,
+  isQueryChecking,
+  transactionStatus,
+}: {
+  confirmStatus: ConfirmStatus;
+  hasAutoConfirmStarted: boolean;
+  isMutationPending: boolean;
+  isQueryChecking: boolean;
+  transactionStatus?: string;
+}): ConfirmStatus {
+  if (confirmStatus === "confirmed" || confirmStatus === "failed") {
+    return confirmStatus;
+  }
+
+  if (transactionStatus === "SUCCESS") {
+    return "confirmed";
+  }
+
+  if (
+    transactionStatus &&
+    transactionStatus !== "PENDING" &&
+    transactionStatus !== "SUCCESS"
+  ) {
+    return "failed";
+  }
+
+  if (confirmStatus === "timeout") {
+    return "timeout";
+  }
+
+  if (isMutationPending || hasAutoConfirmStarted) {
+    return "confirming";
+  }
+
+  if (isQueryChecking) {
+    return "checking";
+  }
+
+  return confirmStatus;
 }
 
 function getReturnStatus({

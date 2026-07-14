@@ -30,7 +30,7 @@ export type WorkspaceDashboardItem = {
   projectName: string;
   projectStatus: string;
   progressPercentage: number;
-  deadline: string;
+  deadline: string | null;
   partner: WorkspaceDashboardPartner;
 };
 

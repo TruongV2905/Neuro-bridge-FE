@@ -19,7 +19,7 @@ export default function ExpertMyServicesPage() {
         </p>
 
         <Button asChild className="mt-6 rounded-xl">
-          <Link href="/expert/dashboard">Back to Marketplace</Link>
+          <Link href="/expert/dashboard/browse-job-posts">Back to Marketplace</Link>
         </Button>
       </div>
     </main>

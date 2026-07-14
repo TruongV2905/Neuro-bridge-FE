@@ -69,8 +69,9 @@ export const JOB_POST_STATUS_META: StatusMeta[] = [
 
   {
     value: "ASSIGNED",
-    label: "Completed",
-    description: "Project finished successfully",
+    label: "Assigned",
+    description:
+      "An expert has been selected and the work has moved into the project phase",
     icon: CheckCircle2,
     tone: "from-emerald-500/15 to-emerald-500/5 ring-emerald-200",
     pill: "bg-emerald-50 text-emerald-600 border-emerald-200",

@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useQueries } from "@tanstack/react-query";
 import {
   ArrowRight,
-  BriefcaseBusiness,
   Clock4,
   FileSignature,
   Search,
@@ -19,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { contractKeys, getContractById } from "@/services/contract.service";
+import { useGetJobPostById } from "@/services/job-post.service";
 import { useGetUserByCode } from "@/services/user.service";
 import type { ContractResponse, ContractStatus } from "@/types/contract.type";
 import {
@@ -190,8 +190,12 @@ function ContractListCard({
 }) {
   const status = contract?.status ?? saved.status;
   const statusMeta = getContractStatusMeta(status);
-  const jobId = contract?.jobId ?? saved.jobPostId ?? "Unknown job";
+  const jobId = contract?.jobId ?? saved.jobPostId ?? "";
   const partnerCode = getPartnerCode(contract, saved, role);
+  const jobQuery = useGetJobPostById(
+    { id: jobId },
+    { enabled: Boolean(jobId) },
+  );
   const partnerQuery = useGetUserByCode(
     { code: partnerCode ?? "" },
     { enabled: Boolean(partnerCode) },
@@ -200,9 +204,12 @@ function ContractListCard({
   const partnerName = partnerQuery.isLoading
     ? "Loading profile..."
     : getPartnerDisplayName(partnerQuery.data?.result?.fullName, role);
-  const projectName =
-    contract?.projectName ?? saved.projectName ?? "Contract workspace";
-  const contractRef = formatShortId(saved.id);
+  const projectName = getContractProjectName({
+    contractProjectName: contract?.projectName,
+    savedProjectName: saved.projectName,
+    jobTitle: jobQuery.data?.result?.title,
+    isJobLoading: jobQuery.isLoading || jobQuery.isFetching,
+  });
 
   return (
     <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-indigo-100 hover:shadow-md hover:shadow-slate-200/60">
@@ -221,12 +228,6 @@ function ContractListCard({
             <UserRound className="h-3.5 w-3.5 shrink-0 text-slate-400" />
             <span className="truncate">
               {counterpartyLabel}: {partnerName}
-            </span>
-          </p>
-          <p className="mt-1 flex items-center gap-1.5 truncate text-[11px] font-semibold text-slate-400">
-            <BriefcaseBusiness className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              Job ref {formatShortId(jobId)} · Contract {contractRef}
             </span>
           </p>
         </div>
@@ -338,10 +339,23 @@ function getPartnerDisplayName(
   return role === "client" ? "Selected expert" : "Client";
 }
 
-function formatShortId(value: string) {
-  if (!value || value === "Unknown job") return "pending";
+function getContractProjectName({
+  contractProjectName,
+  savedProjectName,
+  jobTitle,
+  isJobLoading,
+}: {
+  contractProjectName?: string | null;
+  savedProjectName?: string;
+  jobTitle?: string;
+  isJobLoading: boolean;
+}) {
+  const title = contractProjectName || savedProjectName || jobTitle;
 
-  return value.length <= 8 ? value : value.slice(0, 8);
+  if (title?.trim()) return title.trim();
+  if (isJobLoading) return "Loading project...";
+
+  return "Untitled contract";
 }
 
 function getContractStatusMeta(status?: ContractStatus) {

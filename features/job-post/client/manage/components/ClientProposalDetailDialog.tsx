@@ -37,6 +37,7 @@ import {
   useGetMyWallet,
   usePayProposalByWallet,
 } from "@/services/payment.service";
+import { useGetUserByCode } from "@/services/user.service";
 import type {
   ClientProposalDialogSummary,
   ProposalUnlock,
@@ -65,6 +66,14 @@ export function ClientProposalDetailDialog({
   const proposalId = proposal?.id.trim() ?? "";
   const expertCode = proposalSummary?.expertApply.expertCode.trim() ?? "";
   const hasProposal = Boolean(proposalSummary && proposal);
+  const expertQuery = useGetUserByCode(
+    { code: expertCode },
+    { enabled: open && expertCode.length > 0 },
+  );
+  const expertName = getExpertDisplayName(
+    expertQuery.data?.result?.fullName,
+    expertQuery.isLoading,
+  );
   const shouldLoadProtectedDetail = open && proposalId.length > 0;
   const unlockQuery = useGetProposalUnlockByProposalId(
     { proposalId },
@@ -241,7 +250,7 @@ export function ClientProposalDetailDialog({
           <DialogDescription>
             Read-only proposal submitted by{" "}
             <span className="font-bold text-slate-700">
-              {proposalSummary?.expertApply.expertCode || "Unknown expert"}
+              {expertName}
             </span>
             .
           </DialogDescription>
@@ -252,8 +261,8 @@ export function ClientProposalDetailDialog({
             <div className="grid gap-3 sm:grid-cols-3">
               <DetailMetric
                 icon={<User className="h-4 w-4" />}
-                label="Expert code"
-                value={proposalSummary.expertApply.expertCode}
+                label="Expert"
+                value={expertName}
               />
               <DetailMetric
                 icon={<LockKeyhole className="h-4 w-4" />}
@@ -775,6 +784,13 @@ function getWalletBalancePlaceholder(state: UnlockReadinessState) {
 
 function formatOptionalMoney(value: number | null) {
   return value === null ? "Unavailable" : formatApplicantMoney(value);
+}
+
+function getExpertDisplayName(fullName: string | undefined, isLoading: boolean) {
+  if (fullName?.trim()) return fullName.trim();
+  if (isLoading) return "Loading expert...";
+
+  return "Expert applicant";
 }
 
 function ProtectedDetailSection({

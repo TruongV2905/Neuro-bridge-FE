@@ -5,6 +5,7 @@ import { ArrowUpRight, Clock4, FileText, LockKeyhole, User } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useGetUserByCode } from "@/services/user.service";
 import type {
   ApplicantProposal,
   ClientProposalDialogSummary,
@@ -25,17 +26,25 @@ export function ClientApplicantCard({
   const { expertApply, proposal } = applicant;
   const unlockCost = resolveApplicantUnlockCost(proposal);
   const expertProfileHref = getExpertProfileHref(expertApply.expertCode);
+  const expertQuery = useGetUserByCode(
+    { code: expertApply.expertCode },
+    { enabled: Boolean(expertApply.expertCode?.trim()) },
+  );
+  const expertName = getExpertDisplayName(
+    expertQuery.data?.result?.fullName,
+    expertQuery.isLoading,
+  );
 
   return (
     <article className="flex h-full flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50">
       <div className="flex items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
             <User className="h-3.5 w-3.5" />
             Applicant
           </div>
-          <p className="mt-1 text-base font-extrabold text-slate-950">
-            {expertApply.expertCode}
+          <p className="mt-1 truncate text-base font-extrabold text-slate-950">
+            {expertName}
           </p>
         </div>
         <Badge
@@ -157,6 +166,13 @@ export function formatApplicantMoney(value: number) {
     currency: "USD",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function getExpertDisplayName(fullName: string | undefined, isLoading: boolean) {
+  if (fullName?.trim()) return fullName.trim();
+  if (isLoading) return "Loading expert...";
+
+  return "Expert applicant";
 }
 
 function getExpertProfileHref(expertCode: unknown) {

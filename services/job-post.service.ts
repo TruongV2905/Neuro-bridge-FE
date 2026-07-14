@@ -7,6 +7,7 @@ import {
   ChangeJobPostStatusMutationVariables,
   ChangeJobPostStatusResponse,
   ExpertAppliedJobPostsResponse,
+  ExpertMyApplicationsResponse,
   HireExpertMutationVariables,
   HireExpertResponse,
   ExpertProposal,
@@ -43,6 +44,7 @@ export const jobPostKeys = {
   clientList: ["job-posts", "client", "list"],
   publicList: ["job-posts", "public", "list"],
   expertApplied: ["job-posts", "expert", "applied"],
+  expertMyApplications: ["job-posts", "expert", "my-applications"],
   detail: ["job-posts", "detail"],
   apply: ["job-posts", "apply"],
   applicants: ["job-posts", "applicants"],
@@ -163,6 +165,12 @@ export const useGetExpertAppliedJobPosts =
   createQueryHook<ExpertAppliedJobPostsResponse>(
     jobPostKeys.expertApplied,
     `${JOB_POST_ENDPOINT}/expert-apply`,
+  );
+
+export const useGetExpertMyApplications =
+  createQueryHook<ExpertMyApplicationsResponse>(
+    jobPostKeys.expertMyApplications,
+    `${APPLY_JOB_POST_ENDPOINT}/my-applies`,
   );
 
 export const useApplyJobPost = createMutationHook<

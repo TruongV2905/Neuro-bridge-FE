@@ -25,6 +25,7 @@ export function ExpertApplicationCard({
   onViewProposal,
 }: ExpertApplicationCardProps) {
   const hasProposal = Boolean(application.proposal);
+  const title = getApplicationTitle(application);
   const unlockCost = resolveUnlockCost(application);
 
   return (
@@ -32,7 +33,7 @@ export function ExpertApplicationCard({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 className="line-clamp-2 text-lg font-extrabold tracking-tight text-slate-950 transition-colors group-hover:text-indigo-600">
-            {application.jobPost.title}
+            {title}
           </h2>
           <div className="mt-3 flex flex-wrap gap-2">
             <Badge
@@ -167,6 +168,13 @@ function createDialogProposal(
     strategySummary: application.proposal?.strategySummary ?? "",
     unlockCost,
   };
+}
+
+function getApplicationTitle(application: ExpertApplicationViewItem) {
+  if (application.jobPost?.title) return application.jobPost.title;
+  if (application.proposal?.title) return application.proposal.title;
+
+  return `Application ${application.expertApply.id.slice(0, 8)}`;
 }
 
 function resolveUnlockCost(application: ExpertApplicationViewItem) {

@@ -1,10 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useQueries } from "@tanstack/react-query";
-import { useSelector } from "react-redux";
 import {
-  AlertCircle,
   BriefcaseBusiness,
   ChevronLeft,
   ChevronRight,
@@ -18,32 +15,22 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  fetchJobPostApplicants,
-  jobPostKeys,
-  useGetExpertAppliedJobPosts,
-} from "@/services/job-post.service";
-import type { RootState } from "@/redux/store";
+import { useGetExpertMyApplications } from "@/services/job-post.service";
 import type {
   ExpertApplicationViewItem,
-  ExpertAppliedJobPostsResponse,
+  ExpertMyApplicationsParams,
   ExpertProposal,
 } from "@/types/job-post.type";
-import type { UserResponse } from "@/types/user/user.type";
 import { ExpertApplicationCard } from "./ExpertApplicationCard";
 import { ExpertProposalDetailDialog } from "./ExpertProposalDetailDialog";
 
 const DEFAULT_STATE = {
   page: 0,
-  size: 6,
+  size: 20,
   search: "",
 };
 
 export function ExpertMyApplicationsView() {
-  const currentUser = useSelector(
-    (state: RootState) => state.user,
-  ) as UserResponse | null;
-  const expertCode = currentUser?.code ?? "";
   const [state, setState] = React.useState(DEFAULT_STATE);
   const [searchInput, setSearchInput] = React.useState(DEFAULT_STATE.search);
   const [selectedProposal, setSelectedProposal] =
@@ -61,68 +48,42 @@ export function ExpertMyApplicationsView() {
     return () => window.clearTimeout(timeoutId);
   }, [searchInput]);
 
-  const appliedJobPostsQuery = useGetExpertAppliedJobPosts(undefined, {
-    enabled: !!expertCode,
-  });
-  const appliedJobPosts = React.useMemo(
-    () => normalizeAppliedJobPosts(appliedJobPostsQuery.data?.result),
-    [appliedJobPostsQuery.data?.result],
+  const queryParams = React.useMemo<ExpertMyApplicationsParams>(
+    () => ({
+      page: state.page,
+      size: state.size,
+    }),
+    [state.page, state.size],
   );
 
-  const applicantQueries = useQueries({
-    queries: appliedJobPosts.map((jobPost) => ({
-      queryKey: [...jobPostKeys.applicants, jobPost.id],
-      queryFn: () => fetchJobPostApplicants(jobPost.id),
-      enabled: !!expertCode,
-      retry: 0,
-    })),
-  });
+  const applicationsQuery = useGetExpertMyApplications(queryParams);
+  const pageResult = applicationsQuery.data?.result;
 
   const applications = React.useMemo<ExpertApplicationViewItem[]>(() => {
-    return appliedJobPosts.flatMap((jobPost, index) => {
-      const applicants = applicantQueries[index]?.data?.result ?? [];
-
-      return applicants
-        .filter(
-          (applicant) => applicant.expertApply.expertCode === expertCode,
-        )
-        .map((applicant) => ({
-          jobPost,
-          expertApply: applicant.expertApply,
-          proposal: applicant.proposal,
-          proposalUnlock: applicant.proposalUnlock,
-        }));
-    });
-  }, [applicantQueries, appliedJobPosts, expertCode]);
+    return pageResult?.content ?? [];
+  }, [pageResult?.content]);
 
   const filteredApplications = React.useMemo(
     () => filterApplications(applications, state.search),
     [applications, state.search],
   );
-  const totalElements = filteredApplications.length;
-  const totalPages = Math.ceil(totalElements / state.size);
-  const pageApplications = React.useMemo(() => {
-    const start = state.page * state.size;
-
-    return filteredApplications.slice(start, start + state.size);
-  }, [filteredApplications, state.page, state.size]);
-  const hasPrevious = state.page > 0;
-  const hasNext = state.page + 1 < totalPages;
+  const isSearching = state.search.trim().length > 0;
+  const totalElements = isSearching
+    ? filteredApplications.length
+    : (pageResult?.totalElements ?? 0);
+  const totalPages = isSearching
+    ? Math.ceil(filteredApplications.length / state.size)
+    : (pageResult?.totalPages ?? 0);
+  const pageApplications = filteredApplications;
+  const hasPrevious = isSearching
+    ? false
+    : (pageResult ? !pageResult.first : state.page > 0);
+  const hasNext = isSearching ? false : (pageResult ? !pageResult.last : false);
   const isInitialLoading =
-    appliedJobPostsQuery.isLoading && appliedJobPosts.length === 0;
-  const isAppliesLoading = applicantQueries.some((query) => query.isLoading);
-  const isApplicationListLoading =
-    isInitialLoading || (isAppliesLoading && applications.length === 0);
-  const isFetching =
-    appliedJobPostsQuery.isFetching ||
-    applicantQueries.some((query) => query.isFetching);
-  const failedApplicantQueries = applicantQueries.filter(
-    (query) => query.isError,
-  );
+    applicationsQuery.isLoading && applications.length === 0;
   const isEmpty =
     !isInitialLoading &&
-    !isAppliesLoading &&
-    !appliedJobPostsQuery.isError &&
+    !applicationsQuery.isError &&
     filteredApplications.length === 0;
   const isDirty = state.search !== DEFAULT_STATE.search;
 
@@ -132,24 +93,8 @@ export function ExpertMyApplicationsView() {
   };
 
   const refetchApplications = () => {
-    appliedJobPostsQuery.refetch();
-    applicantQueries.forEach((query) => {
-      query.refetch();
-    });
+    applicationsQuery.refetch();
   };
-
-  if (!expertCode) {
-    return (
-      <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
-        <div className="mx-auto max-w-3xl rounded-3xl border border-amber-200 bg-amber-50 p-8 text-amber-700">
-          <p className="text-lg font-extrabold">Applications unavailable</p>
-          <p className="mt-2 text-sm font-semibold leading-6">
-            Unable to load applications because expert profile code is missing.
-          </p>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
@@ -190,7 +135,7 @@ export function ExpertMyApplicationsView() {
               <Input
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
-                placeholder="Search applications..."
+                placeholder="Search loaded applications..."
                 className="h-11 rounded-xl border-slate-200 bg-white pl-10 text-sm shadow-sm focus-visible:border-indigo-400 focus-visible:ring-indigo-100"
               />
             </div>
@@ -216,7 +161,7 @@ export function ExpertMyApplicationsView() {
               </span>{" "}
               on this page
             </span>
-            {isFetching && (
+            {applicationsQuery.isFetching && (
               <span className="flex items-center gap-1.5 font-semibold text-indigo-600">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 Updating
@@ -225,37 +170,30 @@ export function ExpertMyApplicationsView() {
           </div>
         </section>
 
-        {appliedJobPostsQuery.isError && (
+        {applicationsQuery.isError && (
           <ErrorState
             message={
-              getQueryErrorMessage(appliedJobPostsQuery.error) ||
+              getQueryErrorMessage(applicationsQuery.error) ||
               "Unable to load submitted applications."
             }
-            onRetry={() => appliedJobPostsQuery.refetch()}
-          />
-        )}
-
-        {failedApplicantQueries.length > 0 && (
-          <WarningState
-            count={failedApplicantQueries.length}
             onRetry={refetchApplications}
           />
         )}
 
-        {isApplicationListLoading ? (
+        {isInitialLoading ? (
           <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
             {Array.from({ length: 6 }).map((_, index) => (
               <ApplicationCardSkeleton key={index} />
             ))}
           </div>
-        ) : appliedJobPostsQuery.isError ? null : isEmpty ? (
+        ) : applicationsQuery.isError ? null : isEmpty ? (
           <EmptyState onReset={resetSearch} />
         ) : (
           <>
             <div className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
               {pageApplications.map((application) => (
                 <ExpertApplicationCard
-                  key={`${application.jobPost.id}-${application.expertApply.id}`}
+                  key={application.expertApply.id}
                   application={application}
                   onViewProposal={setSelectedProposal}
                 />
@@ -288,16 +226,6 @@ export function ExpertMyApplicationsView() {
   );
 }
 
-function normalizeAppliedJobPosts(
-  result?: ExpertAppliedJobPostsResponse,
-): ExpertApplicationViewItem["jobPost"][] {
-  if (!result) return [];
-
-  if (Array.isArray(result)) return result;
-
-  return result.data ?? [];
-}
-
 function filterApplications(
   applications: ExpertApplicationViewItem[],
   search: string,
@@ -308,7 +236,8 @@ function filterApplications(
 
   return applications.filter((application) => {
     const searchableText = [
-      application.jobPost.title,
+      application.jobPost?.title,
+      application.expertApply.id,
       application.expertApply.expertCode,
       application.proposal?.title,
       application.proposal?.strategySummary,
@@ -339,39 +268,6 @@ function ErrorState({
         variant="outline"
         onClick={onRetry}
         className="h-9 rounded-xl border-rose-200 bg-white px-4 text-xs font-bold text-rose-600 hover:bg-rose-100"
-      >
-        Retry
-      </Button>
-    </div>
-  );
-}
-
-function WarningState({
-  count,
-  onRetry,
-}: {
-  count: number;
-  onRetry: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-amber-700 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex gap-3">
-        <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-        <div>
-          <p className="text-sm font-extrabold">
-            Some application details are unavailable
-          </p>
-          <p className="mt-1 text-xs font-semibold text-amber-600">
-            {count} jobpost {count === 1 ? "request" : "requests"} could not be
-            loaded. The rest of your applications are still shown.
-          </p>
-        </div>
-      </div>
-      <Button
-        type="button"
-        variant="outline"
-        onClick={onRetry}
-        className="h-9 rounded-xl border-amber-200 bg-white px-4 text-xs font-bold text-amber-700 hover:bg-amber-100"
       >
         Retry
       </Button>

@@ -211,10 +211,38 @@ export type ExpertAppliedJobPostsResponse =
   | ExpertAppliedJobPost[]
   | PageResponse<ExpertAppliedJobPost>;
 
-export type ExpertApplicationViewItem = {
-  jobPost: JobPost;
+export type SpringPageResponse<T> = {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+  numberOfElements: number;
+  empty: boolean;
+};
+
+export type ExpertMyApplication = {
   expertApply: ExpertApply;
-  proposal: ApplicantProposal | null;
+  proposal?: ApplicantProposal | null;
+  proposalUnlock?: ApplicantProposalUnlock | null;
+  jobPost?: JobPost | null;
+};
+
+export type ExpertMyApplicationsResponse =
+  SpringPageResponse<ExpertMyApplication>;
+
+export type ExpertMyApplicationsParams = {
+  page: number;
+  size: number;
+  sort?: string | string[];
+};
+
+export type ExpertApplicationViewItem = {
+  jobPost?: JobPost | null;
+  expertApply: ExpertApply;
+  proposal?: ApplicantProposal | null;
   proposalUnlock?: ApplicantProposalUnlock | null;
 };
 

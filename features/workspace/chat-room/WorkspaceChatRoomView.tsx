@@ -139,7 +139,12 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
           )}
 
           {canRenderClientSubmissionPanel && (
-            <ClientProjectSubmissionPanel workspaceId={normalizedWorkspaceId} />
+            <ClientProjectSubmissionPanel
+              workspaceId={normalizedWorkspaceId}
+              workspaceStatus={workspace?.status}
+              projectStatus={workspace?.projectStatus}
+              onRevisionAccepted={() => refetchWorkspace()}
+            />
           )}
         </div>
       </main>

@@ -1,9 +1,10 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ReactNode } from "react"
 import { useSelector } from "react-redux"
 import {
+    AlertCircle,
     Code2,
     Database,
     Download,
@@ -17,6 +18,7 @@ import {
 
 import type { RootState } from "@/redux/store"
 import {
+    useRejectSubmissionPackage,
     useSubmissionPackageDetail,
     useSubmissionPackagesByWorkspace,
 } from "@/services/submission-package.service"
@@ -25,11 +27,19 @@ import type {
     SubmissionFileType,
     SubmissionPackageSummary,
 } from "@/types/submission-package.type"
-import type { UserResponse } from "@/types/user/user.type"
+import { UserRole, type UserResponse } from "@/types/user/user.type"
 import { sortSubmissionPackagesByLatest } from "../utils/submission-package-ordering"
 
 type ClientProjectSubmissionPanelProps = {
     workspaceId: string
+    workspaceStatus?: string | null
+    projectStatus?: string | null
+    onRevisionAccepted?: () => Promise<unknown> | unknown
+}
+
+type ClientReviewActionAvailability = {
+    canRequestRevision: boolean
+    message: string
 }
 
 type FileSlot = {
@@ -63,6 +73,9 @@ const fileSlots: FileSlot[] = [
 
 export function ClientProjectSubmissionPanel({
     workspaceId,
+    workspaceStatus,
+    projectStatus,
+    onRevisionAccepted,
 }: ClientProjectSubmissionPanelProps) {
     const user = useSelector(
         (state: RootState) => state.user,
@@ -71,6 +84,8 @@ export function ClientProjectSubmissionPanel({
     const normalizedWorkspaceId = workspaceId.trim()
     const packageListQuery =
         useSubmissionPackagesByWorkspace(currentUserCode, normalizedWorkspaceId)
+    const rejectSubmissionPackageMutation =
+        useRejectSubmissionPackage(currentUserCode)
     const sortedPackages = useMemo(
         () => sortSubmissionPackagesByLatest(packageListQuery.data ?? []),
         [packageListQuery.data]
@@ -79,6 +94,17 @@ export function ClientProjectSubmissionPanel({
     const [selectedPackageId, setSelectedPackageId] = useState("")
     const [openHistoryModal, setOpenHistoryModal] = useState(false)
     const [previewFile, setPreviewFile] = useState<DeliverableFile | null>(null)
+    const [openRevisionDialog, setOpenRevisionDialog] = useState(false)
+    const [revisionFeedback, setRevisionFeedback] = useState("")
+    const [revisionFormError, setRevisionFormError] = useState<string | null>(null)
+    const [revisionRequestError, setRevisionRequestError] =
+        useState<string | null>(null)
+    const [revisionRefreshWarning, setRevisionRefreshWarning] =
+        useState<string | null>(null)
+    const [acceptedRevisionPackageId, setAcceptedRevisionPackageId] =
+        useState<string | null>(null)
+    const [resumeHistoryAfterPreview, setResumeHistoryAfterPreview] =
+        useState(false)
 
     const selectedPackageSummary = useMemo(() => {
         return (
@@ -105,10 +131,133 @@ export function ClientProjectSubmissionPanel({
         Boolean(selectedDetailPackageId) && packageDetailQuery.isLoading
     const isDetailError =
         Boolean(selectedDetailPackageId) && packageDetailQuery.isError
+    const hasOpenModal =
+        openHistoryModal || Boolean(previewFile) || openRevisionDialog
+    const reviewAvailability = getClientReviewActionAvailability({
+        role: user?.role,
+        workspaceStatus,
+        projectStatus,
+        workspaceId: normalizedWorkspaceId,
+        latestPackage,
+        selectedPackage: selectedPackageSummary,
+        isMutationPending: rejectSubmissionPackageMutation.isPending,
+        acceptedRevisionPackageId,
+    })
+
+    const openRequestRevisionDialog = () => {
+        if (!reviewAvailability.canRequestRevision) {
+            setRevisionRequestError(reviewAvailability.message)
+            return
+        }
+
+        rejectSubmissionPackageMutation.reset()
+        setRevisionFormError(null)
+        setRevisionRequestError(null)
+        setRevisionRefreshWarning(null)
+        setOpenRevisionDialog(true)
+    }
+
+    const closeRequestRevisionDialog = () => {
+        if (rejectSubmissionPackageMutation.isPending) return
+
+        setOpenRevisionDialog(false)
+        setRevisionFormError(null)
+        setRevisionRequestError(null)
+    }
+
+    const handleRequestRevision = async () => {
+        if (rejectSubmissionPackageMutation.isPending) return
+
+        setRevisionFormError(null)
+        setRevisionRequestError(null)
+        setRevisionRefreshWarning(null)
+
+        if (!reviewAvailability.canRequestRevision) {
+            setRevisionFormError(reviewAvailability.message)
+            return
+        }
+
+        const feedback = revisionFeedback.trim()
+
+        if (!feedback) {
+            setRevisionFormError("Please add feedback before requesting revision.")
+            return
+        }
+
+        const latestPackageId = latestPackage?.packageId?.trim() ?? ""
+
+        if (!latestPackageId || !normalizedWorkspaceId) {
+            setRevisionFormError("Package or workspace information is missing.")
+            return
+        }
+
+        try {
+            await rejectSubmissionPackageMutation.mutateAsync({
+                packageId: latestPackageId,
+                workspaceId: normalizedWorkspaceId,
+                feedback,
+            })
+
+            setAcceptedRevisionPackageId(latestPackageId)
+
+            const refreshResults = await Promise.allSettled([
+                packageListQuery.refetch(),
+                packageDetailQuery.refetch(),
+                Promise.resolve(onRevisionAccepted?.()),
+            ])
+            const hasRefreshFailure = refreshResults.some((result) => {
+                if (result.status === "rejected") return true
+
+                return isRecord(result.value) && result.value.isError === true
+            })
+
+            if (hasRefreshFailure) {
+                setRevisionRefreshWarning(
+                    "Revision was requested successfully, but the latest project data could not be refreshed.",
+                )
+            }
+
+            setRevisionFeedback("")
+            setOpenRevisionDialog(false)
+        } catch (error) {
+            setRevisionRequestError(getReviewErrorMessage(error))
+        }
+    }
+
+    const openMainFilePreview = (file: DeliverableFile) => {
+        setResumeHistoryAfterPreview(false)
+        setPreviewFile(file)
+    }
+
+    const openHistoryFilePreview = (file: DeliverableFile) => {
+        setResumeHistoryAfterPreview(true)
+        setOpenHistoryModal(false)
+        setPreviewFile(file)
+    }
+
+    const closeFilePreview = () => {
+        setPreviewFile(null)
+
+        if (resumeHistoryAfterPreview) {
+            setOpenHistoryModal(true)
+            setResumeHistoryAfterPreview(false)
+        }
+    }
+
+    useEffect(() => {
+        if (!hasOpenModal) return
+
+        const previousOverflow = document.body.style.overflow
+        document.body.style.overflow = "hidden"
+
+        return () => {
+            document.body.style.overflow = previousOverflow
+        }
+    }, [hasOpenModal])
 
     return (
         <>
-            <aside className="hidden h-full w-[410px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white p-6 shadow-sm xl:flex">
+            <aside className="hidden w-[410px] shrink-0 flex-col rounded-2xl border border-white/70 bg-white p-6 shadow-sm xl:flex">
                 <div className="shrink-0 border-b border-slate-100 pb-5">
                     <h2 className="text-lg font-semibold text-slate-900">
                         Project Submission
@@ -118,8 +267,8 @@ export function ClientProjectSubmissionPanel({
                     </p>
                 </div>
 
-                <div className="mt-5 flex min-h-0 flex-1 flex-col gap-4 overflow-hidden">
-                    <div className="flex min-h-0 flex-1 flex-col rounded-2xl border border-slate-100 bg-white p-4">
+                <div className="mt-5 flex flex-col gap-4">
+                    <div className="flex flex-col rounded-2xl border border-slate-100 bg-white p-4">
                         <div className="mb-4 shrink-0">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
@@ -165,6 +314,15 @@ export function ClientProjectSubmissionPanel({
                                     latestPackageId={latestPackage?.packageId ?? ""}
                                 />
 
+                                <ClientReviewAction
+                                    availability={reviewAvailability}
+                                    refreshWarning={revisionRefreshWarning}
+                                    requestError={revisionRequestError}
+                                    onRequestRevision={openRequestRevisionDialog}
+                                    hasHistory={sortedPackages.length > 0}
+                                    onViewHistory={() => setOpenHistoryModal(true)}
+                                />
+
                                 {isDetailLoading ? (
                                     <PanelState
                                         title="Loading package files..."
@@ -182,33 +340,19 @@ export function ClientProjectSubmissionPanel({
                                         message="This package does not contain deliverable files."
                                     />
                                 ) : (
-                                    <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                                        <div className="flex flex-col gap-3 pb-2">
-                                            {visibleFiles.map((file) => (
-                                                <DeliverableFileCard
-                                                    key={file.fileId}
-                                                    file={file}
-                                                    onPreview={setPreviewFile}
-                                                />
-                                            ))}
-                                        </div>
+                                    <div className="flex flex-col gap-3 pb-2">
+                                        {visibleFiles.map((file) => (
+                                            <DeliverableFileCard
+                                                key={file.fileId}
+                                                file={file}
+                                                onPreview={openMainFilePreview}
+                                            />
+                                        ))}
                                     </div>
                                 )}
-
-                                <ReadOnlyReviewNotice />
                             </>
                         )}
                     </div>
-
-                    {sortedPackages.length > 0 && (
-                        <button
-                            type="button"
-                            onClick={() => setOpenHistoryModal(true)}
-                            className="h-11 shrink-0 rounded-xl border border-slate-200 bg-white text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)]"
-                        >
-                            View history
-                        </button>
-                    )}
                 </div>
             </aside>
 
@@ -223,7 +367,7 @@ export function ClientProjectSubmissionPanel({
                     isDetailError={isDetailError}
                     detailError={packageDetailQuery.error}
                     onSelectPackage={setSelectedPackageId}
-                    onPreviewFile={setPreviewFile}
+                    onPreviewFile={openHistoryFilePreview}
                     onClose={() => setOpenHistoryModal(false)}
                 />
             )}
@@ -231,7 +375,19 @@ export function ClientProjectSubmissionPanel({
             {previewFile && (
                 <FilePreviewModal
                     file={previewFile}
-                    onClose={() => setPreviewFile(null)}
+                    onClose={closeFilePreview}
+                />
+            )}
+
+            {openRevisionDialog && (
+                <RequestRevisionDialog
+                    feedback={revisionFeedback}
+                    formError={revisionFormError}
+                    requestError={revisionRequestError}
+                    isPending={rejectSubmissionPackageMutation.isPending}
+                    onFeedbackChange={setRevisionFeedback}
+                    onConfirm={handleRequestRevision}
+                    onClose={closeRequestRevisionDialog}
                 />
             )}
         </>
@@ -264,107 +420,128 @@ function PackageHistoryModal({
     onClose: () => void
 }) {
     return (
-        <div className="fixed inset-0 z-[85] flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-sm">
-            <div className="flex max-h-[88vh] w-full max-w-[780px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
-                <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
-                    <div>
-                        <h3 className="text-xl font-semibold text-slate-900">
-                            Package History
-                        </h3>
-                        <p className="mt-1 text-sm text-slate-500">
-                            Choose a real package version to view its files.
-                        </p>
-                    </div>
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="package-history-title"
+                aria-describedby="package-history-description"
+                className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-6xl flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-xl"
+            >
+                <div className="shrink-0 border-b border-slate-100 p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3
+                                id="package-history-title"
+                                className="text-xl font-semibold text-slate-900"
+                            >
+                                Package History
+                            </h3>
+                            <p
+                                id="package-history-description"
+                                className="mt-1 text-sm text-slate-500"
+                            >
+                                Choose a real package version to view its files.
+                            </p>
+                        </div>
 
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200"
-                        aria-label="Close package history"
-                    >
-                        <X className="h-5 w-5" />
-                    </button>
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200"
+                            aria-label="Close package history"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
                 </div>
 
-                <div className="flex min-h-0 flex-1 gap-4 overflow-hidden p-6">
-                    <div className="w-[190px] shrink-0 rounded-2xl border border-slate-100 bg-slate-50 p-3">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                            Versions
-                        </p>
+                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6">
+                    <div className="grid min-h-0 gap-4 md:grid-cols-[12rem_minmax(0,1fr)]">
+                        <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                                Versions
+                            </p>
 
-                        <div className="flex flex-col gap-2">
-                            {packages.map((item) => {
-                                const isSelected = item.packageId === selectedPackageId
-                                const isLatest = item.packageId === latestPackageId
+                            <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-1">
+                                {packages.map((item) => {
+                                    const isSelected = item.packageId === selectedPackageId
+                                    const isLatest = item.packageId === latestPackageId
 
-                                return (
-                                    <button
-                                        key={item.packageId}
-                                        type="button"
-                                        onClick={() => onSelectPackage(item.packageId)}
-                                        className={`rounded-xl border px-3 py-2 text-left transition ${isSelected
-                                            ? "border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[var(--primary)]"
-                                            : "border-slate-100 bg-white text-slate-600 hover:border-[var(--primary)]/30"
-                                            }`}
-                                    >
-                                        <span className="flex items-center justify-between gap-2 text-sm font-semibold">
-                                            v{formatPackageVersion(item.version)}
-                                            <PackageCheck className="h-4 w-4" />
-                                        </span>
-                                        <span className="mt-1 block truncate text-[11px] text-current/70">
-                                            {isLatest ? "Latest" : formatStatusLabel(item.status)}
-                                        </span>
-                                    </button>
-                                )
-                            })}
-                        </div>
-                    </div>
-
-                    <div className="min-w-0 flex-1 rounded-2xl border border-slate-100 bg-white p-4">
-                        <div className="mb-4 flex items-start justify-between gap-3">
-                            <div>
-                                <h4 className="text-sm font-semibold text-slate-800">
-                                    {selectedPackageSummary
-                                        ? `Version ${formatPackageVersion(
-                                            selectedPackageSummary.version
-                                        )}`
-                                        : "Package details"}
-                                </h4>
-
-                                <p className="mt-0.5 text-xs text-slate-400">
-                                    {formatDateTime(selectedPackageSummary?.submittedAt) ??
-                                        "Select a version to view files."}
-                                </p>
+                                    return (
+                                        <button
+                                            key={item.packageId}
+                                            type="button"
+                                            onClick={() => onSelectPackage(item.packageId)}
+                                            className={`rounded-xl border px-3 py-2 text-left transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10 ${isSelected
+                                                ? "border-[var(--primary)]/40 bg-[var(--primary)]/10 text-[var(--primary)]"
+                                                : "border-slate-100 bg-white text-slate-600 hover:border-[var(--primary)]/30"
+                                                }`}
+                                        >
+                                            <span className="flex items-center justify-between gap-2 text-sm font-semibold">
+                                                v{formatPackageVersion(item.version)}
+                                                <PackageCheck className="h-4 w-4" />
+                                            </span>
+                                            <span className="mt-1 block truncate text-[11px] text-current/70">
+                                                {isLatest ? "Latest" : formatStatusLabel(item.status)}
+                                            </span>
+                                        </button>
+                                    )
+                                })}
                             </div>
-                            {selectedPackageSummary && (
-                                <StatusBadge status={selectedPackageSummary.status} />
-                            )}
                         </div>
 
-                        <PackageMetadata
-                            packageSummary={selectedPackageSummary}
-                            latestPackageId={latestPackageId}
-                        />
+                        <div className="min-w-0 rounded-2xl border border-slate-100 bg-white p-4">
+                            <div className="mb-4 flex items-start justify-between gap-3">
+                                <div>
+                                    <h4 className="text-sm font-semibold text-slate-800">
+                                        {selectedPackageSummary
+                                            ? `Version ${formatPackageVersion(
+                                                selectedPackageSummary.version
+                                            )}`
+                                            : "Package details"}
+                                    </h4>
 
-                        {isDetailLoading ? (
-                            <PanelState
-                                title="Loading package files..."
-                                message="Fetching files for this selected version."
+                                    <p className="mt-0.5 text-xs text-slate-400">
+                                        {formatDateTime(selectedPackageSummary?.submittedAt) ??
+                                            "Select a version to view files."}
+                                    </p>
+                                </div>
+                                {selectedPackageSummary && (
+                                    <StatusBadge status={selectedPackageSummary.status} />
+                                )}
+                            </div>
+
+                            <PackageMetadata
+                                packageSummary={selectedPackageSummary}
+                                latestPackageId={latestPackageId}
                             />
-                        ) : isDetailError ? (
-                            <PanelState
-                                tone="error"
-                                title="Unable to load package files"
-                                message={getRequestErrorMessage(detailError)}
-                            />
-                        ) : visibleFiles.length === 0 ? (
-                            <PanelState
-                                title="No files in this package"
-                                message="This package does not contain deliverable files."
-                            />
-                        ) : (
-                            <div className="max-h-[360px] overflow-y-auto pr-1">
-                                <div className="flex flex-col gap-3">
+
+                            {selectedPackageSummary?.packageId !== latestPackageId && (
+                                <div className="mb-4 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-500">
+                                    Historical versions are read-only. Review actions are
+                                    available only for the latest pending package.
+                                </div>
+                            )}
+
+                            {isDetailLoading ? (
+                                <PanelState
+                                    title="Loading package files..."
+                                    message="Fetching files for this selected version."
+                                />
+                            ) : isDetailError ? (
+                                <PanelState
+                                    tone="error"
+                                    title="Unable to load package files"
+                                    message={getRequestErrorMessage(detailError)}
+                                />
+                            ) : visibleFiles.length === 0 ? (
+                                <PanelState
+                                    title="No files in this package"
+                                    message="This package does not contain deliverable files."
+                                />
+                            ) : (
+                                <div className="grid gap-3 xl:grid-cols-2">
                                     {visibleFiles.map((file) => (
                                         <DeliverableFileCard
                                             key={file.fileId}
@@ -373,8 +550,8 @@ function PackageHistoryModal({
                                         />
                                     ))}
                                 </div>
-                            </div>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>
@@ -416,7 +593,7 @@ function DeliverableFileCard({
                                     {slot.label}
                                 </p>
 
-                                <p className="truncate text-xs font-medium text-slate-500">
+                                <p className="break-words text-xs font-medium text-slate-500">
                                     {file.fileName || "Untitled file"}
                                 </p>
 
@@ -427,16 +604,16 @@ function DeliverableFileCard({
                         </div>
                     </button>
 
-                    <div className="mt-3 flex items-center justify-between rounded-lg bg-white px-3 py-2">
+                    <div className="mt-3 rounded-lg bg-white px-3 py-2">
                         <p className="text-xs font-medium text-slate-500">
                             Read-only deliverable
                         </p>
 
-                        <div className="flex items-center gap-3">
+                        <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
                             <button
                                 type="button"
                                 onClick={() => onPreview(file)}
-                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)]"
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--primary)] transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/20"
                             >
                                 <Eye className="h-3.5 w-3.5" />
                                 Preview
@@ -448,7 +625,7 @@ function DeliverableFileCard({
                                     download={file.fileName || true}
                                     target="_blank"
                                     rel="noreferrer noopener"
-                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 transition hover:text-[var(--primary)]"
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 transition hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--primary)]/20"
                                 >
                                     <Download className="h-3.5 w-3.5" />
                                     Download
@@ -473,6 +650,7 @@ function PackageMetadata({
 
     const submittedAt = formatDateTime(packageSummary.submittedAt)
     const reviewedAt = formatDateTime(packageSummary.reviewedAt)
+    const autoReleaseAt = formatDateTime(packageSummary.autoReleaseAt)
     const notes = normalizeText(packageSummary.notes)
     const feedback = normalizeText(packageSummary.feedback)
     const isLatest = packageSummary.packageId === latestPackageId
@@ -509,6 +687,14 @@ function PackageMetadata({
                         </span>
                     </p>
                 )}
+                {autoReleaseAt && (
+                    <p>
+                        Auto release:{" "}
+                        <span className="font-medium text-slate-700">
+                            {autoReleaseAt}
+                        </span>
+                    </p>
+                )}
                 {notes && (
                     <p className="leading-relaxed">
                         Notes:{" "}
@@ -538,11 +724,231 @@ function StatusBadge({ status }: { status?: string | null }) {
     )
 }
 
-function ReadOnlyReviewNotice() {
+function ClientReviewAction({
+    availability,
+    refreshWarning,
+    requestError,
+    onRequestRevision,
+    hasHistory,
+    onViewHistory,
+}: {
+    availability: ClientReviewActionAvailability
+    refreshWarning?: string | null
+    requestError?: string | null
+    onRequestRevision: () => void
+    hasHistory: boolean
+    onViewHistory: () => void
+}) {
+    const showAction = availability.canRequestRevision
+
     return (
-        <div className="mt-3 shrink-0 rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-xs leading-relaxed text-slate-500">
-            Package review actions are not available until backend approval and
-            rejection endpoints are provided.
+        <div className="my-4 shrink-0 space-y-2">
+            {refreshWarning && (
+                <PanelNotice tone="warning" message={refreshWarning} />
+            )}
+
+            {requestError && (
+                <PanelNotice tone="error" message={requestError} />
+            )}
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-3 text-xs leading-relaxed text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    Review Actions
+                </p>
+
+                {showAction ? (
+                    <div className="mt-2 space-y-3">
+                        <div>
+                            <p className="text-sm font-semibold text-slate-800">
+                                Latest package is pending Client review.
+                            </p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                                Review the submitted files before requesting changes.
+                            </p>
+                        </div>
+
+                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                            <button
+                                type="button"
+                                onClick={onRequestRevision}
+                                className="h-10 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/20"
+                            >
+                                Request Revision
+                            </button>
+
+                            {hasHistory && (
+                                <button
+                                    type="button"
+                                    onClick={onViewHistory}
+                                    className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10"
+                                >
+                                    View History
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                ) : (
+                    <div className="mt-2 space-y-3">
+                        <p>{availability.message}</p>
+
+                        {hasHistory && (
+                            <button
+                                type="button"
+                                onClick={onViewHistory}
+                                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10"
+                            >
+                                View History
+                            </button>
+                        )}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+}
+
+function RequestRevisionDialog({
+    feedback,
+    formError,
+    requestError,
+    isPending,
+    onFeedbackChange,
+    onConfirm,
+    onClose,
+}: {
+    feedback: string
+    formError?: string | null
+    requestError?: string | null
+    isPending: boolean
+    onFeedbackChange: (value: string) => void
+    onConfirm: () => void
+    onClose: () => void
+}) {
+    const feedbackErrorId =
+        formError || requestError ? "revision-feedback-message" : undefined
+
+    return (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-sm">
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="request-revision-title"
+                aria-describedby="request-revision-description"
+                className="flex max-h-[calc(100dvh-2rem)] w-[calc(100vw-2rem)] max-w-[560px] flex-col overflow-hidden rounded-3xl bg-white text-slate-900 shadow-xl"
+            >
+                <div className="shrink-0 border-b border-slate-100 p-5 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <h3
+                                id="request-revision-title"
+                                className="text-xl font-semibold text-slate-900"
+                            >
+                                Request Revision
+                            </h3>
+                            <p
+                                id="request-revision-description"
+                                className="mt-1 text-sm leading-relaxed text-slate-500"
+                            >
+                                Send clear feedback to the expert before the project can
+                                move forward.
+                            </p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isPending}
+                            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+                            aria-label="Close request revision dialog"
+                        >
+                            <X className="h-5 w-5" />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-5 sm:p-6">
+                    <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-700">
+                        Requesting revision sends this feedback to the expert and
+                        asks the backend to return the project to a revision-required
+                        state. This does not approve or complete the project, and the
+                        frontend does not release escrow.
+                    </div>
+
+                    <label className="block">
+                        <span
+                            id="revision-feedback-label"
+                            className="text-sm font-semibold text-slate-800"
+                        >
+                            Revision feedback
+                        </span>
+                        <textarea
+                            value={feedback}
+                            onChange={(event) => onFeedbackChange(event.target.value)}
+                            disabled={isPending}
+                            rows={5}
+                            placeholder="Describe what the expert should revise."
+                            aria-labelledby="revision-feedback-label"
+                            aria-describedby={feedbackErrorId}
+                            aria-invalid={Boolean(formError)}
+                            className="mt-2 w-full resize-none rounded-2xl border border-slate-200 bg-white px-3 py-3 text-sm leading-relaxed text-slate-700 outline-none transition focus:border-[var(--primary)]/50 focus:ring-4 focus:ring-[var(--primary)]/10 disabled:cursor-not-allowed disabled:bg-slate-50 disabled:opacity-70"
+                        />
+                    </label>
+
+                    <div id={feedbackErrorId}>
+                        {formError && (
+                            <PanelNotice tone="error" message={formError} />
+                        )}
+
+                        {requestError && (
+                            <PanelNotice tone="error" message={requestError} />
+                        )}
+                    </div>
+                </div>
+
+                <div className="shrink-0 border-t border-slate-100 p-5">
+                    <div className="grid gap-3 sm:flex sm:items-center sm:justify-end">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isPending}
+                            className="h-10 rounded-xl border border-slate-200 px-4 text-sm font-semibold text-slate-600 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={onConfirm}
+                            disabled={isPending}
+                            className="h-10 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isPending ? "Requesting..." : "Request Revision"}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
+
+function PanelNotice({
+    message,
+    tone,
+}: {
+    message: string
+    tone: "warning" | "error"
+}) {
+    const isError = tone === "error"
+
+    return (
+        <div
+            className={`flex gap-2 rounded-xl border px-3 py-2 text-xs font-medium ${isError
+                ? "border-rose-100 bg-rose-50 text-rose-700"
+                : "border-amber-100 bg-amber-50 text-amber-700"
+                }`}
+        >
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{message}</span>
         </div>
     )
 }
@@ -592,8 +998,8 @@ function FilePreviewModal({
     const uploadedAt = formatDateTime(file.uploadedAt)
 
     return (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/35 px-4">
-            <div className="flex max-h-[88vh] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/35 px-4">
+            <div className="flex max-h-[calc(100dvh-2rem)] w-full max-w-[820px] flex-col overflow-hidden rounded-3xl bg-white shadow-xl">
                 <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
                     <div className="flex min-w-0 items-center gap-3">
                         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
@@ -719,6 +1125,135 @@ function getFilesSortedBySlot(files: DeliverableFile[]) {
     })
 }
 
+function getClientReviewActionAvailability({
+    role,
+    workspaceStatus,
+    projectStatus,
+    workspaceId,
+    latestPackage,
+    selectedPackage,
+    isMutationPending,
+    acceptedRevisionPackageId,
+}: {
+    role?: UserRole | null
+    workspaceStatus?: string | null
+    projectStatus?: string | null
+    workspaceId: string
+    latestPackage?: SubmissionPackageSummary | null
+    selectedPackage?: SubmissionPackageSummary | null
+    isMutationPending: boolean
+    acceptedRevisionPackageId?: string | null
+}): ClientReviewActionAvailability {
+    if (role !== UserRole.CLIENT) {
+        return {
+            canRequestRevision: false,
+            message: "Only the Client can request revision for a package.",
+        }
+    }
+
+    if (!normalizeText(workspaceId)) {
+        return {
+            canRequestRevision: false,
+            message: "Workspace information is missing, so review actions are locked.",
+        }
+    }
+
+    if (!latestPackage || !selectedPackage) {
+        return {
+            canRequestRevision: false,
+            message: "No submitted package is available for review yet.",
+        }
+    }
+
+    if (acceptedRevisionPackageId === latestPackage.packageId) {
+        return {
+            canRequestRevision: false,
+            message: "Revision was requested for this package. Waiting for refreshed project data.",
+        }
+    }
+
+    if (isMutationPending) {
+        return {
+            canRequestRevision: false,
+            message: "Revision request is being sent. Please wait.",
+        }
+    }
+
+    const normalizedWorkspaceStatus = normalizeStatus(workspaceStatus)
+    const normalizedProjectStatus = normalizeStatus(projectStatus)
+    const normalizedPackageStatus = normalizeStatus(latestPackage.status)
+
+    if (selectedPackage.packageId !== latestPackage.packageId) {
+        return {
+            canRequestRevision: false,
+            message: "Historical versions are read-only. Review actions are available only for the latest pending package.",
+        }
+    }
+
+    if (
+        normalizedProjectStatus === "COMPLETED" ||
+        normalizedPackageStatus === "APPROVED"
+    ) {
+        return {
+            canRequestRevision: false,
+            message:
+                normalizedProjectStatus === "COMPLETED"
+                    ? "This package has been approved and is read-only. The project has been completed, so no further review actions are available."
+                    : "This package has been approved and is read-only.",
+        }
+    }
+
+    if (
+        normalizedProjectStatus === "REVISION_REQUESTED" &&
+        normalizedPackageStatus === "REJECTED"
+    ) {
+        return {
+            canRequestRevision: false,
+            message: "Revision feedback is available. Waiting for the expert to resubmit.",
+        }
+    }
+
+    if (normalizedProjectStatus === "DISPUTED") {
+        return {
+            canRequestRevision: false,
+            message: "This project is disputed, so package review actions are locked.",
+        }
+    }
+
+    if (normalizedWorkspaceStatus !== "ACTIVE") {
+        return {
+            canRequestRevision: false,
+            message: "This workspace is read-only for package review.",
+        }
+    }
+
+    if (normalizedProjectStatus !== "UNDER_REVIEW") {
+        return {
+            canRequestRevision: false,
+            message: "Request Revision is available only while the project is under review.",
+        }
+    }
+
+    if (normalizedPackageStatus !== "PENDING") {
+        return {
+            canRequestRevision: false,
+            message: "This package is read-only because it is no longer pending review.",
+        }
+    }
+
+    if (!normalizeText(latestPackage.packageId)) {
+        return {
+            canRequestRevision: false,
+            message: "Package information is missing, so review actions are locked.",
+        }
+    }
+
+    return {
+        canRequestRevision: true,
+        message: "The latest package can be sent back for revision.",
+    }
+}
+
 function getFileSlot(fileType: SubmissionFileType) {
     const normalizedType = String(fileType).toUpperCase()
 
@@ -803,6 +1338,56 @@ function getRequestErrorMessage(error: unknown) {
         : "Please try again later."
 }
 
+function getReviewErrorMessage(error: unknown) {
+    const backendMessage = getBackendMessage(error)
+
+    if (backendMessage) return backendMessage
+
+    const status = getResponseStatus(error)
+
+    if (status === 400 || status === 422) {
+        return "The revision feedback was not accepted. Please review it and try again."
+    }
+
+    if (status === 401) {
+        return "Your session expired. Please sign in again before requesting revision."
+    }
+
+    if (status === 403) {
+        return "You are not authorized to request revision for this package."
+    }
+
+    if (status === 404) {
+        return "This package could not be found. Refresh the workspace and try again."
+    }
+
+    if (status === 409) {
+        return "This package is no longer reviewable. Refresh the workspace to see the latest status."
+    }
+
+    return "Unable to request revision. Please try again later."
+}
+
+function getBackendMessage(error: unknown) {
+    if (!isRecord(error)) return null
+
+    const response = isRecord(error.response) ? error.response : null
+    const data = response && isRecord(response.data) ? response.data : null
+    const message =
+        data && typeof data.message === "string" ? data.message.trim() : ""
+
+    return message.length > 0 ? message : null
+}
+
+function getResponseStatus(error: unknown) {
+    if (!isRecord(error)) return null
+
+    const response = isRecord(error.response) ? error.response : null
+    const status = response?.status
+
+    return typeof status === "number" ? status : null
+}
+
 function joinDisplayParts(parts: Array<string | null | undefined>) {
     const visibleParts = parts
         .map((part) => normalizeText(part))
@@ -819,6 +1404,10 @@ function normalizeText(value?: string | null) {
     const normalized = value.trim()
 
     return normalized.length > 0 ? normalized : null
+}
+
+function normalizeStatus(value?: string | null) {
+    return normalizeText(value)?.toUpperCase() ?? ""
 }
 
 function safeNumber(value: number) {

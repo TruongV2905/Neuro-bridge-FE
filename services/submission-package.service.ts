@@ -9,11 +9,14 @@ import type {
   ExpertSubmitWorkspacePackageMutationVariables,
   ExpertSubmitWorkspacePackageRequest,
   ExpertSubmitWorkspacePackageResponse,
+  RejectSubmissionPackageMutationVariables,
+  RejectSubmissionPackageRequest,
   ResubmitSubmissionPackageMutationVariables,
   ResubmitSubmissionPackageRequest,
   SubmissionFileType,
   SubmissionPackageDetail,
   SubmissionPackageSummary,
+  SubmissionReviewResponse,
 } from "@/types/submission-package.type";
 import { workspaceKeys } from "./workspace.service";
 
@@ -114,6 +117,22 @@ export async function resubmitSubmissionPackage(
 ) {
   const { data } = await api.post<SubmissionPackageSummary>(
     `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/resubmit`,
+    request,
+  );
+
+  return data;
+}
+
+export async function rejectSubmissionPackage(
+  packageId: string,
+  feedback: string,
+) {
+  const request: RejectSubmissionPackageRequest = {
+    packageId,
+    feedback,
+  };
+  const { data } = await api.patch<SubmissionReviewResponse>(
+    `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/reject`,
     request,
   );
 
@@ -312,6 +331,42 @@ export function useResubmitSubmissionPackage(userCode?: string | null) {
             normalizedUserCode,
             submittedPackage.packageId,
           ),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useRejectSubmissionPackage(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    SubmissionReviewResponse,
+    SubmissionMutationError,
+    RejectSubmissionPackageMutationVariables
+  >({
+    mutationFn: ({ packageId, feedback }) =>
+      rejectSubmissionPackage(packageId, feedback),
+    retry: 0,
+    onSuccess: async (_reviewedPackage, { packageId, workspaceId }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(workspaceId),
         }),
       ]);
     },

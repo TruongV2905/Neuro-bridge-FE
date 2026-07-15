@@ -176,7 +176,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
 
       if (response.workspaceId) {
         toast.success(response.message || "Workspace created successfully.");
-        router.push(`/chat-room/${response.workspaceId}`);
+        router.push(getWorkspaceHref(response.workspaceId, currentRole, role));
         return;
       }
 
@@ -434,7 +434,13 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                     asChild
                     className="h-11 w-full rounded-xl bg-slate-950 text-sm font-bold text-white hover:bg-slate-800"
                   >
-                    <Link href={`/chat-room/${contract.workspaceId}`}>
+                    <Link
+                      href={getWorkspaceHref(
+                        contract.workspaceId,
+                        currentRole,
+                        role,
+                      )}
+                    >
                       Open workspace
                       <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
@@ -716,6 +722,27 @@ function getBackHref(role: "client" | "expert") {
   return role === "client"
     ? "/client/dashboard/contracts"
     : "/expert/dashboard/contracts";
+}
+
+function getWorkspaceHref(
+  workspaceId: string,
+  authenticatedRole: UserRole | undefined,
+  viewRole: "client" | "expert",
+) {
+  const normalizedWorkspaceId = workspaceId.trim();
+  const dashboardRole =
+    authenticatedRole === UserRole.CLIENT ||
+    authenticatedRole === UserRole.EXPERT
+      ? authenticatedRole
+      : viewRole === "client"
+        ? UserRole.CLIENT
+        : UserRole.EXPERT;
+  const dashboardBase =
+    dashboardRole === UserRole.EXPERT
+      ? "/expert/dashboard/projects"
+      : "/client/dashboard/projects";
+
+  return `${dashboardBase}/${encodeURIComponent(normalizedWorkspaceId)}`;
 }
 
 function formatDate(value: string) {

@@ -112,28 +112,26 @@ export function ExpertApplyTypeDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[min(760px,calc(100vh-2rem))] overflow-hidden rounded-3xl bg-white p-0 shadow-2xl shadow-slate-900/10 sm:max-w-3xl">
-        <div className="max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
-              Apply to Jobpost
-            </DialogTitle>
-            <DialogDescription className="leading-6 text-slate-500">
-              Submit your budget and timeline. Proposal details are optional.
-            </DialogDescription>
-          </DialogHeader>
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden rounded-3xl bg-white p-0 shadow-2xl shadow-slate-900/10 sm:max-w-3xl">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-5 pr-14">
+          <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
+            Apply to Jobpost
+          </DialogTitle>
+          <DialogDescription className="leading-6 text-slate-500">
+            Submit your budget and timeline. Proposal details are optional.
+          </DialogDescription>
+        </DialogHeader>
 
-          <div className="mt-5">
-            <ExpertUnifiedApplyForm
-              key={formResetKey}
-              job={job}
-              expertCode={expertCode}
-              isSubmitting={isApplyBusy}
-              serverError={serverError}
-              onCancel={() => handleOpenChange(false)}
-              onSubmit={handleSubmit}
-            />
-          </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-5">
+          <ExpertUnifiedApplyForm
+            key={formResetKey}
+            job={job}
+            expertCode={expertCode}
+            isSubmitting={isApplyBusy}
+            serverError={serverError}
+            onCancel={() => handleOpenChange(false)}
+            onSubmit={handleSubmit}
+          />
         </div>
       </DialogContent>
     </Dialog>

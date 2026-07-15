@@ -242,8 +242,8 @@ export function ClientProposalDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto p-0 sm:max-w-2xl">
-        <DialogHeader className="border-b border-slate-100 px-6 py-5">
+      <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b border-slate-100 px-6 py-5 pr-14">
           <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
             {proposal?.title || "Proposal details"}
           </DialogTitle>
@@ -256,27 +256,28 @@ export function ClientProposalDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {proposalSummary && proposal ? (
-          <div className="space-y-5 px-6 py-5">
-            <div className="grid gap-3 sm:grid-cols-3">
-              <DetailMetric
-                icon={<User className="h-4 w-4" />}
-                label="Expert"
-                value={expertName}
-              />
-              <DetailMetric
-                icon={<LockKeyhole className="h-4 w-4" />}
-                label="Proposed budget"
-                value={formatApplicantMoney(
-                  proposalSummary.expertApply.proposedBudget,
-                )}
-              />
-              <DetailMetric
-                icon={<Clock4 className="h-4 w-4" />}
-                label="Estimated time"
-                value={`${proposalSummary.expertApply.estimatedDays} days`}
-              />
-            </div>
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          {proposalSummary && proposal ? (
+            <div className="space-y-5 px-6 py-5">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <DetailMetric
+                  icon={<User className="h-4 w-4" />}
+                  label="Expert"
+                  value={expertName}
+                />
+                <DetailMetric
+                  icon={<LockKeyhole className="h-4 w-4" />}
+                  label="Proposed budget"
+                  value={formatApplicantMoney(
+                    proposalSummary.expertApply.proposedBudget,
+                  )}
+                />
+                <DetailMetric
+                  icon={<Clock4 className="h-4 w-4" />}
+                  label="Estimated time"
+                  value={`${proposalSummary.expertApply.estimatedDays} days`}
+                />
+              </div>
 
             <section>
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
@@ -348,8 +349,9 @@ export function ClientProposalDetailDialog({
             Proposal details are unavailable.
           </div>
         )}
+        </div>
 
-        <DialogFooter className="m-0 px-6 py-4">
+        <DialogFooter className="m-0 shrink-0 px-6 py-4">
           {shouldShowUnlockCta && (
             <Button
               type="button"

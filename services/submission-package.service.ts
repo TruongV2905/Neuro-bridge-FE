@@ -11,7 +11,9 @@ import type {
   ExpertSubmitWorkspacePackageRequest,
   ExpertSubmitWorkspacePackageResponse,
   RejectSubmissionPackageMutationVariables,
-  RejectSubmissionPackageRequest,
+  ReviewDeliverableFileMutationVariables,
+  ReviewDeliverableFileRequest,
+  ReviewSubmissionPackageRequest,
   ResubmitSubmissionPackageMutationVariables,
   ResubmitSubmissionPackageRequest,
   SubmissionFileType,
@@ -23,6 +25,7 @@ import { workspaceKeys } from "./workspace.service";
 
 const SUBMISSION_PACKAGE_ENDPOINT =
   "/workspace/api/v1/submission-packages";
+const CLIENT_REVIEW_ENDPOINT = "/workspace/api/v1/workspaces/client";
 const DELIVERABLE_FILE_ENDPOINT =
   "/workspace/api/v1/deliverable-files";
 const FILE_TYPE_ENDPOINT = "/workspace/api/v1/file-types";
@@ -89,6 +92,17 @@ export async function getSubmissionFileTypes() {
   return data;
 }
 
+export async function reviewDeliverableFile(
+  request: ReviewDeliverableFileRequest,
+) {
+  const { data } = await api.patch<DeliverableFile>(
+    `${DELIVERABLE_FILE_ENDPOINT}/review`,
+    request,
+  );
+
+  return data;
+}
+
 export async function submitExpertWorkspacePackage(
   request: ExpertSubmitWorkspacePackageRequest,
 ) {
@@ -127,12 +141,12 @@ export async function rejectSubmissionPackage(
   packageId: string,
   feedback: string,
 ) {
-  const request: RejectSubmissionPackageRequest = {
+  const request: ReviewSubmissionPackageRequest = {
     packageId,
     feedback,
   };
-  const { data } = await api.patch<SubmissionReviewResponse>(
-    `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/reject`,
+  const { data } = await api.post<SubmissionReviewResponse>(
+    `${CLIENT_REVIEW_ENDPOINT}/reject`,
     request,
   );
 
@@ -143,12 +157,12 @@ export async function approveSubmissionPackage(
   packageId: string,
   feedback?: string,
 ) {
-  const request: RejectSubmissionPackageRequest = {
+  const request: ReviewSubmissionPackageRequest = {
     packageId,
     feedback: feedback?.trim() || "Approved",
   };
-  const { data } = await api.patch<SubmissionReviewResponse>(
-    `${SUBMISSION_PACKAGE_ENDPOINT}/${encodeURIComponent(packageId)}/approve`,
+  const { data } = await api.post<SubmissionReviewResponse>(
+    `${CLIENT_REVIEW_ENDPOINT}/approve`,
     request,
   );
 
@@ -223,6 +237,38 @@ export function useSubmissionFileTypes(userCode?: string | null) {
     queryFn: getSubmissionFileTypes,
     enabled: Boolean(normalizedUserCode),
     retry: 0,
+  });
+}
+
+export function useReviewDeliverableFile(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    DeliverableFile,
+    SubmissionMutationError,
+    ReviewDeliverableFileMutationVariables
+  >({
+    mutationFn: ({ request }) => reviewDeliverableFile(request),
+    retry: 0,
+    onSuccess: async (_reviewedFile, { packageId, workspaceId }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(normalizedUserCode, packageId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.files(normalizedUserCode, packageId),
+        }),
+      ]);
+    },
   });
 }
 

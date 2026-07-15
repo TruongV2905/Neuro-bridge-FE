@@ -22,6 +22,9 @@ export type DeliverableFile = {
   fileType: SubmissionFileType;
   uploadedAt: string;
   isDelete: boolean;
+  status?: string | null;
+  feedback?: string | null;
+  reviewedAt?: string | null;
 };
 
 export type SubmissionPackageDetail = SubmissionPackageSummary & {
@@ -88,12 +91,25 @@ export type ResubmitSubmissionPackageRequest = {
   updatedFiles: SubmissionFileRequest[];
 };
 
-export type RejectSubmissionPackageRequest = {
+export type ReviewSubmissionPackageRequest = {
   packageId: string;
   feedback: string;
 };
 
 export type SubmissionReviewResponse = SubmissionPackageSummary;
+
+export type DeliverableFileReviewStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "REVISION_REQUIRED"
+  | "SUPERSEDED";
+
+export type ReviewDeliverableFileRequest = {
+  fileId: string;
+  newStatus: DeliverableFileReviewStatus;
+  feedback?: string;
+};
 
 export type CreateSubmissionPackageMutationVariables = {
   request: CreateSubmissionPackageRequest;
@@ -119,4 +135,10 @@ export type ApproveSubmissionPackageMutationVariables = {
   packageId: string;
   workspaceId: string;
   feedback?: string;
+};
+
+export type ReviewDeliverableFileMutationVariables = {
+  workspaceId: string;
+  packageId: string;
+  request: ReviewDeliverableFileRequest;
 };

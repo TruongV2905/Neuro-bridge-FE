@@ -48,6 +48,7 @@ import type {
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 
+import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
 import { SubmissionPackageReviewPanel } from "./submission/components/SubmissionPackageReviewPanel"
 
 type WorkspaceDetailViewProps = {
@@ -284,10 +285,16 @@ export function WorkspaceDetailView({
               openChatError={openChatErrorMessage}
               onOpenChat={handleOpenChat}
             />
-            <SubmissionPackageReviewPanel
-              workspaceId={workspace.workspaceId}
-              onCompleted={() => workspaceQuery.refetch()}
-            />
+            {role === UserRole.EXPERT ? (
+              <ExpertSubmissionPackagePanel
+                workspaceId={workspace.workspaceId}
+              />
+            ) : (
+              <SubmissionPackageReviewPanel
+                workspaceId={workspace.workspaceId}
+                onCompleted={() => workspaceQuery.refetch()}
+              />
+            )}
           </div>
         </div>
       </div>

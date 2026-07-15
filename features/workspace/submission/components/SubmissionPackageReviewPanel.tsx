@@ -5,6 +5,7 @@ import { useSelector } from "react-redux"
 import {
   CheckCircle2,
   Download,
+  Eye,
   FileArchive,
   FileText,
   Loader2,
@@ -29,10 +30,12 @@ import {
   useCompleteProject,
   useDeliverableFilesByPackage,
   useProjectDetailByWorkspace,
+  useReviewDeliverableFile,
   useSubmissionPackagesByWorkspace,
 } from "@/services/submission-package.service"
 import type {
   DeliverableFile,
+  DeliverableFileReviewStatus,
   SubmissionPackageSummary,
 } from "@/types/submission-package.type"
 import type { UserResponse } from "@/types/user/user.type"
@@ -57,6 +60,7 @@ export function SubmissionPackageReviewPanel({
   )
   const projectDetailQuery = useProjectDetailByWorkspace(normalizedWorkspaceId)
   const completeProjectMutation = useCompleteProject()
+  const reviewFileMutation = useReviewDeliverableFile(currentUserCode)
   const latestPackage = useMemo(
     () => getLatestPackage(packageListQuery.data ?? []),
     [packageListQuery.data],
@@ -72,6 +76,11 @@ export function SubmissionPackageReviewPanel({
   const [decision, setDecision] = useState<ReviewDecision>(null)
   const [isRejecting, setIsRejecting] = useState(false)
   const [feedback, setFeedback] = useState("")
+  const [selectedFile, setSelectedFile] = useState<DeliverableFile | null>(null)
+  const [fileReviewFeedback, setFileReviewFeedback] = useState("")
+  const [fileReviews, setFileReviews] = useState<
+    Record<string, { status: DeliverableFileReviewStatus; feedback?: string }>
+  >({})
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const isLoading =
@@ -81,10 +90,23 @@ export function SubmissionPackageReviewPanel({
   const isError =
     packageListQuery.isError || projectDetailQuery.isError || filesQuery.isError
   const statusText = getPackageStatusText(decision, latestPackage)
+  const allFilesApproved =
+    files.length > 0 &&
+    files.every((file) => {
+      const reviewStatus =
+        fileReviews[file.fileId]?.status ?? normalizeReviewStatus(file.status)
+
+      return reviewStatus === "APPROVED"
+    })
   const canAccept =
     Boolean(normalizedWorkspaceId && projectId && packageId) &&
-    files.length > 0 &&
+    allFilesApproved &&
     !completeProjectMutation.isPending
+  const selectedFileReview = selectedFile
+    ? fileReviews[selectedFile.fileId]
+    : undefined
+  const selectedFileStatus =
+    selectedFileReview?.status ?? normalizeReviewStatus(selectedFile?.status)
 
   const handleOpenPackage = () => {
     setActionError(null)
@@ -132,6 +154,66 @@ export function SubmissionPackageReviewPanel({
     setActionMessage("Package was rejected locally with feedback.")
     setIsRejecting(false)
     setIsDialogOpen(false)
+  }
+
+  const handleOpenFilePreview = (file: DeliverableFile) => {
+    setActionError(null)
+    setSelectedFile(file)
+    setFileReviewFeedback(fileReviews[file.fileId]?.feedback ?? file.feedback ?? "")
+  }
+
+  const handleCloseFilePreview = () => {
+    if (reviewFileMutation.isPending) return
+
+    setSelectedFile(null)
+    setFileReviewFeedback("")
+  }
+
+  const handleReviewFile = async (newStatus: "APPROVED" | "REJECTED") => {
+    if (!selectedFile || !packageId) return
+
+    const normalizedFeedback = fileReviewFeedback.trim()
+
+    if (newStatus === "REJECTED" && !normalizedFeedback) {
+      setActionError("Please enter feedback before rejecting this file.")
+      return
+    }
+
+    setActionError(null)
+
+    try {
+      await reviewFileMutation.mutateAsync({
+        workspaceId: normalizedWorkspaceId,
+        packageId,
+        request: {
+          fileId: selectedFile.fileId,
+          newStatus,
+          feedback:
+            newStatus === "APPROVED"
+              ? normalizedFeedback || "Approved"
+              : normalizedFeedback,
+        },
+      })
+      setFileReviews((current) => ({
+        ...current,
+        [selectedFile.fileId]: {
+          status: newStatus,
+          feedback:
+            newStatus === "APPROVED"
+              ? normalizedFeedback || "Approved"
+              : normalizedFeedback,
+        },
+      }))
+      await filesQuery.refetch()
+      setActionMessage(
+        newStatus === "APPROVED"
+          ? "File approved successfully."
+          : "File rejected successfully.",
+      )
+      handleCloseFilePreview()
+    } catch (error) {
+      setActionError(getRequestErrorMessage(error))
+    }
   }
 
   return (
@@ -214,6 +296,13 @@ export function SubmissionPackageReviewPanel({
                 />
               )}
 
+              {!allFilesApproved && files.length > 0 && (
+                <SubmissionNotice
+                  title="File review required"
+                  message="Preview and approve every deliverable file before completing the project."
+                />
+              )}
+
               {decision === "REJECTED" && feedback.trim() && (
                 <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
                   <p className="text-xs font-bold uppercase tracking-wider text-rose-500">
@@ -253,7 +342,11 @@ export function SubmissionPackageReviewPanel({
 
             <div className="mt-5 space-y-4">
               <PackageMeta packageSummary={latestPackage} projectId={projectId} />
-              <DeliverableFilesTable files={files} />
+              <DeliverableFilesTable
+                files={files}
+                fileReviews={fileReviews}
+                onPreviewFile={handleOpenFilePreview}
+              />
             </div>
 
             {isRejecting && (
@@ -313,6 +406,93 @@ export function SubmissionPackageReviewPanel({
           </div>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={Boolean(selectedFile)}
+        onOpenChange={(open) => {
+          if (!open) handleCloseFilePreview()
+        }}
+      >
+        <DialogContent className="max-h-[min(820px,calc(100vh-2rem))] overflow-hidden rounded-3xl bg-white p-0 shadow-2xl shadow-slate-900/10 sm:max-w-4xl">
+          <div className="max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
+                File Preview
+              </DialogTitle>
+              <DialogDescription className="leading-6 text-slate-500">
+                Review the submitted file details before approving or rejecting
+                it.
+              </DialogDescription>
+            </DialogHeader>
+
+            {selectedFile && (
+              <div className="mt-5 space-y-4">
+                <FilePreviewDetail
+                  file={selectedFile}
+                  reviewStatus={selectedFileStatus}
+                />
+
+                <div>
+                  <label
+                    htmlFor="file-review-feedback"
+                    className="text-xs font-bold uppercase tracking-wider text-slate-400"
+                  >
+                    Review feedback
+                  </label>
+                  <Textarea
+                    id="file-review-feedback"
+                    value={fileReviewFeedback}
+                    onChange={(event) =>
+                      setFileReviewFeedback(event.target.value)
+                    }
+                    placeholder="Add feedback for the expert. Required when rejecting a file."
+                    className="mt-2 min-h-24 rounded-2xl border-slate-200 bg-slate-50/70 text-sm leading-6 shadow-none focus-visible:border-indigo-300 focus-visible:ring-indigo-100"
+                  />
+                </div>
+
+                {actionError && (
+                  <SubmissionNotice
+                    tone="warning"
+                    title="File review failed"
+                    message={actionError}
+                  />
+                )}
+              </div>
+            )}
+
+            <DialogFooter className="mt-6 gap-3 sm:justify-between">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => void handleReviewFile("REJECTED")}
+                disabled={reviewFileMutation.isPending}
+                className="h-10 rounded-xl border-rose-200 px-4 font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+              >
+                {reviewFileMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <XCircle className="mr-2 h-4 w-4" />
+                )}
+                Reject file
+              </Button>
+
+              <Button
+                type="button"
+                onClick={() => void handleReviewFile("APPROVED")}
+                disabled={reviewFileMutation.isPending}
+                className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+              >
+                {reviewFileMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <CheckCircle2 className="mr-2 h-4 w-4" />
+                )}
+                Approve file
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
@@ -333,7 +513,18 @@ function PackageMeta({
   )
 }
 
-function DeliverableFilesTable({ files }: { files: DeliverableFile[] }) {
+function DeliverableFilesTable({
+  files,
+  fileReviews,
+  onPreviewFile,
+}: {
+  files: DeliverableFile[]
+  fileReviews: Record<
+    string,
+    { status: DeliverableFileReviewStatus; feedback?: string }
+  >
+  onPreviewFile: (file: DeliverableFile) => void
+}) {
   if (files.length === 0) {
     return (
       <SubmissionNotice
@@ -345,43 +536,125 @@ function DeliverableFilesTable({ files }: { files: DeliverableFile[] }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-200">
-      <div className="grid grid-cols-[1fr_130px_90px_48px] bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400">
+      <div className="grid grid-cols-[1fr_120px_90px_92px] bg-slate-50 px-4 py-3 text-xs font-bold uppercase tracking-wider text-slate-400">
         <span>File</span>
         <span>Type</span>
         <span className="text-right">Size</span>
-        <span className="text-right">Open</span>
+        <span className="text-right">Review</span>
       </div>
 
-      {files.map((file) => (
-        <div
-          key={file.fileId}
-          className="grid grid-cols-[1fr_130px_90px_48px] items-center border-t border-slate-100 px-4 py-3 text-sm"
-        >
-          <span className="flex min-w-0 items-center gap-2 font-bold text-slate-900">
-            <FileText className="h-4 w-4 shrink-0 text-indigo-500" />
-            <span className="truncate">{file.fileName || "Untitled file"}</span>
-          </span>
-          <span className="text-xs font-bold text-slate-500">
-            {formatStatus(file.fileType)}
-          </span>
-          <span className="text-right text-xs font-semibold text-slate-500">
-            {file.fileSize || "-"}
-          </span>
-          <span className="flex justify-end">
-            {file.fileUrl && (
-              <a
-                href={file.fileUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 hover:text-indigo-600"
-                aria-label={`Open ${file.fileName}`}
+      {files.map((file) => {
+        const reviewStatus =
+          fileReviews[file.fileId]?.status ?? normalizeReviewStatus(file.status)
+
+        return (
+          <div
+            key={file.fileId}
+            className="grid grid-cols-[1fr_120px_90px_92px] items-center border-t border-slate-100 px-4 py-3 text-sm"
+          >
+            <span className="flex min-w-0 items-center gap-2 font-bold text-slate-900">
+              <FileText className="h-4 w-4 shrink-0 text-indigo-500" />
+              <span className="truncate">
+                {file.fileName || "Untitled file"}
+              </span>
+            </span>
+            <span className="text-xs font-bold text-slate-500">
+              {formatStatus(file.fileType)}
+            </span>
+            <span className="text-right text-xs font-semibold text-slate-500">
+              {file.fileSize || "-"}
+            </span>
+            <span className="flex justify-end">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onPreviewFile(file)}
+                className={cn(
+                  "h-8 rounded-lg px-2 text-xs font-bold",
+                  reviewStatus === "APPROVED" &&
+                    "text-emerald-600 hover:text-emerald-700",
+                  reviewStatus === "REJECTED" &&
+                    "text-rose-600 hover:text-rose-700",
+                  reviewStatus === "PENDING" &&
+                    "text-indigo-600 hover:text-indigo-700",
+                )}
               >
-                <Download className="h-4 w-4" />
-              </a>
-            )}
-          </span>
-        </div>
-      ))}
+                <Eye className="mr-1.5 h-3.5 w-3.5" />
+                {reviewStatus === "PENDING"
+                  ? "Preview"
+                  : formatStatus(reviewStatus)}
+              </Button>
+            </span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function FilePreviewDetail({
+  file,
+  reviewStatus,
+}: {
+  file: DeliverableFile
+  reviewStatus: DeliverableFileReviewStatus
+}) {
+  const previewKind = getPreviewKind(file)
+
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-4">
+        <MetaTile label="File" value={file.fileName || "Untitled file"} />
+        <MetaTile label="Type" value={formatStatus(file.fileType)} />
+        <MetaTile label="Size" value={file.fileSize || "-"} />
+        <MetaTile label="Review" value={formatStatus(reviewStatus)} />
+      </div>
+
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-slate-50">
+        {previewKind === "image" && file.fileUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={file.fileUrl}
+            alt={file.fileName}
+            className="max-h-[420px] w-full object-contain"
+          />
+        ) : previewKind === "video" && file.fileUrl ? (
+          <video
+            src={file.fileUrl}
+            controls
+            className="max-h-[420px] w-full bg-black"
+          />
+        ) : previewKind === "document" && file.fileUrl ? (
+          <iframe
+            src={file.fileUrl}
+            title={file.fileName || "Deliverable file preview"}
+            className="h-[420px] w-full bg-white"
+          />
+        ) : (
+          <div className="flex min-h-52 flex-col items-center justify-center p-8 text-center">
+            <FileArchive className="h-10 w-10 text-slate-300" />
+            <p className="mt-3 text-sm font-extrabold text-slate-800">
+              Preview is not available for this file type
+            </p>
+            <p className="mt-1 max-w-md text-xs font-semibold leading-5 text-slate-500">
+              Download or open the file in a new tab to inspect it before
+              reviewing.
+            </p>
+          </div>
+        )}
+      </div>
+
+      {file.fileUrl && (
+        <a
+          href={file.fileUrl}
+          target="_blank"
+          rel="noreferrer noopener"
+          className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-700 transition hover:border-indigo-200 hover:text-indigo-600"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Open original file
+        </a>
+      )}
     </div>
   )
 }
@@ -448,7 +721,10 @@ function getLatestPackage(packages: SubmissionPackageSummary[]) {
 function getVisibleFiles(files: DeliverableFile[]) {
   return [...files]
     .filter((file) => !file.isDelete)
-    .sort((left, right) => getFileOrder(left.fileType) - getFileOrder(right.fileType))
+    .sort(
+      (left, right) =>
+        getFileOrder(left.fileType) - getFileOrder(right.fileType),
+    )
 }
 
 function getFileOrder(fileType?: string | null) {
@@ -487,6 +763,43 @@ function formatStatus(value?: string | null) {
     .replace(/_/g, " ")
     .toLowerCase()
     .replace(/\b\w/g, (letter) => letter.toUpperCase())
+}
+
+function normalizeReviewStatus(
+  value?: string | null,
+): DeliverableFileReviewStatus {
+  const normalized = String(value ?? "PENDING").toUpperCase()
+
+  if (
+    normalized === "APPROVED" ||
+    normalized === "REJECTED" ||
+    normalized === "REVISION_REQUIRED" ||
+    normalized === "SUPERSEDED"
+  ) {
+    return normalized
+  }
+
+  return "PENDING"
+}
+
+function getPreviewKind(file: DeliverableFile) {
+  const url = file.fileUrl?.toLowerCase() ?? ""
+  const name = file.fileName?.toLowerCase() ?? ""
+  const source = `${url} ${name}`
+
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(\?|#|$)/.test(source)) {
+    return "image"
+  }
+
+  if (/\.(mp4|webm|ogg|mov)(\?|#|$)/.test(source)) {
+    return "video"
+  }
+
+  if (/\.(pdf|txt|html?)(\?|#|$)/.test(source)) {
+    return "document"
+  }
+
+  return "download"
 }
 
 function shortId(value?: string | null) {

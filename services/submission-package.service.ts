@@ -3,6 +3,8 @@ import type { AxiosError } from "axios";
 
 import api from "@/configs/api";
 import type {
+  AddDeliverableFileMutationVariables,
+  AddDeliverableFileRequest,
   ApproveSubmissionPackageMutationVariables,
   CompleteProjectMutationVariables,
   CreateSubmissionPackageMutationVariables,
@@ -22,6 +24,8 @@ import type {
   SubmissionPackageDetail,
   SubmissionPackageSummary,
   SubmissionReviewResponse,
+  UpdateDeliverableFileMutationVariables,
+  UpdateDeliverableFileRequest,
 } from "@/types/submission-package.type";
 import { workspaceKeys } from "./workspace.service";
 
@@ -36,6 +40,11 @@ const EXPERT_WORKSPACE_SUBMIT_ENDPOINT = SUBMISSION_PACKAGE_ENDPOINT;
 
 type SubmissionReadError = AxiosError;
 type SubmissionMutationError = AxiosError;
+type ApiEnvelope<T> = {
+  code?: number;
+  message?: string;
+  result?: T;
+};
 
 export const submissionPackageKeys = {
   all: ["submission-package"] as const,
@@ -66,13 +75,17 @@ export const submissionPackageKeys = {
 };
 
 export async function getSubmissionPackagesByWorkspace(workspaceId: string) {
-  const { data } = await api.get<SubmissionPackageSummary[]>(
+  const { data } = await api.get<
+    | SubmissionPackageSummary[]
+    | SubmissionPackageSummary
+    | ApiEnvelope<SubmissionPackageSummary[] | SubmissionPackageSummary>
+  >(
     `${SUBMISSION_PACKAGE_ENDPOINT}/workspaces/${encodeURIComponent(
       workspaceId,
     )}`,
   );
 
-  return data;
+  return normalizeSubmissionPackages(data);
 }
 
 export async function getSubmissionPackageDetail(packageId: string) {
@@ -84,11 +97,15 @@ export async function getSubmissionPackageDetail(packageId: string) {
 }
 
 export async function getDeliverableFilesByPackage(packageId: string) {
-  const { data } = await api.get<DeliverableFile[]>(
+  const { data } = await api.get<
+    | DeliverableFile[]
+    | SubmissionPackageDetail
+    | ApiEnvelope<DeliverableFile[] | SubmissionPackageDetail>
+  >(
     `${DELIVERABLE_FILE_ENDPOINT}/packages/${encodeURIComponent(packageId)}`,
   );
 
-  return data;
+  return normalizeDeliverableFiles(data);
 }
 
 export async function getSubmissionFileTypes() {
@@ -126,6 +143,26 @@ export async function reviewDeliverableFile(
 ) {
   const { data } = await api.patch<DeliverableFile>(
     `${DELIVERABLE_FILE_ENDPOINT}/review`,
+    request,
+  );
+
+  return data;
+}
+
+export async function addDeliverableFile(request: AddDeliverableFileRequest) {
+  const { data } = await api.post<DeliverableFile>(
+    DELIVERABLE_FILE_ENDPOINT,
+    request,
+  );
+
+  return data;
+}
+
+export async function updateDeliverableFile(
+  request: UpdateDeliverableFileRequest,
+) {
+  const { data } = await api.put<DeliverableFile>(
+    DELIVERABLE_FILE_ENDPOINT,
     request,
   );
 
@@ -315,6 +352,88 @@ export function useReviewDeliverableFile(userCode?: string | null) {
         }),
         queryClient.invalidateQueries({
           queryKey: submissionPackageKeys.files(normalizedUserCode, packageId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useAddDeliverableFile(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    DeliverableFile,
+    SubmissionMutationError,
+    AddDeliverableFileMutationVariables
+  >({
+    mutationFn: ({ request }) => addDeliverableFile(request),
+    retry: 0,
+    onSuccess: async (createdFile, { workspaceId, request }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.files(
+            normalizedUserCode,
+            request.packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            createdFile.packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(workspaceId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useUpdateDeliverableFile(userCode?: string | null) {
+  const queryClient = useQueryClient();
+  const normalizedUserCode = normalizeIdentifier(userCode);
+
+  return useMutation<
+    DeliverableFile,
+    SubmissionMutationError,
+    UpdateDeliverableFileMutationVariables
+  >({
+    mutationFn: ({ request }) => updateDeliverableFile(request),
+    retry: 0,
+    onSuccess: async (_updatedFile, { workspaceId, packageId }) => {
+      if (!normalizedUserCode) return;
+
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.workspace(
+            normalizedUserCode,
+            workspaceId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.files(
+            normalizedUserCode,
+            packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.detail(
+            normalizedUserCode,
+            packageId,
+          ),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(workspaceId),
         }),
       ]);
     },
@@ -555,4 +674,88 @@ function normalizeIdentifier(value?: string | null) {
   const normalized = value.trim();
 
   return normalized.length > 0 ? normalized : null;
+}
+
+function unwrapApiResult<T>(data: T | ApiEnvelope<T>): T {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "result" in data &&
+    (data as ApiEnvelope<T>).result !== undefined
+  ) {
+    return (data as ApiEnvelope<T>).result as T;
+  }
+
+  return data as T;
+}
+
+function normalizeSubmissionPackages(
+  data:
+    | SubmissionPackageSummary[]
+    | SubmissionPackageSummary
+    | ApiEnvelope<SubmissionPackageSummary[] | SubmissionPackageSummary>,
+) {
+  const result = unwrapApiResult(data);
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (hasArrayData<SubmissionPackageSummary>(result)) {
+    return result.data;
+  }
+
+  if (isSubmissionPackageSummary(result)) {
+    return [result];
+  }
+
+  return [];
+}
+
+function normalizeDeliverableFiles(
+  data:
+    | DeliverableFile[]
+    | SubmissionPackageDetail
+    | ApiEnvelope<DeliverableFile[] | SubmissionPackageDetail>,
+) {
+  const result = unwrapApiResult(data);
+
+  if (Array.isArray(result)) {
+    return result;
+  }
+
+  if (hasArrayData<DeliverableFile>(result)) {
+    return result.data;
+  }
+
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "deliverableFiles" in result &&
+    Array.isArray(result.deliverableFiles)
+  ) {
+    return result.deliverableFiles;
+  }
+
+  return [];
+}
+
+function isSubmissionPackageSummary(
+  value: unknown,
+): value is SubmissionPackageSummary {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "packageId" in value &&
+    typeof (value as { packageId?: unknown }).packageId === "string"
+  );
+}
+
+function hasArrayData<T>(value: unknown): value is { data: T[] } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "data" in value &&
+    Array.isArray((value as { data?: unknown }).data)
+  );
 }

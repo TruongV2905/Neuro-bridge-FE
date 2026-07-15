@@ -38,6 +38,14 @@ export type SubmissionFileRequest = {
   fileType: SubmissionFileType;
 };
 
+export type AddDeliverableFileRequest = SubmissionFileRequest & {
+  packageId: string;
+};
+
+export type UpdateDeliverableFileRequest = SubmissionFileRequest & {
+  fileId: string;
+};
+
 export type SubmissionDraftFile = {
   fileId: string;
   fileType: SubmissionFileType;
@@ -141,6 +149,17 @@ export type ReviewDeliverableFileMutationVariables = {
   workspaceId: string;
   packageId: string;
   request: ReviewDeliverableFileRequest;
+};
+
+export type AddDeliverableFileMutationVariables = {
+  workspaceId: string;
+  request: AddDeliverableFileRequest;
+};
+
+export type UpdateDeliverableFileMutationVariables = {
+  workspaceId: string;
+  packageId: string;
+  request: UpdateDeliverableFileRequest;
 };
 
 export type ProjectDetailByWorkspace = {

@@ -8,8 +8,6 @@ import { UserRole } from "@/types/user/user.type"
 import type { UserResponse } from "@/types/user/user.type"
 import { useWorkspaceDetail } from "@/services/workspace.service"
 
-import { ProjectSubmissionPanel } from "../submission/components/ProjectSubmissionPanel"
-import { ClientProjectSubmissionPanel } from "../submission/components/ClientProjectSubmissionPanel"
 import { ChatComposer } from "./components/ChatComposer"
 import { ChatHeader } from "./components/ChatHeader"
 import { ChatMessage } from "./components/ChatMessage"
@@ -37,17 +35,9 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
     isLoading: isWorkspaceLoading,
     isError: isWorkspaceError,
     error: workspaceError,
-    refetch: refetchWorkspace,
   } = useWorkspaceDetail(normalizedWorkspaceId)
 
   const isExpert = user?.role === UserRole.EXPERT
-  const isClient = user?.role === UserRole.CLIENT
-  const canRenderClientSubmissionPanel =
-    isClient &&
-    Boolean(normalizedWorkspaceId) &&
-    Boolean(workspace) &&
-    !isWorkspaceLoading &&
-    !isWorkspaceError
 
   const partner = isExpert
     ? workspace?.client
@@ -128,24 +118,6 @@ export function WorkspaceChatRoomView({ workspaceId }: WorkspaceChatRoomViewProp
               media={chatMedia}
             />
           </section>
-
-          {isExpert && normalizedWorkspaceId && (
-            <ProjectSubmissionPanel
-              workspaceId={normalizedWorkspaceId}
-              workspaceStatus={workspace?.status}
-              projectStatus={workspace?.projectStatus}
-              onSubmissionAccepted={() => refetchWorkspace()}
-            />
-          )}
-
-          {canRenderClientSubmissionPanel && (
-            <ClientProjectSubmissionPanel
-              workspaceId={normalizedWorkspaceId}
-              workspaceStatus={workspace?.status}
-              projectStatus={workspace?.projectStatus}
-              onRevisionAccepted={() => refetchWorkspace()}
-            />
-          )}
         </div>
       </main>
     </div>

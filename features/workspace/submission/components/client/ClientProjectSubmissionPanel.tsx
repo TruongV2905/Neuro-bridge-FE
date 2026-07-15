@@ -32,7 +32,7 @@ import type {
     SubmissionPackageSummary,
 } from "@/types/submission-package.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
-import { sortSubmissionPackagesByLatest } from "../utils/submission-package-ordering"
+import { sortSubmissionPackagesByLatest } from "../../utils/submission-package-ordering"
 
 type ClientProjectSubmissionPanelProps = {
     workspaceId: string

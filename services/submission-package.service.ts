@@ -4,12 +4,14 @@ import type { AxiosError } from "axios";
 import api from "@/configs/api";
 import type {
   ApproveSubmissionPackageMutationVariables,
+  CompleteProjectMutationVariables,
   CreateSubmissionPackageMutationVariables,
   CreateSubmissionPackageRequest,
   DeliverableFile,
   ExpertSubmitWorkspacePackageMutationVariables,
   ExpertSubmitWorkspacePackageRequest,
   ExpertSubmitWorkspacePackageResponse,
+  ProjectDetailByWorkspace,
   RejectSubmissionPackageMutationVariables,
   ReviewDeliverableFileMutationVariables,
   ReviewDeliverableFileRequest,
@@ -29,6 +31,7 @@ const CLIENT_REVIEW_ENDPOINT = "/workspace/api/v1/workspaces/client";
 const DELIVERABLE_FILE_ENDPOINT =
   "/workspace/api/v1/deliverable-files";
 const FILE_TYPE_ENDPOINT = "/workspace/api/v1/file-types";
+const PROJECT_ENDPOINT = "/workspace/api/v1/projects";
 const EXPERT_WORKSPACE_SUBMIT_ENDPOINT = SUBMISSION_PACKAGE_ENDPOINT;
 
 type SubmissionReadError = AxiosError;
@@ -58,6 +61,8 @@ export const submissionPackageKeys = {
     ] as const,
   fileTypes: (userCode: string) =>
     [...submissionPackageKeys.user(userCode), "file-types"] as const,
+  projectByWorkspace: (workspaceId: string) =>
+    [...submissionPackageKeys.all, "project-by-workspace", workspaceId] as const,
 };
 
 export async function getSubmissionPackagesByWorkspace(workspaceId: string) {
@@ -88,6 +93,30 @@ export async function getDeliverableFilesByPackage(packageId: string) {
 
 export async function getSubmissionFileTypes() {
   const { data } = await api.get<SubmissionFileType[]>(FILE_TYPE_ENDPOINT);
+
+  return data;
+}
+
+export async function getProjectDetailByWorkspace(workspaceId: string) {
+  const { data } = await api.get<{
+    code: number;
+    message: string;
+    result: ProjectDetailByWorkspace;
+  }>(
+    `${PROJECT_ENDPOINT}/workspace/${encodeURIComponent(workspaceId)}`,
+  );
+
+  return data;
+}
+
+export async function completeProject(projectId: string) {
+  const { data } = await api.post<{
+    code: number;
+    message: string;
+    result: ProjectDetailByWorkspace;
+  }>(
+    `${PROJECT_ENDPOINT}/${encodeURIComponent(projectId)}/complete`,
+  );
 
   return data;
 }
@@ -236,6 +265,26 @@ export function useSubmissionFileTypes(userCode?: string | null) {
       : submissionPackageKeys.fileTypes(""),
     queryFn: getSubmissionFileTypes,
     enabled: Boolean(normalizedUserCode),
+    retry: 0,
+  });
+}
+
+export function useProjectDetailByWorkspace(workspaceId?: string | null) {
+  const normalizedWorkspaceId = normalizeIdentifier(workspaceId);
+
+  return useQuery<
+    {
+      code: number;
+      message: string;
+      result: ProjectDetailByWorkspace;
+    },
+    SubmissionReadError
+  >({
+    queryKey: normalizedWorkspaceId
+      ? submissionPackageKeys.projectByWorkspace(normalizedWorkspaceId)
+      : submissionPackageKeys.projectByWorkspace(""),
+    queryFn: () => getProjectDetailByWorkspace(normalizedWorkspaceId ?? ""),
+    enabled: Boolean(normalizedWorkspaceId),
     retry: 0,
   });
 }
@@ -465,6 +514,33 @@ export function useApproveSubmissionPackage(userCode?: string | null) {
         }),
         queryClient.invalidateQueries({
           queryKey: workspaceKeys.detail(workspaceId),
+        }),
+      ]);
+    },
+  });
+}
+
+export function useCompleteProject() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    {
+      code: number;
+      message: string;
+      result: ProjectDetailByWorkspace;
+    },
+    SubmissionMutationError,
+    CompleteProjectMutationVariables
+  >({
+    mutationFn: ({ projectId }) => completeProject(projectId),
+    retry: 0,
+    onSuccess: async (_project, { workspaceId }) => {
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: workspaceKeys.detail(workspaceId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: submissionPackageKeys.projectByWorkspace(workspaceId),
         }),
       ]);
     },

@@ -142,3 +142,19 @@ export type ReviewDeliverableFileMutationVariables = {
   packageId: string;
   request: ReviewDeliverableFileRequest;
 };
+
+export type ProjectDetailByWorkspace = {
+  projectId: string;
+  workspaceId: string;
+  projectName: string;
+  deadline?: string | null;
+  startDate?: string | null;
+  completedAt?: string | null;
+  status: string;
+  progressPercentage: number;
+};
+
+export type CompleteProjectMutationVariables = {
+  projectId: string;
+  workspaceId: string;
+};

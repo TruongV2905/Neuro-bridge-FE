@@ -5,6 +5,7 @@ import type { ReactNode } from "react"
 import { useSelector } from "react-redux"
 import {
     AlertCircle,
+    CheckCircle2,
     Code2,
     Database,
     Download,
@@ -12,6 +13,7 @@ import {
     FileText,
     ImageIcon,
     PackageCheck,
+    ShieldCheck,
     Video,
     X,
 } from "lucide-react"
@@ -20,6 +22,7 @@ import type { RootState } from "@/redux/store"
 import {
     useApproveSubmissionPackage,
     useRejectSubmissionPackage,
+    useReviewDeliverableFile,
     useSubmissionPackageDetail,
     useSubmissionPackagesByWorkspace,
 } from "@/services/submission-package.service"
@@ -29,7 +32,7 @@ import type {
     SubmissionPackageSummary,
 } from "@/types/submission-package.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
-import { sortSubmissionPackagesByLatest } from "../utils/submission-package-ordering"
+import { sortSubmissionPackagesByLatest } from "../../utils/submission-package-ordering"
 
 type ClientProjectSubmissionPanelProps = {
     workspaceId: string
@@ -90,6 +93,8 @@ export function ClientProjectSubmissionPanel({
         useRejectSubmissionPackage(currentUserCode)
     const approveSubmissionPackageMutation =
         useApproveSubmissionPackage(currentUserCode)
+    const reviewDeliverableFileMutation =
+        useReviewDeliverableFile(currentUserCode)
     const sortedPackages = useMemo(
         () => sortSubmissionPackagesByLatest(packageListQuery.data ?? []),
         [packageListQuery.data]
@@ -107,6 +112,12 @@ export function ClientProjectSubmissionPanel({
         useState<string | null>(null)
     const [acceptedRevisionPackageId, setAcceptedRevisionPackageId] =
         useState<string | null>(null)
+    const [previewedFileIds, setPreviewedFileIds] = useState<Set<string>>(
+        () => new Set(),
+    )
+    const [approvedFileIds, setApprovedFileIds] = useState<Set<string>>(
+        () => new Set(),
+    )
     const [resumeHistoryAfterPreview, setResumeHistoryAfterPreview] =
         useState(false)
 
@@ -129,6 +140,14 @@ export function ClientProjectSubmissionPanel({
         () => getFilesSortedBySlot(selectedDeliverableFiles ?? []),
         [selectedDeliverableFiles]
     )
+    const approvedVisibleFileCount = useMemo(() => {
+        return visibleFiles.filter((file) =>
+            isDeliverableFileAccepted(file, approvedFileIds),
+        ).length
+    }, [approvedFileIds, visibleFiles])
+    const allVisibleFilesAccepted =
+        visibleFiles.length === fileSlots.length &&
+        visibleFiles.every((file) => isDeliverableFileAccepted(file, approvedFileIds))
     const isPackageListLoading = packageListQuery.isLoading
     const isPackageListError = packageListQuery.isError
     const isDetailLoading =
@@ -146,9 +165,23 @@ export function ClientProjectSubmissionPanel({
         selectedPackage: selectedPackageSummary,
         isMutationPending:
             rejectSubmissionPackageMutation.isPending ||
-            approveSubmissionPackageMutation.isPending,
+            approveSubmissionPackageMutation.isPending ||
+            reviewDeliverableFileMutation.isPending,
         acceptedRevisionPackageId,
+        approvedFileCount: approvedVisibleFileCount,
+        requiredFileCount: fileSlots.length,
+        allRequiredFilesApproved: allVisibleFilesAccepted,
     })
+    const fileReviewAvailability = getClientFileReviewAvailability({
+        role: user?.role,
+        workspaceStatus,
+        projectStatus,
+        workspaceId: normalizedWorkspaceId,
+        latestPackage,
+        selectedPackage: selectedPackageSummary,
+        isMutationPending: reviewDeliverableFileMutation.isPending,
+    })
+    const canReviewFiles = fileReviewAvailability.canReview
 
     const openRequestRevisionDialog = () => {
         if (!reviewAvailability.canRequestRevision) {
@@ -169,6 +202,48 @@ export function ClientProjectSubmissionPanel({
         setOpenRevisionDialog(false)
         setRevisionFormError(null)
         setRevisionRequestError(null)
+    }
+
+    const handleApproveFile = async (file: DeliverableFile) => {
+        if (reviewDeliverableFileMutation.isPending) return
+
+        setRevisionRequestError(null)
+        setRevisionRefreshWarning(null)
+
+        if (!fileReviewAvailability.canReview) {
+            setRevisionRequestError(fileReviewAvailability.message)
+            return
+        }
+
+        if (!previewedFileIds.has(file.fileId)) {
+            setRevisionRequestError("Preview this file before accepting it.")
+            return
+        }
+
+        if (!normalizedWorkspaceId || !file.packageId || !file.fileId) {
+            setRevisionRequestError("File or workspace information is missing.")
+            return
+        }
+
+        try {
+            await reviewDeliverableFileMutation.mutateAsync({
+                workspaceId: normalizedWorkspaceId,
+                packageId: file.packageId,
+                request: {
+                    fileId: file.fileId,
+                    newStatus: "APPROVED",
+                    feedback: "Approved",
+                },
+            })
+
+            setApprovedFileIds((prev) => {
+                const next = new Set(prev)
+                next.add(file.fileId)
+                return next
+            })
+        } catch (error) {
+            setRevisionRequestError(getReviewErrorMessage(error))
+        }
     }
 
     const handleRequestRevision = async () => {
@@ -277,11 +352,21 @@ export function ClientProjectSubmissionPanel({
     }
 
     const openMainFilePreview = (file: DeliverableFile) => {
+        setPreviewedFileIds((prev) => {
+            const next = new Set(prev)
+            next.add(file.fileId)
+            return next
+        })
         setResumeHistoryAfterPreview(false)
         setPreviewFile(file)
     }
 
     const openHistoryFilePreview = (file: DeliverableFile) => {
+        setPreviewedFileIds((prev) => {
+            const next = new Set(prev)
+            next.add(file.fileId)
+            return next
+        })
         setResumeHistoryAfterPreview(true)
         setOpenHistoryModal(false)
         setPreviewFile(file)
@@ -371,6 +456,9 @@ export function ClientProjectSubmissionPanel({
                                     refreshWarning={revisionRefreshWarning}
                                     requestError={revisionRequestError}
                                     isApproving={approveSubmissionPackageMutation.isPending}
+                                    isReviewingFile={reviewDeliverableFileMutation.isPending}
+                                    approvedFileCount={approvedVisibleFileCount}
+                                    requiredFileCount={fileSlots.length}
                                     onApprove={handleApprovePackage}
                                     onRequestRevision={openRequestRevisionDialog}
                                     hasHistory={sortedPackages.length > 0}
@@ -399,7 +487,17 @@ export function ClientProjectSubmissionPanel({
                                             <DeliverableFileCard
                                                 key={file.fileId}
                                                 file={file}
+                                                canReview={canReviewFiles}
+                                                hasPreviewed={previewedFileIds.has(file.fileId)}
+                                                isAccepted={isDeliverableFileAccepted(
+                                                    file,
+                                                    approvedFileIds,
+                                                )}
+                                                isReviewing={
+                                                    reviewDeliverableFileMutation.isPending
+                                                }
                                                 onPreview={openMainFilePreview}
+                                                onApprove={handleApproveFile}
                                             />
                                         ))}
                                     </div>
@@ -615,13 +713,24 @@ function PackageHistoryModal({
 
 function DeliverableFileCard({
     file,
+    canReview = false,
+    hasPreviewed = false,
+    isAccepted = false,
+    isReviewing = false,
     onPreview,
+    onApprove,
 }: {
     file: DeliverableFile
+    canReview?: boolean
+    hasPreviewed?: boolean
+    isAccepted?: boolean
+    isReviewing?: boolean
     onPreview: (file: DeliverableFile) => void
+    onApprove?: (file: DeliverableFile) => void
 }) {
     const slot = getFileSlot(file.fileType)
     const uploadedAt = formatDateTime(file.uploadedAt)
+    const canAcceptFile = canReview && hasPreviewed && !isAccepted && !isReviewing
 
     return (
         <div className="rounded-xl border border-slate-100 bg-slate-50/70 p-3 transition-colors duration-150 hover:border-[var(--primary)]/30 hover:bg-[var(--primary)]/5">
@@ -655,12 +764,18 @@ function DeliverableFileCard({
                                     {joinDisplayParts([file.fileSize, uploadedAt])}
                                 </p>
                             </div>
+                            {onApprove && (
+                                <FileReviewBadge
+                                    isAccepted={isAccepted}
+                                    hasPreviewed={hasPreviewed}
+                                />
+                            )}
                         </div>
                     </button>
 
                     <div className="mt-3 rounded-lg bg-white px-3 py-2">
                         <p className="text-xs font-medium text-slate-500">
-                            Read-only deliverable
+                            {onApprove ? "Client file review" : "Read-only deliverable"}
                         </p>
 
                         <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
@@ -672,6 +787,24 @@ function DeliverableFileCard({
                                 <Eye className="h-3.5 w-3.5" />
                                 Preview
                             </button>
+
+                            {onApprove && (
+                                <button
+                                    type="button"
+                                    onClick={() => onApprove(file)}
+                                    disabled={!canAcceptFile}
+                                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700 transition hover:text-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-200 disabled:cursor-not-allowed disabled:text-slate-400"
+                                >
+                                    <CheckCircle2 className="h-3.5 w-3.5" />
+                                    {isAccepted
+                                        ? "Accepted"
+                                        : isReviewing
+                                            ? "Saving..."
+                                            : hasPreviewed
+                                                ? "Accept file"
+                                                : "Preview first"}
+                                </button>
+                            )}
 
                             {file.fileUrl && (
                                 <a
@@ -690,6 +823,36 @@ function DeliverableFileCard({
                 </div>
             </div>
         </div>
+    )
+}
+
+function FileReviewBadge({
+    isAccepted,
+    hasPreviewed,
+}: {
+    isAccepted: boolean
+    hasPreviewed: boolean
+}) {
+    if (isAccepted) {
+        return (
+            <span className="shrink-0 rounded-full bg-emerald-50 px-2.5 py-1 text-[10px] font-semibold text-emerald-700">
+                Accepted
+            </span>
+        )
+    }
+
+    if (hasPreviewed) {
+        return (
+            <span className="shrink-0 rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-semibold text-blue-700">
+                Previewed
+            </span>
+        )
+    }
+
+    return (
+        <span className="shrink-0 rounded-full bg-amber-50 px-2.5 py-1 text-[10px] font-semibold text-amber-700">
+            Preview first
+        </span>
     )
 }
 
@@ -783,6 +946,9 @@ function ClientReviewAction({
     refreshWarning,
     requestError,
     isApproving,
+    isReviewingFile,
+    approvedFileCount,
+    requiredFileCount,
     onApprove,
     onRequestRevision,
     hasHistory,
@@ -792,6 +958,9 @@ function ClientReviewAction({
     refreshWarning?: string | null
     requestError?: string | null
     isApproving: boolean
+    isReviewingFile: boolean
+    approvedFileCount: number
+    requiredFileCount: number
     onApprove: () => void
     onRequestRevision: () => void
     hasHistory: boolean
@@ -814,63 +983,64 @@ function ClientReviewAction({
                     Review Actions
                 </p>
 
-                {showAction ? (
-                    <div className="mt-2 space-y-3">
-                        <div>
-                            <p className="text-sm font-semibold text-slate-800">
-                                Latest package is pending Client review.
-                            </p>
-                            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
-                                Review the submitted files, then approve the package or
-                                request changes from the expert.
-                            </p>
-                        </div>
-
-                        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
-                            <button
-                                type="button"
-                                onClick={onApprove}
-                                disabled={!availability.canApprove || isApproving}
-                                className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isApproving ? "Approving..." : "Approve Package"}
-                            </button>
-
-                            <button
-                                type="button"
-                                onClick={onRequestRevision}
-                                disabled={!availability.canRequestRevision}
-                                className="h-10 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/20"
-                            >
-                                Request Revision
-                            </button>
-
-                            {hasHistory && (
-                                <button
-                                    type="button"
-                                    onClick={onViewHistory}
-                                    className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10"
-                                >
-                                    View History
-                                </button>
-                            )}
-                        </div>
+                <div className="mt-2 space-y-3">
+                    <div>
+                        <p className="text-sm font-semibold text-slate-800">
+                            {showAction
+                                ? "Latest package is pending Client review."
+                                : "Package review is currently locked."}
+                        </p>
+                        <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                            {showAction
+                                ? "Preview and accept every submitted file before approving the package, or request changes from the expert."
+                                : availability.message}
+                        </p>
                     </div>
-                ) : (
-                    <div className="mt-2 space-y-3">
-                        <p>{availability.message}</p>
+
+                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
+                        <div className="flex items-center gap-2">
+                            <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                            <span className="text-xs font-semibold text-slate-700">
+                                {approvedFileCount}/{requiredFileCount} files accepted
+                            </span>
+                        </div>
+                        {isReviewingFile && (
+                            <span className="text-[11px] font-medium text-slate-400">
+                                Saving file review...
+                            </span>
+                        )}
+                    </div>
+
+                    <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                        <button
+                            type="button"
+                            onClick={onApprove}
+                            disabled={!availability.canApprove || isApproving}
+                            className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isApproving ? "Approving..." : "Approve Package"}
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={onRequestRevision}
+                            disabled={!availability.canRequestRevision}
+                            className="h-10 rounded-xl bg-[var(--primary)] px-4 text-sm font-semibold text-white transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/20 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Request Revision
+                        </button>
 
                         {hasHistory && (
                             <button
                                 type="button"
                                 onClick={onViewHistory}
-                                className="h-10 w-full rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10"
+                                className="h-10 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:border-[var(--primary)]/40 hover:text-[var(--primary)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[var(--primary)]/10"
                             >
                                 View History
                             </button>
                         )}
                     </div>
-                )}
+                </div>
             </div>
         </div>
     )
@@ -1194,6 +1364,110 @@ function getFilesSortedBySlot(files: DeliverableFile[]) {
     })
 }
 
+function isDeliverableFileAccepted(
+    file: DeliverableFile,
+    approvedFileIds: Set<string>,
+) {
+    return approvedFileIds.has(file.fileId) || normalizeStatus(file.status) === "APPROVED"
+}
+
+function getClientFileReviewAvailability({
+    role,
+    workspaceStatus,
+    projectStatus,
+    workspaceId,
+    latestPackage,
+    selectedPackage,
+    isMutationPending,
+}: {
+    role?: UserRole | null
+    workspaceStatus?: string | null
+    projectStatus?: string | null
+    workspaceId: string
+    latestPackage?: SubmissionPackageSummary | null
+    selectedPackage?: SubmissionPackageSummary | null
+    isMutationPending: boolean
+}) {
+    if (role !== UserRole.CLIENT) {
+        return {
+            canReview: false,
+            message: "Only the Client can review deliverable files.",
+        }
+    }
+
+    if (!normalizeText(workspaceId)) {
+        return {
+            canReview: false,
+            message: "Workspace information is missing, so file review is locked.",
+        }
+    }
+
+    if (!latestPackage || !selectedPackage) {
+        return {
+            canReview: false,
+            message: "No submitted package is available for file review yet.",
+        }
+    }
+
+    if (isMutationPending) {
+        return {
+            canReview: false,
+            message: "File review is being saved. Please wait.",
+        }
+    }
+
+    if (selectedPackage.packageId !== latestPackage.packageId) {
+        return {
+            canReview: false,
+            message: "Historical versions are read-only. Review the latest package only.",
+        }
+    }
+
+    const normalizedWorkspaceStatus = normalizeStatus(workspaceStatus)
+    const normalizedProjectStatus = normalizeStatus(projectStatus)
+    const normalizedPackageStatus = normalizeStatus(latestPackage.status)
+
+    if (normalizedProjectStatus === "COMPLETED") {
+        return {
+            canReview: false,
+            message: "This project is completed, so file review is locked.",
+        }
+    }
+
+    if (normalizedProjectStatus === "DISPUTED") {
+        return {
+            canReview: false,
+            message: "This project is disputed, so file review is locked.",
+        }
+    }
+
+    if (normalizedWorkspaceStatus !== "ACTIVE") {
+        return {
+            canReview: false,
+            message: "This workspace is read-only for file review.",
+        }
+    }
+
+    if (normalizedPackageStatus !== "PENDING") {
+        return {
+            canReview: false,
+            message: "Only pending packages can be reviewed file by file.",
+        }
+    }
+
+    if (!normalizeText(latestPackage.packageId)) {
+        return {
+            canReview: false,
+            message: "Package information is missing, so file review is locked.",
+        }
+    }
+
+    return {
+        canReview: true,
+        message: "Preview and accept each submitted file.",
+    }
+}
+
 function getClientReviewActionAvailability({
     role,
     workspaceStatus,
@@ -1203,6 +1477,9 @@ function getClientReviewActionAvailability({
     selectedPackage,
     isMutationPending,
     acceptedRevisionPackageId,
+    approvedFileCount,
+    requiredFileCount,
+    allRequiredFilesApproved,
 }: {
     role?: UserRole | null
     workspaceStatus?: string | null
@@ -1212,6 +1489,9 @@ function getClientReviewActionAvailability({
     selectedPackage?: SubmissionPackageSummary | null
     isMutationPending: boolean
     acceptedRevisionPackageId?: string | null
+    approvedFileCount: number
+    requiredFileCount: number
+    allRequiredFilesApproved: boolean
 }): ClientReviewActionAvailability {
     if (role !== UserRole.CLIENT) {
         return {
@@ -1249,7 +1529,7 @@ function getClientReviewActionAvailability({
         return {
             canApprove: false,
             canRequestRevision: false,
-            message: "Revision request is being sent. Please wait.",
+            message: "Review action is being sent. Please wait.",
         }
     }
 
@@ -1330,10 +1610,18 @@ function getClientReviewActionAvailability({
         }
     }
 
+    if (!allRequiredFilesApproved) {
+        return {
+            canApprove: false,
+            canRequestRevision: true,
+            message: `Accept all submitted files before final approval. (${approvedFileCount}/${requiredFileCount} accepted)`,
+        }
+    }
+
     return {
         canApprove: true,
         canRequestRevision: true,
-        message: "The latest package can be sent back for revision.",
+        message: "The latest package can be approved or sent back for revision.",
     }
 }
 

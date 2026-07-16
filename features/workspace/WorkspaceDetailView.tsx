@@ -9,10 +9,8 @@ import {
   ArrowLeft,
   BriefcaseBusiness,
   CalendarDays,
-  FileText,
   Loader2,
   MessageCircle,
-  PackageCheck,
   Save,
   ShieldCheck,
   Sparkles,
@@ -50,8 +48,8 @@ import type {
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 
-import { ClientProjectSubmissionPanel } from "./submission/components/ClientProjectSubmissionPanel"
-import { ProjectSubmissionPanel } from "./submission/components/ProjectSubmissionPanel"
+import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
+import { SubmissionPackageReviewPanel } from "./submission/components/SubmissionPackageReviewPanel"
 
 type WorkspaceDetailViewProps = {
   workspaceId: string
@@ -273,7 +271,7 @@ export function WorkspaceDetailView({
               escrowId={workspace.escrowId}
             />
           </div>
-
+          
           <div className="space-y-6">
             <WorkspaceQuickActions
               canOpenChat={canOpenChat}
@@ -287,13 +285,16 @@ export function WorkspaceDetailView({
               openChatError={openChatErrorMessage}
               onOpenChat={handleOpenChat}
             />
-            <WorkspaceSubmissionSection
-              workspaceId={workspace.workspaceId}
-              role={role}
-              workspaceStatus={workspace.status}
-              projectStatus={workspace.projectStatus}
-              onSubmissionAccepted={() => workspaceQuery.refetch()}
-            />
+            {role === UserRole.EXPERT ? (
+              <ExpertSubmissionPackagePanel
+                workspaceId={workspace.workspaceId}
+              />
+            ) : (
+              <SubmissionPackageReviewPanel
+                workspaceId={workspace.workspaceId}
+                onCompleted={() => workspaceQuery.refetch()}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -487,19 +488,7 @@ function WorkspaceQuickActions({
         : "Workspace chat is available for Client and Expert accounts only.",
       icon: MessageCircle,
       state: canOpenChat ? "Ready" : "Unavailable",
-    },
-    {
-      title: "Proposal Strategy",
-      description: "Review the approved strategy below. Experts can update it in this workspace.",
-      icon: Sparkles,
-      state: "Connected",
-    },
-    {
-      title: "View Contract",
-      description: "Contract navigation needs a contract ID in Workspace data.",
-      icon: FileText,
-      state: "Unavailable",
-    },
+    }
   ]
 
   return (
@@ -567,56 +556,7 @@ function WorkspaceQuickActions({
   )
 }
 
-function WorkspaceSubmissionSection({
-  workspaceId,
-  role,
-  workspaceStatus,
-  projectStatus,
-  onSubmissionAccepted,
-}: {
-  workspaceId: string
-  role?: UserRole
-  workspaceStatus?: string | null
-  projectStatus?: string | null
-  onSubmissionAccepted?: () => Promise<unknown> | unknown
-}) {
-  const isClient = role === UserRole.CLIENT
-  const isExpert = role === UserRole.EXPERT
 
-  return (
-    <WorkspaceCard
-      icon={PackageCheck}
-      title="Submission Package"
-      description="Real submission package tools scoped to this workspace."
-    >
-      {isExpert ? (
-        <SubmissionPanelFrame>
-          <ProjectSubmissionPanel
-            workspaceId={workspaceId}
-            workspaceStatus={workspaceStatus}
-            projectStatus={projectStatus}
-            onSubmissionAccepted={onSubmissionAccepted}
-          />
-        </SubmissionPanelFrame>
-      ) : isClient ? (
-        <SubmissionPanelFrame>
-          <ClientProjectSubmissionPanel
-            workspaceId={workspaceId}
-            workspaceStatus={workspaceStatus}
-            projectStatus={projectStatus}
-            onRevisionAccepted={onSubmissionAccepted}
-          />
-        </SubmissionPanelFrame>
-      ) : (
-        <SectionNotice
-          tone="warning"
-          title="Submission unavailable"
-          message="This role cannot use submission actions from the frontend."
-        />
-      )}
-    </WorkspaceCard>
-  )
-}
 
 function WorkspaceStrategySection({
   workspaceId,
@@ -884,18 +824,6 @@ function WorkspaceFinancialSection({
         />
       </div>
     </WorkspaceCard>
-  )
-}
-
-function SubmissionPanelFrame({
-  children,
-}: {
-  children: ReactNode
-}) {
-  return (
-    <div className="[&>aside]:!flex [&>aside]:!w-full [&>aside]:!rounded-2xl [&>aside]:!border-slate-200/70 [&>aside]:!shadow-sm">
-      {children}
-    </div>
   )
 }
 

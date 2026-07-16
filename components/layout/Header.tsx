@@ -155,8 +155,16 @@ export default function Header() {
   const profilePath =
     currentUser?.role === "EXPERT" ? "/expert-profile" : "/profile";
 
-  const dashboardPath = 
-    currentUser?.role === "EXPERT" ? "/expert/dashboard" : currentUser?.role === "ADMIN" ? "/admin/dashboard" : "/client/dashboard";
+  const dashboardPath =
+    currentUser?.role === "EXPERT"
+      ? "/expert/dashboard"
+      : currentUser?.role === "ADMIN"
+        ? "/admin/dashboard"
+        : "/client/dashboard/my-job-post";
+  const dashboardLabel =
+    currentUser?.role === "EXPERT" || currentUser?.role === "ADMIN"
+      ? "Dashboard"
+      : "My Jobpost";
   const handleLogout = () => {
     dispatch(logout());
 
@@ -321,7 +329,7 @@ export default function Header() {
                     <UserRound className="h-4 w-4" />
                   </span>
 
-                  <span>Dashboard</span>
+                  <span>{dashboardLabel}</span>
                 </Link>
               </DropdownMenuItem>
 

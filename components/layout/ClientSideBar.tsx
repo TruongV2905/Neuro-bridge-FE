@@ -54,11 +54,6 @@ const WORKSPACE_CONFIG: Record<
     label: "Client Workspace",
     navMain: [
       {
-        title: "Dashboard",
-        url: "/client/dashboard",
-        icon: LayoutDashboardIcon,
-      },
-      {
         title: "My Jobpost",
         url: "/client/dashboard/my-job-post",
         icon: BriefcaseIcon,

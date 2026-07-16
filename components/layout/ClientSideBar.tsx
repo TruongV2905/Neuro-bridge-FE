@@ -9,7 +9,6 @@ import {
   FolderIcon,
   HandshakeIcon,
   HomeIcon,
-  LayoutDashboardIcon,
   MessageCircleIcon,
   PlusCircleIcon,
   SearchIcon,
@@ -93,11 +92,6 @@ const WORKSPACE_CONFIG: Record<
   EXPERT: {
     label: "Expert Workspace",
     navMain: [
-      {
-        title: "Dashboard",
-        url: "/expert/dashboard",
-        icon: LayoutDashboardIcon,
-      },
       {
         title: "My Applications",
         url: "/expert/dashboard/my-applications",

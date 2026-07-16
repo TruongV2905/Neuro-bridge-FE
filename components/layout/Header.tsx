@@ -157,14 +157,16 @@ export default function Header() {
 
   const dashboardPath =
     currentUser?.role === "EXPERT"
-      ? "/expert/dashboard"
+      ? "/expert/dashboard/my-applications"
       : currentUser?.role === "ADMIN"
         ? "/admin/dashboard"
         : "/client/dashboard/my-job-post";
   const dashboardLabel =
-    currentUser?.role === "EXPERT" || currentUser?.role === "ADMIN"
-      ? "Dashboard"
-      : "My Jobpost";
+    currentUser?.role === "EXPERT"
+      ? "My Applications"
+      : currentUser?.role === "ADMIN"
+        ? "Dashboard"
+        : "My Jobpost";
   const handleLogout = () => {
     dispatch(logout());
 

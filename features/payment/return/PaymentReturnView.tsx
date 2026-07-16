@@ -20,6 +20,7 @@ import {
   useGetPaymentTransactionById,
 } from "@/services/payment.service";
 import { UserRole, type UserResponse } from "@/types/user/user.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 const VNPAY_SUCCESS_CODE = "00";
 const CONFIRM_TIMEOUT_MS = 8000;
@@ -395,14 +396,6 @@ function getReturnStatus({
     iconClassName: "bg-emerald-50 text-emerald-600",
     title: "Payment completed",
   };
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function formatVnPayDate(value: string) {

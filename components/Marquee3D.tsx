@@ -5,37 +5,37 @@ const reviews = [
   {
     name: "Emily Carter",
     username: "@emily",
-    body: "Giao diện rất mượt, dễ sử dụng và nhìn chuyên nghiệp hơn mình mong đợi.",
+    body: "The interface feels smooth, easy to use, and more polished than I expected.",
     img: "https://randomuser.me/api/portraits/women/44.jpg",
   },
   {
     name: "Michael Brown",
     username: "@michael",
-    body: "Tính năng hoạt động ổn định, trải nghiệm tổng thể rất tốt và đáng tin cậy.",
+    body: "The features work reliably, and the overall experience feels trustworthy.",
     img: "https://randomuser.me/api/portraits/men/32.jpg",
   },
   {
     name: "Sophia Nguyen",
     username: "@sophia",
-    body: "Mình thích cách hệ thống trình bày thông tin rõ ràng, đẹp và dễ thao tác.",
+    body: "I like how clearly the platform presents information and keeps actions simple.",
     img: "https://randomuser.me/api/portraits/women/68.jpg",
   },
   {
     name: "Daniel Lee",
     username: "@daniel",
-    body: "Sản phẩm rất hữu ích, tiết kiệm thời gian và phù hợp với nhu cầu thực tế.",
+    body: "The product is practical, saves time, and fits real project needs well.",
     img: "https://randomuser.me/api/portraits/men/75.jpg",
   },
   {
     name: "Olivia Wilson",
     username: "@olivia",
-    body: "Thiết kế hiện đại, nội dung dễ hiểu và cảm giác sử dụng rất tự nhiên.",
+    body: "The design feels modern, the content is clear, and using it feels natural.",
     img: "https://randomuser.me/api/portraits/women/12.jpg",
   },
   {
     name: "James Miller",
     username: "@james",
-    body: "Mình khá ấn tượng với tốc độ xử lý và cách bố cục rất gọn gàng.",
+    body: "I am impressed by the fast interactions and the clean, organized layout.",
     img: "https://randomuser.me/api/portraits/men/51.jpg",
   },
 ];

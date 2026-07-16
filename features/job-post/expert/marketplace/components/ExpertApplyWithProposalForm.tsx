@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ApplyJobPostRequest, JobPost } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 type ExpertApplyWithProposalFormProps = {
   job: JobPost;
@@ -93,8 +94,9 @@ export function ExpertApplyWithProposalForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <FieldErrorMessage
-          label="Proposed budget"
+          label="Proposed budget (VND)"
           error={errors.proposedBudget}
+          helperText={`Preview: ${formatMoney(form.proposedBudget, "Enter an amount")}`}
         >
           <Input
             type="number"
@@ -150,7 +152,11 @@ export function ExpertApplyWithProposalForm({
         />
       </FieldErrorMessage>
 
-      <FieldErrorMessage label="Unlock cost" error={errors.unlockCost}>
+      <FieldErrorMessage
+        label="Unlock cost (VND)"
+        error={errors.unlockCost}
+        helperText={`Preview: ${formatMoney(form.unlockCost, "Enter an amount")}`}
+      >
         <Input
           type="number"
           min={0}
@@ -186,10 +192,12 @@ export function ExpertApplyWithProposalForm({
 function FieldErrorMessage({
   label,
   error,
+  helperText,
   children,
 }: {
   label: string;
   error?: string;
+  helperText?: string;
   children: React.ReactNode;
 }) {
   return (
@@ -198,6 +206,9 @@ function FieldErrorMessage({
         {label}
       </Label>
       {children}
+      {helperText && (
+        <p className="text-xs font-semibold text-slate-500">{helperText}</p>
+      )}
       {error && <p className="text-xs font-semibold text-rose-600">{error}</p>}
     </div>
   );

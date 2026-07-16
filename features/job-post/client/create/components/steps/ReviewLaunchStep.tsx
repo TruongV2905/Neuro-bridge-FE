@@ -18,6 +18,7 @@ import { AiBadge } from "../ui/AiBadge";
 import { ExpertMatch } from "../ui/ExpertMatch";
 import { SkillPill } from "../ui/SkillPill";
 import { StepBadge } from "../ui/StepBadge";
+import { formatMoney } from "@/utils/formatMoney";
 
 type Props = {
   projectTitle: string;
@@ -351,7 +352,7 @@ export function ReviewLaunchStep({
             <DetailItem
               icon={Wallet}
               label="BUDGET"
-              value={`$${budgetFrom.toLocaleString()} – $${budgetTo.toLocaleString()}`}
+              value={`${formatMoney(budgetFrom)} - ${formatMoney(budgetTo)}`}
               iconClassName="bg-amber-50 text-amber-600"
             />
 

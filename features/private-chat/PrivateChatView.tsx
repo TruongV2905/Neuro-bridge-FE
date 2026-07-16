@@ -266,7 +266,7 @@ export function PrivateChatView({
       )
 
       window.alert(
-        "Khong the gui tin nhan. Vui long thu lai.",
+        "Unable to send the message. Please try again.",
       )
 
       return false

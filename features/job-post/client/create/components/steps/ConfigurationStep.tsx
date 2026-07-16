@@ -25,6 +25,7 @@ import { Slider } from "@/components/ui/slider";
 import { useGetAllSkills } from "@/services/skill.service";
 import type { CreateJobPostFormValues, JobPostAnalyzeResponse } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
+import { formatMoney } from "@/utils/formatMoney";
 import { StepBadge } from "../ui/StepBadge";
 import { FormField } from "../ui/FormField";
 import { jobPostFieldClassName } from "../../constants/formFieldStyles";
@@ -507,21 +508,21 @@ export function ConfigurationStep({
 
             <div className="flex shrink-0 items-center gap-2">
               <span className="rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-bold text-indigo-500">
-                ${Math.round(budgetFrom / 1000)}K
+                {formatMoney(budgetFrom)}
               </span>
 
               <span className="text-slate-300">—</span>
 
               <span className="rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-1.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)]">
-                ${Math.round(budgetTo / 1000)}K
+                {formatMoney(budgetTo)}
               </span>
             </div>
           </div>
 
           <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 px-5 py-6">
             <div className="mb-4 flex items-center justify-between text-sm font-semibold text-slate-500">
-              <span>${budgetFrom.toLocaleString()}</span>
-              <span>${budgetTo.toLocaleString()}</span>
+              <span>{formatMoney(budgetFrom)}</span>
+              <span>{formatMoney(budgetTo)}</span>
             </div>
 
             <Slider
@@ -535,8 +536,8 @@ export function ConfigurationStep({
             />
 
             <div className="mt-3 flex items-center justify-between text-sm font-semibold text-slate-500">
-              <span>${BUDGET_MIN.toLocaleString()}</span>
-              <span>${BUDGET_MAX.toLocaleString()}</span>
+              <span>{formatMoney(BUDGET_MIN)}</span>
+              <span>{formatMoney(BUDGET_MAX)}</span>
             </div>
           </div>
         </motion.div>

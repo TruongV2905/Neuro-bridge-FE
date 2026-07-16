@@ -47,6 +47,7 @@ import type {
   WorkspaceParticipant,
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
+import { formatMoney } from "@/utils/formatMoney"
 
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
 import { SubmissionPackageReviewPanel } from "./submission/components/SubmissionPackageReviewPanel"
@@ -732,7 +733,7 @@ function WorkspaceStrategySection({
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         {strategy
-                          ? formatMoney(strategy.unlockCost)
+                          ? formatMoney(strategy.unlockCost, "Not available")
                           : "Cost will stay unchanged when strategy is saved."}
                       </p>
                     </div>
@@ -772,7 +773,7 @@ function WorkspaceStrategySection({
                     </div>
                     <DetailTile
                       label="Unlock cost"
-                      value={formatMoney(strategy.unlockCost)}
+                      value={formatMoney(strategy.unlockCost, "Not available")}
                     />
                   </div>
                 ) : (
@@ -1171,18 +1172,6 @@ function formatDate(value?: string | null) {
     month: "2-digit",
     year: "numeric",
   })
-}
-
-function formatMoney(value?: number | null) {
-  if (!Number.isFinite(value)) {
-    return "Not available"
-  }
-
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(Number(value))
 }
 
 function shortId(value?: string | null) {

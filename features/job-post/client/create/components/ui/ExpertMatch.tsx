@@ -1,4 +1,5 @@
 import { BadgeCheck, Star } from "lucide-react";
+import { formatMoney } from "@/utils/formatMoney";
 
 type Props = {
   name: string;
@@ -46,7 +47,9 @@ export function ExpertMatch({ name, role, score }: Props) {
           {score}
         </div>
 
-        <p className="text-sm font-semibold text-slate-400">$120/hr</p>
+        <p className="text-sm font-semibold text-slate-400">
+          {formatMoney(120)}/hr
+        </p>
       </div>
     </div>
   );

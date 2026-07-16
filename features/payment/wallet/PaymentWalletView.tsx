@@ -20,6 +20,7 @@ import {
   useGetMyWallet,
 } from "@/services/payment.service";
 import type { PaymentTransaction } from "@/types/payment.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 type PaymentWalletViewProps = {
   role: "CLIENT" | "EXPERT";
@@ -358,14 +359,6 @@ function getStatusClassName(status: string) {
     default:
       return "border-slate-200 bg-white text-slate-600";
   }
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("vi-VN", {
-    style: "currency",
-    currency: "VND",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function formatDateTime(value: string) {

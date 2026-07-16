@@ -210,14 +210,14 @@ export function ExpertJobpostMarketplaceView() {
 
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <FilterInput
-                label="Min budget"
+                label="Min budget (VND)"
                 value={state.minBudget}
                 onChange={(minBudget) =>
                   setState((current) => ({ ...current, minBudget, page: 0 }))
                 }
               />
               <FilterInput
-                label="Max budget"
+                label="Max budget (VND)"
                 value={state.maxBudget}
                 onChange={(maxBudget) =>
                   setState((current) => ({ ...current, maxBudget, page: 0 }))

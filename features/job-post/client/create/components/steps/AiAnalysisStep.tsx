@@ -19,6 +19,7 @@ import { SkillPill } from "../ui/SkillPill";
 import { StepBadge } from "../ui/StepBadge";
 import type { JobPostAnalyzeResponse } from "@/types/job-post.type";
 import type { SkillResponse } from "@/types/skill.types";
+import { formatMoney } from "@/utils/formatMoney";
 
 type Props = {
   aiResult: JobPostAnalyzeResponse | null;
@@ -273,9 +274,9 @@ export function AiAnalysisStep({
               delay={0.24}
             >
               <p className="text-lg font-bold tabular-nums text-slate-900">
-                ${budgetFrom.toLocaleString()}{" "}
+                {formatMoney(budgetFrom)}{" "}
                 <span className="font-normal text-slate-400">–</span>{" "}
-                ${budgetTo.toLocaleString()}
+                {formatMoney(budgetTo)}
               </p>
             </AnalysisCard>
 

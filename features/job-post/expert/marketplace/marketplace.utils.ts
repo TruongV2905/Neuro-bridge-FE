@@ -1,13 +1,10 @@
 import type { JobPostStatus } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 export const formatCurrency = (value: number): string => {
-  if (!value || value <= 0) return "$0";
+  if (!value || value <= 0) return formatMoney(0);
 
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
-  }
-
-  return `$${value}`;
+  return formatMoney(value);
 };
 
 export const formatBudgetRange = (from: number, to: number): string => {

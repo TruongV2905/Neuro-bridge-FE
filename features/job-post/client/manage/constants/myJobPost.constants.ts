@@ -1,4 +1,5 @@
 import { JobPostStatus } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 import {
   CalendarDays,
   CircleDollarSign,
@@ -25,10 +26,10 @@ export type SortOption = {
 
 export const SORT_OPTIONS: SortOption[] = [
   { value: "createdAt", label: "Newest first" },
-  { value: "title", label: "Title (A–Z)" },
-  { value: "budgetFrom", label: "Budget (low–high)" },
-  { value: "budgetTo", label: "Budget (high–low)" },
-  { value: "estimatedDays", label: "Timeline (short–long)" },
+  { value: "title", label: "Title (A-Z)" },
+  { value: "budgetFrom", label: "Budget (low-high)" },
+  { value: "budgetTo", label: "Budget (high-low)" },
+  { value: "estimatedDays", label: "Timeline (short-long)" },
 ];
 
 export type StatusMeta = {
@@ -104,11 +105,11 @@ export const DEFAULT_FILTER = {
 };
 
 export const BUDGET_PRESETS = [
-  { value: 1000, label: "$1K" },
-  { value: 5000, label: "$5K" },
-  { value: 10000, label: "$10K" },
-  { value: 25000, label: "$25K" },
-  { value: 50000, label: "$50K" },
+  { value: 1000, label: formatMoney(1000) },
+  { value: 5000, label: formatMoney(5000) },
+  { value: 10000, label: formatMoney(10000) },
+  { value: 25000, label: formatMoney(25000) },
+  { value: 50000, label: formatMoney(50000) },
 ];
 
 export const TIMELINE_PRESETS = [
@@ -120,15 +121,12 @@ export const TIMELINE_PRESETS = [
 ];
 
 export const formatCurrency = (value: number): string => {
-  if (!value || value <= 0) return "$0";
-  if (value >= 1000) {
-    return `$${(value / 1000).toFixed(value % 1000 === 0 ? 0 : 1)}K`;
-  }
-  return `$${value}`;
+  if (!value || value <= 0) return formatMoney(0);
+  return formatMoney(value);
 };
 
 export const formatBudgetRange = (from: number, to: number): string => {
-  return `${formatCurrency(from)} – ${formatCurrency(to)}`;
+  return `${formatCurrency(from)} - ${formatCurrency(to)}`;
 };
 
 export const formatTimeline = (days: number): string => {

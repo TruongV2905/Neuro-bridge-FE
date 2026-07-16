@@ -39,6 +39,7 @@ import {
 
 import { cn } from "@/lib/utils";
 import { JobPostDirection, JobPostStatus } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 type FilterState = {
   status: JobPostStatus;
@@ -62,7 +63,7 @@ type Props = {
 };
 
 const formatCompact = (value: number) =>
-  value >= 1000 ? `$${(value / 1000).toFixed(0)}K` : `$${value}`;
+  formatMoney(value);
 
 const fingerprint = (v: FilterState) =>
   `${v.status}|${v.sortBy}|${v.direction}|${v.size}|${v.search}|${v.minBudget}|${v.maxBudget}|${v.estimatedDaysFrom}|${v.estimatedDaysTo}`;
@@ -126,7 +127,7 @@ export function MyJobPostFilterBar({
           <Input
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            placeholder="Search by title, descriptionâ€¦"
+            placeholder="Search by title, description..."
             className="h-11 rounded-xl border-slate-200 bg-white pl-10 pr-10 text-sm shadow-sm shadow-slate-200/50 transition-all focus-visible:border-indigo-400 focus-visible:ring-2 focus-visible:ring-indigo-100"
           />
           {searchInput && (
@@ -345,10 +346,10 @@ function FilterPanel({
         <div className="flex items-center justify-between">
           <Label className="flex items-center gap-1.5 text-xs font-bold text-slate-600">
             <CircleDollarSign className="h-3.5 w-3.5 text-emerald-500" />
-            Budget range (USD)
+            Budget range (VND)
           </Label>
           <span className="text-xs font-semibold text-slate-700">
-            {formatCompact(draft.minBudget)} â€“{" "}
+            {formatCompact(draft.minBudget)} -{" "}
             {draft.maxBudget >= budgetMax
               ? `${formatCompact(budgetMax)}+`
               : formatCompact(draft.maxBudget)}
@@ -380,7 +381,7 @@ function FilterPanel({
             className="h-8 rounded-lg border-slate-200 text-xs"
             placeholder="Min"
           />
-          <span className="text-xs text-slate-400">â€“</span>
+          <span className="text-xs text-slate-400">-</span>
           <Input
             type="number"
             min={0}
@@ -405,7 +406,7 @@ function FilterPanel({
             Timeline (days)
           </Label>
           <span className="text-xs font-semibold text-slate-700">
-            {draft.estimatedDaysFrom || 0} â€“{" "}
+            {draft.estimatedDaysFrom || 0} -{" "}
             {draft.estimatedDaysTo >= daysMax
               ? `${daysMax}+`
               : draft.estimatedDaysTo || 0}

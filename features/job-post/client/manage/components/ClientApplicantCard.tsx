@@ -11,6 +11,7 @@ import type {
   ClientProposalDialogSummary,
   JobPostApplicant,
 } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 type ClientApplicantCardProps = {
   applicant: JobPostApplicant;
@@ -161,11 +162,7 @@ export function resolveApplicantUnlockCost(proposal?: ApplicantProposal | null):
 }
 
 export function formatApplicantMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
+  return formatMoney(value, "Unavailable");
 }
 
 function getExpertDisplayName(fullName: string | undefined, isLoading: boolean) {

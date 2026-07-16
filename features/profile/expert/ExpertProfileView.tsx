@@ -90,7 +90,7 @@ export function ExpertProfileView() {
             />
           ) : (
             <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
-              Không tải được thông tin expert.
+              Unable to load the expert profile.
             </div>
           )}
 
@@ -123,7 +123,7 @@ export function ExpertProfileView() {
               </div>
             ) : (
               <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có portfolio nào.
+                No portfolio items yet.
               </div>
             )}
           </section>
@@ -145,7 +145,7 @@ export function ExpertProfileView() {
               </div>
             ) : (
               <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có skill nào.
+                No skills added yet.
               </div>
             )}
           </section>
@@ -167,7 +167,7 @@ export function ExpertProfileView() {
               </div>
             ) : (
               <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có certificate nào.
+                No certificates added yet.
               </div>
             )}
           </section>

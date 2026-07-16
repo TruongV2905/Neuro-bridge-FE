@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import type { CreateJobPostFormValues } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 import { StepBadge } from "../ui/StepBadge";
 import { FormField } from "../ui/FormField";
 import { jobPostFieldClassName } from "../../constants/formFieldStyles";
@@ -204,13 +205,13 @@ export function BusinessOverviewStep({
 
             <div className="flex shrink-0 items-center gap-2">
               <span className="rounded-full bg-indigo-50 px-4 py-1.5 text-sm font-bold text-indigo-500">
-                ${Math.round(budgetFrom / 1000)}K
+                {formatMoney(budgetFrom)}
               </span>
 
               <span className="text-slate-300">—</span>
 
               <span className="rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 px-4 py-1.5 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.25)]">
-                ${Math.round(budgetTo / 1000)}K
+                {formatMoney(budgetTo)}
               </span>
             </div>
           </div>

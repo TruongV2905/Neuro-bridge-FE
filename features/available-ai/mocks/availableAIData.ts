@@ -1,4 +1,5 @@
 import type { AvailableAI } from "../types"
+import { formatMoney } from "@/utils/formatMoney"
 
 export const availableAIData: AvailableAI[] = [
     {
@@ -32,7 +33,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "3-4 weeks",
 
-        budget: "From $1,500",
+        budget: `From ${formatMoney(1500)}`,
 
         author: {
             name: "Alex Automation",
@@ -82,7 +83,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "5-6 weeks",
 
-        budget: "$3,500 - $5,000",
+        budget: `${formatMoney(3500)} - ${formatMoney(5000)}`,
 
         author: {
             name: "David Vision",
@@ -132,7 +133,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "4-5 weeks",
 
-        budget: "From $2,200",
+        budget: `From ${formatMoney(2200)}`,
 
         author: {
             name: "Sarah Agent",
@@ -183,7 +184,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "6-7 weeks",
 
-        budget: "$4,000",
+        budget: formatMoney(4000),
 
         author: {
             name: "NLP Master",
@@ -234,7 +235,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "5-6 weeks",
 
-        budget: "$5,000 - $7,500",
+        budget: `${formatMoney(5000)} - ${formatMoney(7500)}`,
 
         author: {
             name: "Emma Recs",
@@ -285,7 +286,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "7-9 weeks",
 
-        budget: "From $6,000",
+        budget: `From ${formatMoney(6000)}`,
 
         author: {
             name: "Dr. Deep",
@@ -336,7 +337,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "4-6 weeks",
 
-        budget: "$1,800 - $3,000",
+        budget: `${formatMoney(1800)} - ${formatMoney(3000)}`,
 
         author: {
             name: "Voice Tech",
@@ -387,7 +388,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "6-8 weeks",
 
-        budget: "$8,500",
+        budget: formatMoney(8500),
 
         author: {
             name: "Quant AI",
@@ -438,7 +439,7 @@ export const availableAIData: AvailableAI[] = [
 
         timeline: "4-5 weeks",
 
-        budget: "$3,000 - $4,500",
+        budget: `${formatMoney(3000)} - ${formatMoney(4500)}`,
 
         author: {
             name: "Creative AI",

@@ -14,6 +14,7 @@ import type {
   ExpertApplicationViewItem,
   ExpertProposal,
 } from "@/types/job-post.type";
+import { formatMoney } from "@/utils/formatMoney";
 
 type ExpertApplicationCardProps = {
   application: ExpertApplicationViewItem;
@@ -187,14 +188,6 @@ function resolveUnlockCost(application: ExpertApplicationViewItem) {
   }
 
   return undefined;
-}
-
-function formatMoney(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value);
 }
 
 function formatUnlockCost(value?: number) {

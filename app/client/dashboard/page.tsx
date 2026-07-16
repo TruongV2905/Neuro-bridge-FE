@@ -2,6 +2,7 @@
 
 import { Briefcase, TrendingUp, MessageSquare, Star } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { formatMoney } from "@/utils/formatMoney";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
@@ -45,9 +46,9 @@ const stats = [
 ];
 
 const recentProjects = [
-  { id: 1, name: "AI Customer Support Chatbot", status: "In Progress", proposals: 5, budget: "$5K – $15K" },
-  { id: 2, name: "Data Analytics Dashboard", status: "Reviewing", proposals: 3, budget: "$10K – $20K" },
-  { id: 3, name: "Mobile App Redesign", status: "Completed", proposals: 8, budget: "$8K – $12K" },
+  { id: 1, name: "AI Customer Support Chatbot", status: "In Progress", proposals: 5, budget: `${formatMoney(5000)} - ${formatMoney(15000)}` },
+  { id: 2, name: "Data Analytics Dashboard", status: "Reviewing", proposals: 3, budget: `${formatMoney(10000)} - ${formatMoney(20000)}` },
+  { id: 3, name: "Mobile App Redesign", status: "Completed", proposals: 8, budget: `${formatMoney(8000)} - ${formatMoney(12000)}` },
 ];
 
 export default function ClientDashboardPage() {

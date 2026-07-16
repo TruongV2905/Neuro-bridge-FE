@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator"
 
 import type { RootState } from "@/redux/store"
 import type { UserResponse } from "@/types/user/user.type"
+import { formatMoney } from "@/utils/formatMoney"
 
 import { ClientProfileFormField } from "./components/ClientProfileFormField"
 import { ClientReadOnlyItem } from "./components/ClientReadOnlyItem"
@@ -295,8 +296,8 @@ function ClientProfileEditor({
                                 <ClientProfileFormField icon={<Building2 size={16} />} label="Bank Name" value="Vietcombank" />
                                 <ClientProfileFormField icon={<FileText size={16} />} label="Account Number" value="0123456789" />
                                 <ClientProfileFormField icon={<User size={16} />} label="Account Holder Name" value={profile.fullName} />
-                                <ClientProfileFormField icon={<BriefcaseBusiness size={16} />} label="Wallet Balance" value="2,500,000 VND" />
-                                <ClientProfileFormField icon={<Clock size={16} />} label="Total Withdrawn" value="500,000 VND" />
+                                <ClientProfileFormField icon={<BriefcaseBusiness size={16} />} label="Wallet Balance" value={formatMoney(2500000)} />
+                                <ClientProfileFormField icon={<Clock size={16} />} label="Total Withdrawn" value={formatMoney(500000)} />
                             </div>
                         </CardContent>
                     </Card>

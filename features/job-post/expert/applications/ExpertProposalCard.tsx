@@ -5,6 +5,7 @@ import { ArrowUpRight, FileText, LockKeyhole } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { ExpertProposal } from "@/types/job-post.type";
+import { formatMoney as formatVndMoney } from "@/utils/formatMoney";
 
 type ExpertProposalCardProps = {
   proposal: ExpertProposal;
@@ -66,9 +67,5 @@ export function ExpertProposalCard({
 export function formatMoney(value?: number | null) {
   if (!Number.isFinite(value)) return "Unlock cost unavailable";
 
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(Number(value));
+  return formatVndMoney(Number(value), "Unlock cost unavailable");
 }

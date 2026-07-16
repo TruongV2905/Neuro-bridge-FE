@@ -35,6 +35,7 @@ import { useGetUserByCode } from "@/services/user.service";
 import type { ContractResponse, ContractStatus } from "@/types/contract.type";
 import type { HireExpertResponse } from "@/types/job-post.type";
 import { UserRole, type UserResponse } from "@/types/user/user.type";
+import { formatMoney as formatVndMoney } from "@/utils/formatMoney";
 import {
   readHireContextFromStorage,
   saveContractHireContext,
@@ -134,7 +135,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
       "The selected proposal terms are locked into this contract.",
     budget:
       contract?.unlockCost && Number.isFinite(Number(contract.unlockCost))
-        ? formatMoney(Number(contract.unlockCost))
+        ? formatContractAmount(Number(contract.unlockCost))
         : "Not available",
     timeline: contract?.deadline
       ? formatDate(contract.deadline)
@@ -337,7 +338,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                   Wallet needs more balance
                 </p>
                 <p className="mt-1 text-sm font-semibold">
-                  Please top up {formatMoney(Number(shortfallAmount))} before
+                  Please top up {formatVndMoney(Number(shortfallAmount), "Not available")} before
                   finalizing this contract again.
                 </p>
                 <Button
@@ -770,7 +771,7 @@ function getErrorMessage(error: unknown, fallback: string) {
   return apiError.response?.data?.message || apiError.message || fallback;
 }
 
-function formatMoney(value: number) {
+function formatContractAmount(value: number) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",

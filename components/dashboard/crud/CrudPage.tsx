@@ -300,7 +300,7 @@ export function CrudPage<
     <PageWrapper
       title={config.title}
       description={
-        config.description ?? `Quản lý danh mục ${config.title.toLowerCase()}`
+        config.description ?? `Manage ${config.title.toLowerCase()}`
       }
     >
       <div className="mt-4 flex flex-col gap-6">

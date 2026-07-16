@@ -268,9 +268,7 @@ export function WorkspaceDetailView({
               workspaceId={workspace.workspaceId}
               role={role}
             />
-            <WorkspaceFinancialSection
-              escrowId={workspace.escrowId}
-            />
+            <WorkspaceFinancialSection />
           </div>
           
           <div className="space-y-6">
@@ -414,9 +412,6 @@ function WorkspaceOverview({
         <DetailTile label="Created" value={formatDate(workspace.createdAt) ?? "Not available"} />
         <DetailTile label="Start date" value={formatDate(workspace.startDate) ?? "Not available"} />
         <DetailTile label="Deadline" value={formatDate(workspace.deadline) ?? "Not available"} />
-        <DetailTile label="Workspace ref" value={shortId(workspace.workspaceId)} />
-        <DetailTile label="Job ref" value={shortId(workspace.jobId)} />
-        <DetailTile label="Escrow ref" value={shortId(workspace.escrowId)} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
@@ -806,24 +801,17 @@ function WorkspaceStrategySection({
   )
 }
 
-function WorkspaceFinancialSection({
-  escrowId,
-}: {
-  escrowId: string
-}) {
+function WorkspaceFinancialSection() {
   return (
     <WorkspaceCard
       icon={WalletCards}
       title="Escrow & Payout"
       description="Escrow release credits the Expert Wallet. Withdrawal is a separate wallet-to-bank request."
     >
-      <div className="grid gap-4 md:grid-cols-[240px_1fr]">
-        <DetailTile label="Escrow ref" value={shortId(escrowId)} />
-        <SectionNotice
-          title="Financial data pending"
-          message="Contract amount, escrow funded amount, released amount, payout, platform fee and release condition are not returned by Workspace Detail yet."
-        />
-      </div>
+      <SectionNotice
+        title="Financial data pending"
+        message="Contract amount, escrow funded amount, released amount, payout, platform fee and release condition are not returned by Workspace Detail yet."
+      />
     </WorkspaceCard>
   )
 }
@@ -1172,20 +1160,6 @@ function formatDate(value?: string | null) {
     month: "2-digit",
     year: "numeric",
   })
-}
-
-function shortId(value?: string | null) {
-  const normalized = value?.trim()
-
-  if (!normalized) {
-    return "Not available"
-  }
-
-  if (normalized.length <= 12) {
-    return normalized
-  }
-
-  return `${normalized.slice(0, 8)}...${normalized.slice(-4)}`
 }
 
 function getInitials(name: string) {

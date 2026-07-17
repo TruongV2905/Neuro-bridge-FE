@@ -40,8 +40,8 @@ export const paymentKeys = {
   transactionsFilter: ["payments", "transactions", "filter"],
   transactionDetail: ["payments", "transactions", "detail"],
   myTransactions: ["payments", "transactions", "mine"],
-  projectEscrow: (projectId: string) =>
-    ["payments", "project-escrow", projectId] as const,
+  projectEscrow: (escrowId: string) =>
+    ["payments", "project-escrow", escrowId] as const,
 };
 
 export async function getMyWallet(): Promise<APIResponse<UserWallet>> {
@@ -81,9 +81,9 @@ export async function getPaymentTransactionById(id: string) {
   return data;
 }
 
-export async function getProjectEscrowPayment(projectId: string) {
-  const { data } = await api.get<APIResponse<ProjectEscrowPayment>>(
-    `${PROJECT_ESCROW_ENDPOINT}/${encodeURIComponent(projectId)}`,
+export async function getProjectEscrowPayment(escrowId: string) {
+  const { data } = await api.get<ProjectEscrowPayment>(
+    `${PROJECT_ESCROW_ENDPOINT}/${encodeURIComponent(escrowId)}`,
   );
 
   return data;
@@ -186,30 +186,30 @@ export function useGetMyWallet(
 }
 
 export function useProjectEscrowPayment(
-  projectId?: string | null,
+  escrowId?: string | null,
   options?: Omit<
     UseQueryOptions<
-      APIResponse<ProjectEscrowPayment>,
+      ProjectEscrowPayment,
       PaymentApiError,
-      APIResponse<ProjectEscrowPayment>,
+      ProjectEscrowPayment,
       QueryKey
     >,
     "queryKey" | "queryFn"
   >,
 ) {
-  const normalizedProjectId = normalizePaymentIdentifier(projectId);
+  const normalizedEscrowId = normalizePaymentIdentifier(escrowId);
 
   return useQuery<
-    APIResponse<ProjectEscrowPayment>,
+    ProjectEscrowPayment,
     PaymentApiError,
-    APIResponse<ProjectEscrowPayment>,
+    ProjectEscrowPayment,
     QueryKey
   >({
-    queryKey: normalizedProjectId
-      ? paymentKeys.projectEscrow(normalizedProjectId)
+    queryKey: normalizedEscrowId
+      ? paymentKeys.projectEscrow(normalizedEscrowId)
       : paymentKeys.projectEscrow(""),
-    queryFn: () => getProjectEscrowPayment(normalizedProjectId ?? ""),
-    enabled: Boolean(normalizedProjectId),
+    queryFn: () => getProjectEscrowPayment(normalizedEscrowId ?? ""),
+    enabled: Boolean(normalizedEscrowId),
     retry: 0,
     ...options,
   });

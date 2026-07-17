@@ -283,8 +283,7 @@ export function WorkspaceDetailView({
               role={role}
             />
             <WorkspaceFinancialSection
-              projectId={projectDetailQuery.data?.result?.projectId ?? ""}
-              isProjectIdLoading={projectDetailQuery.isLoading}
+              escrowId={workspace.escrowId}
             />
             <WorkspaceRatingSection
               workspace={workspace}
@@ -314,6 +313,7 @@ export function WorkspaceDetailView({
             ) : (
               <SubmissionPackageReviewPanel
                 workspaceId={workspace.workspaceId}
+                escrowId={workspace.escrowId}
                 onCompleted={() => workspaceQuery.refetch()}
               />
             )}
@@ -825,16 +825,18 @@ function WorkspaceStrategySection({
 }
 
 function WorkspaceFinancialSection({
-  projectId,
-  isProjectIdLoading,
+  escrowId,
 }: {
-  projectId: string
-  isProjectIdLoading: boolean
+  escrowId?: string | null
 }) {
-  const projectEscrowQuery = useProjectEscrowPayment(projectId, {
-    enabled: Boolean(projectId),
+  const normalizedEscrowId = escrowId?.trim() ?? ""
+  const projectEscrowQuery = useProjectEscrowPayment(normalizedEscrowId, {
+    enabled: Boolean(normalizedEscrowId),
   })
-  const projectEscrow = projectEscrowQuery.data?.result
+  const projectEscrow = projectEscrowQuery.data
+  const isExpertPayoutReleased = projectEscrow
+    ? isZeroMoneyValue(projectEscrow.heldAmount)
+    : false
 
   return (
     <WorkspaceCard
@@ -842,17 +844,11 @@ function WorkspaceFinancialSection({
       title="Escrow & Payout"
       description="Escrow release credits the Expert Wallet. Withdrawal is a separate wallet-to-bank request."
     >
-      {isProjectIdLoading ? (
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Skeleton className="h-24 rounded-2xl" />
-          <Skeleton className="h-24 rounded-2xl" />
-          <Skeleton className="h-24 rounded-2xl" />
-        </div>
-      ) : !projectId ? (
+      {!normalizedEscrowId ? (
         <SectionNotice
           tone="warning"
           title="Project escrow unavailable"
-          message="The project ID could not be resolved from this workspace yet."
+          message="The escrow ID could not be resolved from this workspace yet."
         />
       ) : projectEscrowQuery.isLoading ? (
         <div className="grid gap-4 sm:grid-cols-3">
@@ -875,6 +871,10 @@ function WorkspaceFinancialSection({
           <DetailTile
             label="Expert payout"
             value={formatMoney(projectEscrow.heldAmount, "Not available")}
+            helperText={
+              isExpertPayoutReleased ? "Paid out to expert" : undefined
+            }
+            tone={isExpertPayoutReleased ? "success" : "default"}
           />
           <DetailTile
             label="Platform fee"
@@ -884,7 +884,7 @@ function WorkspaceFinancialSection({
       ) : (
         <SectionNotice
           title="No escrow data"
-          message="No project escrow detail was returned for this project."
+          message="No project escrow detail was returned for this escrow."
         />
       )}
     </WorkspaceCard>
@@ -1153,18 +1153,44 @@ function HeaderMetric({
 function DetailTile({
   label,
   value,
+  helperText,
+  tone = "default",
 }: {
   label: string
   value?: string | null
+  helperText?: string
+  tone?: "default" | "success"
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+    <div
+      className={cn(
+        "rounded-2xl border p-4",
+        tone === "success"
+          ? "border-emerald-200 bg-emerald-50/80"
+          : "border-slate-200/70 bg-slate-50/70",
+      )}
+    >
+      <p
+        className={cn(
+          "text-xs font-bold uppercase tracking-wider",
+          tone === "success" ? "text-emerald-600" : "text-slate-400",
+        )}
+      >
         {label}
       </p>
-      <p className="mt-2 break-words text-sm font-extrabold text-slate-900">
+      <p
+        className={cn(
+          "mt-2 break-words text-sm font-extrabold",
+          tone === "success" ? "text-emerald-800" : "text-slate-900",
+        )}
+      >
         {value?.trim() || "Not available"}
       </p>
+      {helperText && (
+        <p className="mt-1 text-xs font-semibold text-emerald-700">
+          {helperText}
+        </p>
+      )}
     </div>
   )
 }
@@ -1465,6 +1491,20 @@ function isProjectCompleted(value?: string | null) {
   const normalized = value?.trim().toUpperCase()
 
   return normalized === "COMPLETED" || normalized === "COMPLETE"
+}
+
+function isZeroMoneyValue(value?: number | string | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value === 0
+  }
+
+  if (typeof value === "string") {
+    const normalizedValue = Number(value.trim())
+
+    return Number.isFinite(normalizedValue) && normalizedValue === 0
+  }
+
+  return false
 }
 
 function getInitials(name: string) {

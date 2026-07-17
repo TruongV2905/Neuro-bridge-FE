@@ -48,12 +48,15 @@ type ReviewDecision = "ACCEPTED" | "REJECTED" | null
 
 export function SubmissionPackageReviewPanel({
   workspaceId,
+  escrowId,
   onCompleted,
 }: {
   workspaceId: string
+  escrowId?: string | null
   onCompleted?: () => Promise<unknown> | unknown
 }) {
   const normalizedWorkspaceId = workspaceId.trim()
+  const normalizedEscrowId = escrowId?.trim() ?? ""
   const user = useSelector(
     (state: RootState) => state.user,
   ) as UserResponse | null
@@ -76,7 +79,7 @@ export function SubmissionPackageReviewPanel({
     [filesQuery.data],
   )
   const projectId = projectDetailQuery.data?.result?.projectId?.trim() ?? ""
-  const projectEscrowQuery = useProjectEscrowPayment(projectId, {
+  const projectEscrowQuery = useProjectEscrowPayment(normalizedEscrowId, {
     enabled: false,
   })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -109,7 +112,7 @@ export function SubmissionPackageReviewPanel({
       return reviewStatus === "APPROVED"
     })
   const canAccept =
-    Boolean(normalizedWorkspaceId && projectId && packageId) &&
+    Boolean(normalizedWorkspaceId && projectId && normalizedEscrowId && packageId) &&
     allFilesApproved &&
     !completeProjectMutation.isPending
   const selectedFileReview = selectedFile
@@ -117,7 +120,7 @@ export function SubmissionPackageReviewPanel({
     : undefined
   const selectedFileStatus =
     selectedFileReview?.status ?? normalizeReviewStatus(selectedFile?.status)
-  const transferDetail = projectEscrowQuery.data?.result ?? projectEscrow
+  const transferDetail = projectEscrowQuery.data ?? projectEscrow
   const canConfirmTransfer =
     canAccept && isValidMoneyValue(transferDetail?.heldAmount)
 
@@ -130,7 +133,7 @@ export function SubmissionPackageReviewPanel({
 
   const handlePrepareAccept = async () => {
     if (!canAccept) {
-      setActionError("Project, package, or deliverable file data is missing.")
+      setActionError("Project, escrow, package, or deliverable file data is missing.")
       return
     }
 
@@ -143,14 +146,14 @@ export function SubmissionPackageReviewPanel({
       return
     }
 
-    setProjectEscrow(escrowResponse.data?.result ?? null)
+    setProjectEscrow(escrowResponse.data ?? null)
     setIsRejecting(false)
     setIsTransferReviewOpen(true)
   }
 
   const handleConfirmAccept = async () => {
     if (!canAccept) {
-      setActionError("Project, package, or deliverable file data is missing.")
+      setActionError("Project, escrow, package, or deliverable file data is missing.")
       return
     }
 

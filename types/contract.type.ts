@@ -13,6 +13,7 @@ export type ContractResponse = {
   projectName?: string | null;
   deadline?: string | null;
   strategyDetail: string | null;
+  estimatedDays?: number | null;
   unlockCost: number;
   proposedBudget?: number | null;
   clientSigned: boolean;

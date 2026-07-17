@@ -4,6 +4,7 @@ import { useParams } from "next/navigation"
 
 import { useGetSkillsByExpertCode } from "@/services/skill.service"
 import { useGetUserByCode } from "@/services/user.service"
+import { useExpertRatingSummary } from "@/services/rating.service"
 
 import { ExpertProfileHeader } from "./components/ExpertProfileHeader"
 import { ExpertSidebarCard } from "./components/ExpertSidebarCard"
@@ -35,6 +36,12 @@ export function PublicExpertProfileView() {
 
   const expert = expertData?.result ?? null
   const skills = skillData?.result ?? []
+  const {
+    data: ratingSummary,
+    isLoading: ratingSummaryLoading,
+  } = useExpertRatingSummary(expert?.id ?? "", {
+    enabled: Boolean(expert?.id),
+  })
 
   return (
     <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
@@ -52,6 +59,8 @@ export function PublicExpertProfileView() {
             expert={expert}
             skills={skillLoading || skillError ? [] : skills}
             editable={false}
+            ratingSummary={ratingSummary}
+            ratingLoading={ratingSummaryLoading}
           />
         )}
 

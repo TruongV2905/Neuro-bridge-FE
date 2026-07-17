@@ -14,9 +14,11 @@ import {
   Save,
   ShieldCheck,
   Sparkles,
+  Star,
   Users,
   WalletCards,
 } from "lucide-react"
+import { toast } from "react-toastify"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
@@ -32,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { RootState } from "@/redux/store"
 import { useUpdateProposalUnlock } from "@/services/job-post.service"
+import { useProjectEscrowPayment } from "@/services/payment.service"
 import {
   findCanonicalProjectChatSession,
   useCreateWorkspaceChatSession,
@@ -42,6 +45,12 @@ import {
   useUpdateProposalStrategy,
   useWorkspaceDetail,
 } from "@/services/workspace.service"
+import {
+  useProjectRating,
+  useRateProject,
+} from "@/services/rating.service"
+import { useProjectDetailByWorkspace } from "@/services/submission-package.service"
+import type { RatingResponse } from "@/types/rating.type"
 import type {
   WorkspaceDetail,
   WorkspaceParticipant,
@@ -63,6 +72,10 @@ type WorkspaceAction = {
   state: string
 }
 
+const RATING_SCORE_OPTIONS = [
+  0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5,
+] as const
+
 export function WorkspaceDetailView({
   workspaceId,
 }: WorkspaceDetailViewProps) {
@@ -75,6 +88,7 @@ export function WorkspaceDetailView({
   const currentUserCode = user?.code?.trim() ?? ""
 
   const workspaceQuery = useWorkspaceDetail(normalizedWorkspaceId)
+  const projectDetailQuery = useProjectDetailByWorkspace(normalizedWorkspaceId)
   const workspaceChatSessionsQuery =
     useMyChatSessions(currentUserCode, {
       enabled: false,
@@ -268,7 +282,16 @@ export function WorkspaceDetailView({
               workspaceId={workspace.workspaceId}
               role={role}
             />
-            <WorkspaceFinancialSection />
+            <WorkspaceFinancialSection
+              projectId={projectDetailQuery.data?.result?.projectId ?? ""}
+              isProjectIdLoading={projectDetailQuery.isLoading}
+            />
+            <WorkspaceRatingSection
+              workspace={workspace}
+              role={role}
+              projectId={projectDetailQuery.data?.result?.projectId ?? ""}
+              isProjectIdLoading={projectDetailQuery.isLoading}
+            />
           </div>
           
           <div className="space-y-6">
@@ -801,18 +824,264 @@ function WorkspaceStrategySection({
   )
 }
 
-function WorkspaceFinancialSection() {
+function WorkspaceFinancialSection({
+  projectId,
+  isProjectIdLoading,
+}: {
+  projectId: string
+  isProjectIdLoading: boolean
+}) {
+  const projectEscrowQuery = useProjectEscrowPayment(projectId, {
+    enabled: Boolean(projectId),
+  })
+  const projectEscrow = projectEscrowQuery.data?.result
+
   return (
     <WorkspaceCard
       icon={WalletCards}
       title="Escrow & Payout"
       description="Escrow release credits the Expert Wallet. Withdrawal is a separate wallet-to-bank request."
     >
-      <SectionNotice
-        title="Financial data pending"
-        message="Contract amount, escrow funded amount, released amount, payout, platform fee and release condition are not returned by Workspace Detail yet."
-      />
+      {isProjectIdLoading ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+      ) : !projectId ? (
+        <SectionNotice
+          tone="warning"
+          title="Project escrow unavailable"
+          message="The project ID could not be resolved from this workspace yet."
+        />
+      ) : projectEscrowQuery.isLoading ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-24 rounded-2xl" />
+        </div>
+      ) : projectEscrowQuery.isError ? (
+        <SectionNotice
+          tone="warning"
+          title="Unable to load project escrow"
+          message={getWorkspaceApiErrorMessage(projectEscrowQuery.error)}
+        />
+      ) : projectEscrow ? (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <DetailTile
+            label="Project escrow"
+            value={formatMoney(projectEscrow.amount, "Not available")}
+          />
+          <DetailTile
+            label="Expert payout"
+            value={formatMoney(projectEscrow.heldAmount, "Not available")}
+          />
+          <DetailTile
+            label="Platform fee"
+            value={formatMoney(projectEscrow.platformFee, "Not available")}
+          />
+        </div>
+      ) : (
+        <SectionNotice
+          title="No escrow data"
+          message="No project escrow detail was returned for this project."
+        />
+      )}
     </WorkspaceCard>
+  )
+}
+
+function WorkspaceRatingSection({
+  workspace,
+  role,
+  projectId,
+  isProjectIdLoading,
+}: {
+  workspace: WorkspaceDetail
+  role?: UserRole
+  projectId: string
+  isProjectIdLoading: boolean
+}) {
+  const isCompleted = isProjectCompleted(workspace.projectStatus)
+  const ratingQuery = useProjectRating(projectId, {
+    enabled: isCompleted && Boolean(projectId),
+  })
+  const rateProjectMutation = useRateProject()
+  const [score, setScore] = useState<number>(5)
+  const [comment, setComment] = useState("")
+  const isRatingMissing =
+    ratingQuery.isError && getErrorStatus(ratingQuery.error) === 404
+  const existingRating = ratingQuery.data
+  const canSubmitRating =
+    role === UserRole.CLIENT &&
+    isCompleted &&
+    Boolean(projectId) &&
+    !existingRating &&
+    (isRatingMissing || !ratingQuery.isLoading)
+
+  if (!isCompleted) {
+    return null
+  }
+
+  const handleSubmitRating = async () => {
+    if (!canSubmitRating || rateProjectMutation.isPending) return
+
+    try {
+      await rateProjectMutation.mutateAsync({
+        projectId,
+        request: {
+          score,
+          comment: comment.trim() || undefined,
+        },
+      })
+      setScore(5)
+      setComment("")
+      toast.success("Project rating submitted.")
+      await ratingQuery.refetch()
+    } catch (error) {
+      toast.error(getWorkspaceApiErrorMessage(error))
+    }
+  }
+
+  return (
+    <WorkspaceCard
+      icon={Star}
+      title="Project Rating"
+      description="Client feedback for the expert after project completion."
+    >
+      {isProjectIdLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-20 rounded-2xl" />
+          <Skeleton className="h-11 rounded-xl" />
+        </div>
+      ) : !projectId ? (
+        <SectionNotice
+          tone="warning"
+          title="Project ID unavailable"
+          message="The workspace is completed, but the project ID could not be resolved yet."
+        />
+      ) : ratingQuery.isLoading ? (
+        <div className="space-y-3">
+          <Skeleton className="h-24 rounded-2xl" />
+          <Skeleton className="h-16 rounded-2xl" />
+        </div>
+      ) : existingRating ? (
+        <ProjectRatingSummary rating={existingRating} />
+      ) : canSubmitRating ? (
+        <div className="space-y-4">
+          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+            <p className="text-sm font-extrabold text-slate-900">
+              Rate the expert
+            </p>
+            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+              Choose a score from 0.5 to 5 stars. Feedback can be left blank.
+            </p>
+            <div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-10">
+              {RATING_SCORE_OPTIONS.map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setScore(option)}
+                  className={cn(
+                    "flex h-9 items-center justify-center rounded-xl border text-xs font-extrabold transition",
+                    score === option
+                      ? "border-amber-300 bg-amber-50 text-amber-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:text-amber-600",
+                  )}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+            <div className="mt-4">
+              <RatingStars value={score} />
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="project-rating-feedback"
+              className="text-xs font-bold uppercase tracking-wider text-slate-400"
+            >
+              Feedback
+            </label>
+            <Textarea
+              id="project-rating-feedback"
+              value={comment}
+              onChange={(event) => setComment(event.target.value)}
+              placeholder="Share optional feedback for the expert..."
+              className="mt-2 min-h-28 rounded-2xl border-slate-200 bg-slate-50/70 text-sm leading-6 shadow-none focus-visible:border-indigo-300 focus-visible:ring-indigo-100"
+            />
+          </div>
+
+          <Button
+            type="button"
+            onClick={handleSubmitRating}
+            disabled={rateProjectMutation.isPending}
+            className="h-11 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 px-5 text-sm font-bold text-white"
+          >
+            {rateProjectMutation.isPending ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Star className="mr-2 h-4 w-4" />
+            )}
+            Submit rating
+          </Button>
+        </div>
+      ) : ratingQuery.isError ? (
+        <SectionNotice
+          tone="warning"
+          title="Unable to load rating"
+          message={getWorkspaceApiErrorMessage(ratingQuery.error)}
+        />
+      ) : (
+        <SectionNotice
+          title="No rating yet"
+          message="This completed project has not been rated yet."
+        />
+      )}
+    </WorkspaceCard>
+  )
+}
+
+function ProjectRatingSummary({ rating }: { rating: RatingResponse }) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-extrabold text-slate-900">
+              Client rating
+            </p>
+            <p className="mt-1 text-xs font-semibold text-slate-500">
+              Submitted {formatDate(rating.createdAt) ?? "recently"}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <RatingStars value={rating.score} />
+            <span className="text-sm font-extrabold text-amber-700">
+              {formatScore(rating.score)} / 5
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {rating.comment?.trim() ? (
+        <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+          <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+            Feedback
+          </p>
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
+            {rating.comment.trim()}
+          </p>
+        </div>
+      ) : (
+        <SectionNotice
+          title="No written feedback"
+          message="The client submitted a star rating without additional feedback."
+        />
+      )}
+    </div>
   )
 }
 
@@ -989,6 +1258,30 @@ function StatusBadge({
   )
 }
 
+function RatingStars({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-1">
+      {Array.from({ length: 5 }).map((_, index) => {
+        const starValue = index + 1
+        const isFilled = value >= starValue
+        const isHalfFilled = !isFilled && value >= starValue - 0.5
+
+        return (
+          <Star
+            key={starValue}
+            className={cn(
+              "h-4 w-4",
+              isFilled && "fill-amber-400 text-amber-400",
+              isHalfFilled && "fill-amber-200 text-amber-400",
+              !isFilled && !isHalfFilled && "text-slate-300",
+            )}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
 function SectionNotice({
   title,
   message,
@@ -1160,6 +1453,18 @@ function formatDate(value?: string | null) {
     month: "2-digit",
     year: "numeric",
   })
+}
+
+function formatScore(value?: number | null) {
+  if (!Number.isFinite(value ?? NaN)) return "0"
+
+  return Number(value).toFixed(1).replace(/\.0$/, "")
+}
+
+function isProjectCompleted(value?: string | null) {
+  const normalized = value?.trim().toUpperCase()
+
+  return normalized === "COMPLETED" || normalized === "COMPLETE"
 }
 
 function getInitials(name: string) {

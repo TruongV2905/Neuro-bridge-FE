@@ -168,6 +168,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
     finalizeResponse?.shortfallAmount ??
     (hireExpert.error?.response?.data as { shortfallAmount?: number } | undefined)
       ?.shortfallAmount;
+  const contractEstimatedDays = getEstimatedDays(contract?.estimatedDays);
 
   const projectSummary = {
     title:
@@ -183,11 +184,18 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
       Number.isFinite(Number(contract.proposedBudget))
         ? formatContractAmount(Number(contract.proposedBudget))
         : "Not available",
-    timeline: contract?.deadline
-      ? formatDate(contract.deadline)
-      : jobPostQuery.data?.result?.estimatedDays
-      ? `${jobPostQuery.data.result.estimatedDays} days`
-      : "Based on selected proposal",
+    timelineLabel:
+      contractEstimatedDays !== null || !contract?.deadline
+        ? "Timeline"
+        : "Deadline",
+    timeline:
+      contractEstimatedDays !== null
+        ? formatEstimatedDays(contractEstimatedDays)
+        : contract?.deadline
+          ? formatDate(contract.deadline)
+          : jobPostQuery.data?.result?.estimatedDays
+            ? formatEstimatedDays(jobPostQuery.data.result.estimatedDays)
+            : "Based on selected proposal",
   };
   const workspacePaymentAmount =
     contract?.proposedBudget !== undefined &&
@@ -353,7 +361,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
               />
               <ContractMetric
                 icon={Clock4}
-                label={contract.deadline ? "Deadline" : "Timeline"}
+                label={projectSummary.timelineLabel}
                 value={projectSummary.timeline}
               />
               <ContractMetric
@@ -881,6 +889,18 @@ function formatDate(value: string) {
     day: "2-digit",
     year: "numeric",
   }).format(date);
+}
+
+function getEstimatedDays(value?: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return Math.round(value);
+}
+
+function formatEstimatedDays(days: number) {
+  return `${days} ${days === 1 ? "day" : "days"}`;
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

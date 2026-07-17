@@ -7,17 +7,22 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { User, UserResponse } from "@/types/user/user.type"
 import type { SkillResponse } from "@/types/skill.types"
+import type { ExpertRatingSummaryResponse } from "@/types/rating.type"
 
 type ExpertProfileHeaderProps = {
   expert: User | UserResponse
   skills: SkillResponse[]
   editable?: boolean
+  ratingSummary?: ExpertRatingSummaryResponse | null
+  ratingLoading?: boolean
 }
 
 export function ExpertProfileHeader({
   expert,
   skills,
   editable = false,
+  ratingSummary,
+  ratingLoading = false,
 }: ExpertProfileHeaderProps) {
   const defaultAvatar = "/images/expert-avatar.png"
 
@@ -59,7 +64,11 @@ export function ExpertProfileHeader({
   }
 
   const legitScore = expert.status === "ACTIVE" ? 95 : 60
-  const rating = 5
+  const ratingLabel = ratingLoading
+    ? "Loading rating"
+    : ratingSummary && ratingSummary.totalRatings > 0
+      ? `${formatScore(ratingSummary.averageScore)} / 5 Rating`
+      : "No ratings yet"
 
   return (
     <div className="group relative rounded-[2rem] bg-border p-[1px] transition-all duration-500 hover:shadow-[0_0_24px_rgba(95,123,255,0.15)]">
@@ -125,7 +134,10 @@ export function ExpertProfileHeader({
                     size={16}
                     className="fill-cyan-400 text-cyan-400"
                   />
-                  {rating} / 5 Rating
+                  {ratingLabel}
+                  {ratingSummary && ratingSummary.totalRatings > 0
+                    ? ` (${ratingSummary.totalRatings})`
+                    : ""}
                 </Badge>
               </div>
 
@@ -161,4 +173,10 @@ export function ExpertProfileHeader({
       </Card>
     </div>
   )
+}
+
+function formatScore(value?: number | null) {
+  if (!Number.isFinite(value ?? NaN)) return "0"
+
+  return Number(value).toFixed(1).replace(/\.0$/, "")
 }

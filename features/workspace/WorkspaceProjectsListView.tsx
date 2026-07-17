@@ -13,6 +13,7 @@ import {
   FolderKanban,
   Loader2,
   RefreshCw,
+  Star,
 } from "lucide-react"
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -20,6 +21,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
 import type { RootState } from "@/redux/store"
+import { useProjectRating } from "@/services/rating.service"
+import { useProjectDetailByWorkspace } from "@/services/submission-package.service"
 import { useWorkspaceDashboard } from "@/services/workspace.service"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 import type { WorkspaceDashboardItem } from "@/types/workspace.type"
@@ -150,6 +153,7 @@ export function WorkspaceProjectsListView({
                 project={project}
                 detailBasePath={detailBasePath}
                 partnerLabel={partnerLabel}
+                showRating={role === UserRole.EXPERT}
               />
             ))}
           </section>
@@ -173,10 +177,12 @@ function ProjectCard({
   project,
   detailBasePath,
   partnerLabel,
+  showRating,
 }: {
   project: WorkspaceDashboardItem
   detailBasePath: string
   partnerLabel: string
+  showRating: boolean
 }) {
   const progressValue = getFiniteNumber(project.progressPercentage)
   const visualProgress = clamp(progressValue, 0, 100)
@@ -239,6 +245,13 @@ function ProjectCard({
         <span>{formatDeadline(project.deadline)}</span>
       </div>
 
+      {showRating && (
+        <ProjectCardRating
+          workspaceId={project.workspaceId}
+          projectStatus={project.projectStatus}
+        />
+      )}
+
       <Button
         asChild
         className="mt-auto h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 text-sm font-bold text-white"
@@ -249,6 +262,74 @@ function ProjectCard({
         </Link>
       </Button>
     </article>
+  )
+}
+
+function ProjectCardRating({
+  workspaceId,
+  projectStatus,
+}: {
+  workspaceId: string
+  projectStatus?: string | null
+}) {
+  const isCompleted = isProjectCompleted(projectStatus)
+  const projectDetailQuery = useProjectDetailByWorkspace(
+    isCompleted ? workspaceId : "",
+  )
+  const projectId = projectDetailQuery.data?.result?.projectId ?? ""
+  const ratingQuery = useProjectRating(projectId, {
+    enabled: isCompleted && Boolean(projectId),
+  })
+  const isRatingMissing =
+    ratingQuery.isError && getErrorStatus(ratingQuery.error) === 404
+
+  if (!isCompleted) {
+    return (
+      <div className="mt-4 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs font-bold text-slate-500">
+        Rating available after completion
+      </div>
+    )
+  }
+
+  if (projectDetailQuery.isLoading || ratingQuery.isLoading) {
+    return (
+      <div className="mt-4 flex items-center gap-2 rounded-2xl border border-slate-100 bg-slate-50/80 px-3 py-2 text-xs font-bold text-slate-500">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-indigo-500" />
+        Loading rating
+      </div>
+    )
+  }
+
+  if (!projectId || isRatingMissing) {
+    return (
+      <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2 text-xs font-bold text-amber-700">
+        No rating yet
+      </div>
+    )
+  }
+
+  if (ratingQuery.isError) {
+    return (
+      <div className="mt-4 rounded-2xl border border-rose-100 bg-rose-50/80 px-3 py-2 text-xs font-bold text-rose-700">
+        Rating unavailable
+      </div>
+    )
+  }
+
+  const rating = ratingQuery.data
+
+  return (
+    <div className="mt-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-100 bg-amber-50/80 px-3 py-2">
+      <div className="flex items-center gap-2">
+        <RatingStars value={rating?.score ?? 0} />
+        <span className="text-xs font-extrabold text-amber-700">
+          {formatScore(rating?.score)} / 5
+        </span>
+      </div>
+      <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600">
+        Rating
+      </span>
+    </div>
   )
 }
 
@@ -430,8 +511,63 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(value, min), max)
 }
 
+function RatingStars({ value }: { value: number }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, index) => {
+        const starValue = index + 1
+        const isFilled = value >= starValue
+        const isHalfFilled = !isFilled && value >= starValue - 0.5
+
+        return (
+          <Star
+            key={starValue}
+            className={
+              isFilled
+                ? "h-3.5 w-3.5 fill-amber-400 text-amber-400"
+                : isHalfFilled
+                  ? "h-3.5 w-3.5 fill-amber-200 text-amber-400"
+                  : "h-3.5 w-3.5 text-amber-200"
+            }
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+function formatScore(value?: number | null) {
+  if (!Number.isFinite(value ?? NaN)) return "0"
+
+  return Number(value).toFixed(1).replace(/\.0$/, "")
+}
+
+function isProjectCompleted(value?: string | null) {
+  const normalized = value?.trim().toUpperCase()
+
+  return normalized === "COMPLETED" || normalized === "COMPLETE"
+}
+
 function normalizeText(value?: string | null) {
   return typeof value === "string" ? value.trim() : ""
+}
+
+function getErrorStatus(error: unknown) {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "response" in error
+  ) {
+    return (
+      error as {
+        response?: {
+          status?: number
+        }
+      }
+    ).response?.status
+  }
+
+  return undefined
 }
 
 function getErrorMessage(error: unknown) {

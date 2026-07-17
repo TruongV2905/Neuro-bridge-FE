@@ -19,6 +19,7 @@ import { useGetUserByCode } from "@/services/user.service"
 import { useGetSkillsByExpertCode } from "@/services/skill.service"
 import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
 import { useGetCertificatesByExpertCode } from "@/services/certificate.service"
+import { useExpertRatingSummary } from "@/services/rating.service"
 
 import Header from "@/components/layout/Header"
 
@@ -38,7 +39,7 @@ export function ExpertProfileView() {
     isLoading: expertUserLoading,
   } = useGetUserByCode(
     { code: expertCode },
-    { enabled: !!expertCode && !isOwnerExpert },
+    { enabled: !!expertCode },
   )
 
   const {
@@ -66,8 +67,15 @@ export function ExpertProfileView() {
   )
 
   const expertUser: UserType | UserResponse | null = isOwnerExpert
-    ? currentUser
+    ? expertUserData?.result ?? currentUser
     : expertUserData?.result ?? null
+  const expertId = getExpertId(expertUser)
+  const {
+    data: ratingSummary,
+    isLoading: ratingSummaryLoading,
+  } = useExpertRatingSummary(expertId, {
+    enabled: Boolean(expertId),
+  })
 
   const portfolios = portfolioData?.result ?? []
   const skills = skillData?.result ?? []
@@ -87,6 +95,8 @@ export function ExpertProfileView() {
               expert={expertUser}
               skills={skills}
               editable
+              ratingSummary={ratingSummary}
+              ratingLoading={ratingSummaryLoading}
             />
           ) : (
             <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
@@ -193,4 +203,10 @@ export function ExpertProfileView() {
       </div>
     </main>
   )
+}
+
+function getExpertId(expert?: UserType | UserResponse | null) {
+  if (!expert || !("id" in expert)) return ""
+
+  return expert.id
 }

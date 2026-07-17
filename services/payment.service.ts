@@ -20,6 +20,7 @@ import type {
   PaymentTransaction,
   PaymentTransactionFilterRequest,
   PaymentTransactionPageResponse,
+  ProjectEscrowPayment,
   UpdateMyWalletBankInfoRequest,
   UserWallet,
   WalletResponse,
@@ -27,6 +28,7 @@ import type {
 
 const WALLET_ENDPOINT = "/payment/api/wallet";
 const PAYMENT_TRANSACTION_ENDPOINT = "/payment/payment-transactions";
+const PROJECT_ESCROW_ENDPOINT = "/payment/api/project-escrow";
 
 type PaymentApiError = AxiosError<APIResponse<null>>;
 
@@ -38,6 +40,8 @@ export const paymentKeys = {
   transactionsFilter: ["payments", "transactions", "filter"],
   transactionDetail: ["payments", "transactions", "detail"],
   myTransactions: ["payments", "transactions", "mine"],
+  projectEscrow: (projectId: string) =>
+    ["payments", "project-escrow", projectId] as const,
 };
 
 export async function getMyWallet(): Promise<APIResponse<UserWallet>> {
@@ -72,6 +76,14 @@ export async function filterPaymentTransactions(
 export async function getPaymentTransactionById(id: string) {
   const { data } = await api.get<APIResponse<PaymentTransaction>>(
     `${PAYMENT_TRANSACTION_ENDPOINT}/${encodeURIComponent(id)}`,
+  );
+
+  return data;
+}
+
+export async function getProjectEscrowPayment(projectId: string) {
+  const { data } = await api.get<APIResponse<ProjectEscrowPayment>>(
+    `${PROJECT_ESCROW_ENDPOINT}/${encodeURIComponent(projectId)}`,
   );
 
   return data;
@@ -168,6 +180,36 @@ export function useGetMyWallet(
   >({
     queryKey: paymentKeys.walletMine,
     queryFn: getMyWallet,
+    retry: 0,
+    ...options,
+  });
+}
+
+export function useProjectEscrowPayment(
+  projectId?: string | null,
+  options?: Omit<
+    UseQueryOptions<
+      APIResponse<ProjectEscrowPayment>,
+      PaymentApiError,
+      APIResponse<ProjectEscrowPayment>,
+      QueryKey
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  const normalizedProjectId = normalizePaymentIdentifier(projectId);
+
+  return useQuery<
+    APIResponse<ProjectEscrowPayment>,
+    PaymentApiError,
+    APIResponse<ProjectEscrowPayment>,
+    QueryKey
+  >({
+    queryKey: normalizedProjectId
+      ? paymentKeys.projectEscrow(normalizedProjectId)
+      : paymentKeys.projectEscrow(""),
+    queryFn: () => getProjectEscrowPayment(normalizedProjectId ?? ""),
+    enabled: Boolean(normalizedProjectId),
     retry: 0,
     ...options,
   });
@@ -315,3 +357,13 @@ export const useGetMyPaymentTransactions =
     paymentKeys.myTransactions,
     `${PAYMENT_TRANSACTION_ENDPOINT}/mine`,
   );
+
+function normalizePaymentIdentifier(value?: string | null) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalized = value.trim();
+
+  return normalized.length > 0 ? normalized : null;
+}

@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { useSelector } from "react-redux"
 import {
   CheckCircle2,
+  CircleDollarSign,
   Download,
   Eye,
   FileArchive,
@@ -26,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { RootState } from "@/redux/store"
+import { useProjectEscrowPayment } from "@/services/payment.service"
 import {
   useCompleteProject,
   useDeliverableFilesByPackage,
@@ -38,7 +40,9 @@ import type {
   DeliverableFileReviewStatus,
   SubmissionPackageSummary,
 } from "@/types/submission-package.type"
+import type { ProjectEscrowPayment } from "@/types/payment.type"
 import type { UserResponse } from "@/types/user/user.type"
+import { formatMoney } from "@/utils/formatMoney"
 
 type ReviewDecision = "ACCEPTED" | "REJECTED" | null
 
@@ -72,10 +76,16 @@ export function SubmissionPackageReviewPanel({
     [filesQuery.data],
   )
   const projectId = projectDetailQuery.data?.result?.projectId?.trim() ?? ""
+  const projectEscrowQuery = useProjectEscrowPayment(projectId, {
+    enabled: false,
+  })
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [isTransferReviewOpen, setIsTransferReviewOpen] = useState(false)
   const [decision, setDecision] = useState<ReviewDecision>(null)
   const [isRejecting, setIsRejecting] = useState(false)
   const [feedback, setFeedback] = useState("")
+  const [projectEscrow, setProjectEscrow] =
+    useState<ProjectEscrowPayment | null>(null)
   const [selectedFile, setSelectedFile] = useState<DeliverableFile | null>(null)
   const [fileReviewFeedback, setFileReviewFeedback] = useState("")
   const [fileReviews, setFileReviews] = useState<
@@ -107,13 +117,38 @@ export function SubmissionPackageReviewPanel({
     : undefined
   const selectedFileStatus =
     selectedFileReview?.status ?? normalizeReviewStatus(selectedFile?.status)
+  const transferDetail = projectEscrowQuery.data?.result ?? projectEscrow
+  const canConfirmTransfer =
+    canAccept && isValidMoneyValue(transferDetail?.heldAmount)
 
   const handleOpenPackage = () => {
     setActionError(null)
     setIsDialogOpen(true)
+    setIsTransferReviewOpen(false)
+    setProjectEscrow(null)
   }
 
-  const handleAccept = async () => {
+  const handlePrepareAccept = async () => {
+    if (!canAccept) {
+      setActionError("Project, package, or deliverable file data is missing.")
+      return
+    }
+
+    setActionError(null)
+
+    const escrowResponse = await projectEscrowQuery.refetch()
+
+    if (escrowResponse.isError) {
+      setActionError(getRequestErrorMessage(escrowResponse.error))
+      return
+    }
+
+    setProjectEscrow(escrowResponse.data?.result ?? null)
+    setIsRejecting(false)
+    setIsTransferReviewOpen(true)
+  }
+
+  const handleConfirmAccept = async () => {
     if (!canAccept) {
       setActionError("Project, package, or deliverable file data is missing.")
       return
@@ -131,6 +166,8 @@ export function SubmissionPackageReviewPanel({
       setIsRejecting(false)
       setFeedback("")
       setActionMessage("Project completed successfully.")
+      setIsTransferReviewOpen(false)
+      setProjectEscrow(null)
       setIsDialogOpen(false)
     } catch (error) {
       setActionError(getRequestErrorMessage(error))
@@ -139,6 +176,7 @@ export function SubmissionPackageReviewPanel({
 
   const handleReject = () => {
     setActionError(null)
+    setIsTransferReviewOpen(false)
 
     if (!isRejecting) {
       setIsRejecting(true)
@@ -347,6 +385,10 @@ export function SubmissionPackageReviewPanel({
                 fileReviews={fileReviews}
                 onPreviewFile={handleOpenFilePreview}
               />
+
+              {isTransferReviewOpen && (
+                <TransferReleasePreview projectEscrow={transferDetail} />
+              )}
             </div>
 
             {isRejecting && (
@@ -378,30 +420,60 @@ export function SubmissionPackageReviewPanel({
             )}
 
             <DialogFooter className="mt-6 gap-3 sm:justify-between">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleReject}
-                disabled={isRejecting && !feedback.trim()}
-                className="h-10 rounded-xl border-rose-200 px-4 font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-              >
-                <XCircle className="mr-2 h-4 w-4" />
-                {isRejecting ? "Submit reject" : "Reject"}
-              </Button>
+              {isTransferReviewOpen ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsTransferReviewOpen(false)}
+                    disabled={completeProjectMutation.isPending}
+                    className="h-10 rounded-xl border-slate-200 px-4 font-bold text-slate-700 hover:bg-slate-50"
+                  >
+                    Back to review
+                  </Button>
 
-              <Button
-                type="button"
-                onClick={handleAccept}
-                disabled={!canAccept}
-                className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-              >
-                {completeProjectMutation.isPending ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <CheckCircle2 className="mr-2 h-4 w-4" />
-                )}
-                Accept
-              </Button>
+                  <Button
+                    type="button"
+                    onClick={handleConfirmAccept}
+                    disabled={!canConfirmTransfer}
+                    className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {completeProjectMutation.isPending ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    Confirm transfer
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleReject}
+                    disabled={isRejecting && !feedback.trim()}
+                    className="h-10 rounded-xl border-rose-200 px-4 font-bold text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    {isRejecting ? "Submit reject" : "Reject"}
+                  </Button>
+
+                  <Button
+                    type="button"
+                    onClick={handlePrepareAccept}
+                    disabled={!canAccept || projectEscrowQuery.isFetching}
+                    className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {projectEscrowQuery.isFetching ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    {projectEscrowQuery.isFetching ? "Checking transfer" : "Accept"}
+                  </Button>
+                </>
+              )}
             </DialogFooter>
           </div>
         </DialogContent>
@@ -588,6 +660,58 @@ function DeliverableFilesTable({
           </div>
         )
       })}
+    </div>
+  )
+}
+
+function TransferReleasePreview({
+  projectEscrow,
+}: {
+  projectEscrow?: ProjectEscrowPayment | null
+}) {
+  const heldAmount = projectEscrow?.heldAmount ?? null
+  const platformFee = projectEscrow?.platformFee ?? null
+  const escrowAmount = projectEscrow?.amount ?? null
+
+  return (
+    <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-emerald-600">
+          <CircleDollarSign className="h-5 w-5" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-extrabold text-emerald-900">
+            Transfer review
+          </p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-emerald-700">
+            Confirming will complete this project and release the prepared
+            amount to the expert.
+          </p>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-3">
+            <MetaTile
+              label="Expert receives"
+              value={formatMoney(heldAmount, "Not available")}
+            />
+            <MetaTile
+              label="Platform fee"
+              value={formatMoney(platformFee, "Not available")}
+            />
+            <MetaTile
+              label="Project escrow"
+              value={formatMoney(escrowAmount, "Not available")}
+            />
+          </div>
+
+          {!isValidMoneyValue(heldAmount) && (
+            <p className="mt-3 text-xs font-semibold leading-5 text-amber-700">
+              The project escrow response does not include a held amount
+              yet. Please refresh or confirm the backend response before
+              completing this project.
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   )
 }
@@ -780,6 +904,18 @@ function normalizeReviewStatus(
   }
 
   return "PENDING"
+}
+
+function isValidMoneyValue(value?: number | string | null) {
+  if (typeof value === "number") {
+    return Number.isFinite(value)
+  }
+
+  if (typeof value === "string") {
+    return value.trim().length > 0 && Number.isFinite(Number(value))
+  }
+
+  return false
 }
 
 function getPreviewKind(file: DeliverableFile) {

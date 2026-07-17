@@ -14,6 +14,7 @@ export type ContractResponse = {
   deadline?: string | null;
   strategyDetail: string | null;
   unlockCost: number;
+  proposedBudget?: number | null;
   clientSigned: boolean;
   clientSignedAt?: string | null;
   expertSigned: boolean;

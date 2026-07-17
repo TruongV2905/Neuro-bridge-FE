@@ -18,6 +18,16 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,6 +64,39 @@ const CONTRACT_FLOW_STEPS = [
   "Workspace created",
 ] as const;
 
+const FIXED_CONTRACT_TERMS = [
+  {
+    title: "Scope and deliverables",
+    description:
+      "The expert must deliver the agreed AI solution, documentation, source files, and supporting materials required for client review.",
+  },
+  {
+    title: "Review and revision",
+    description:
+      "The client reviews submitted deliverables in the workspace. If changes are needed, the client must provide clear revision feedback before final acceptance.",
+  },
+  {
+    title: "Escrow and release",
+    description:
+      "The project budget is held in escrow after workspace initialization. Funds are released only after the client accepts the final deliverables or the platform release condition is met.",
+  },
+  {
+    title: "Communication",
+    description:
+      "Both parties should keep project communication, files, and decisions inside the workspace so the delivery history remains clear and verifiable.",
+  },
+  {
+    title: "Ownership",
+    description:
+      "After successful completion and escrow release, the client receives the right to use the approved final deliverables for the contracted project.",
+  },
+  {
+    title: "Platform protection",
+    description:
+      "The platform may use contract, workspace, submission, and payment records to help resolve disputes or verify project completion.",
+  },
+] as const;
+
 export function ContractSigningView({ role }: ContractSigningViewProps) {
   const router = useRouter();
   const params = useParams<{ contractId?: string | string[] }>();
@@ -66,6 +109,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
   ) as UserResponse | null;
   const [finalizeResponse, setFinalizeResponse] =
     useState<HireExpertResponse | null>(null);
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
   const queryHireContext = readHireContextFromSearch(searchParams);
   const storedHireContext = useMemo(
     () => (contractId ? readHireContextFromStorage(contractId) : null),
@@ -132,16 +176,35 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
       "Contract project",
     description:
       jobPostQuery.data?.result?.description ??
-      "The selected proposal terms are locked into this contract.",
+      "Review and sign the fixed platform terms for this project contract.",
     budget:
-      contract?.unlockCost && Number.isFinite(Number(contract.unlockCost))
-        ? formatContractAmount(Number(contract.unlockCost))
+      contract?.proposedBudget !== undefined &&
+      contract?.proposedBudget !== null &&
+      Number.isFinite(Number(contract.proposedBudget))
+        ? formatContractAmount(Number(contract.proposedBudget))
         : "Not available",
     timeline: contract?.deadline
       ? formatDate(contract.deadline)
       : jobPostQuery.data?.result?.estimatedDays
       ? `${jobPostQuery.data.result.estimatedDays} days`
       : "Based on selected proposal",
+  };
+  const workspacePaymentAmount =
+    contract?.proposedBudget !== undefined &&
+    contract?.proposedBudget !== null &&
+    Number.isFinite(Number(contract.proposedBudget))
+      ? Number(contract.proposedBudget)
+      : null;
+
+  const handleOpenFinalizeConfirm = () => {
+    if (workspacePaymentAmount === null) {
+      toast.error(
+        "Missing proposed budget from this contract. Please refresh and try again.",
+      );
+      return;
+    }
+
+    setPaymentConfirmOpen(true);
   };
 
   const handleSignContract = async () => {
@@ -191,6 +254,11 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
     } catch (error) {
       toast.error(getErrorMessage(error, "Unable to finalize this contract."));
     }
+  };
+
+  const handleConfirmFinalizeWorkspace = async () => {
+    await handleFinalizeWorkspace();
+    setPaymentConfirmOpen(false);
   };
 
   if (!contractId) {
@@ -299,37 +367,29 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
 
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <section className="space-y-6 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
-            <div>
-              <h2 className="text-base font-extrabold text-slate-950">
-                Contract terms
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">
+                Fixed agreement
+              </p>
+              <h2 className="mt-2 text-base font-extrabold text-slate-950">
+                Platform project terms
               </h2>
-              <p className="mt-1 text-sm text-slate-500">
-                These terms come from the selected proposal and are confirmed by
-                both sides before escrow and workspace creation.
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                These fixed terms apply to this contract before escrow funding,
+                workspace creation, delivery review, and final project
+                completion.
               </p>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <TermCard label="Project" value={projectSummary.title} />
-              <TermCard label="Contract value" value={projectSummary.budget} />
-              <TermCard
-                label={contract.deadline ? "Deadline" : "Timeline"}
-                value={projectSummary.timeline}
-              />
-              <TermCard
-                label="Workspace"
-                value={contract.workspaceId ? "Created" : "Not created yet"}
-              />
-            </div>
-
-            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/70 p-5">
-              <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                Strategy detail
-              </p>
-              <p className="mt-3 whitespace-pre-line text-sm leading-7 text-slate-600">
-                {contract.strategyDetail ||
-                  "No detailed strategy was attached to this contract."}
-              </p>
+              {FIXED_CONTRACT_TERMS.map((term, index) => (
+                <FixedContractTermCard
+                  key={term.title}
+                  index={index + 1}
+                  title={term.title}
+                  description={term.description}
+                />
+              ))}
             </div>
 
             {shortfallAmount ? (
@@ -413,7 +473,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                   <Button
                     type="button"
                     disabled={hireExpert.isPending}
-                    onClick={handleFinalizeWorkspace}
+                    onClick={handleOpenFinalizeConfirm}
                     className="h-11 w-full rounded-xl bg-slate-950 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60"
                   >
                     {hireExpert.isPending ? (
@@ -482,6 +542,58 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
           </aside>
         </div>
       </div>
+
+      <AlertDialog
+        open={paymentConfirmOpen}
+        onOpenChange={(open) => {
+          if (!hireExpert.isPending) {
+            setPaymentConfirmOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-[440px] rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-extrabold text-slate-950">
+              Confirm workspace payment
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-6 text-slate-500">
+              Confirm this wallet payment before initializing the workspace for
+              this contract.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Payment amount
+            </p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-950">
+              {workspacePaymentAmount !== null
+                ? formatVndMoney(workspacePaymentAmount, "Not available")
+                : "Not available"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              This amount comes from the contract proposed budget and will be
+              used for escrow funding.
+            </p>
+          </div>
+
+          <AlertDialogFooter className="mt-4 gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={hireExpert.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={hireExpert.isPending || workspacePaymentAmount === null}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmFinalizeWorkspace();
+              }}
+              className="bg-slate-950 text-white hover:bg-slate-800"
+            >
+              {hireExpert.isPending ? "Processing..." : "Accept payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </main>
   );
 }
@@ -508,15 +620,28 @@ function ContractMetric({
   );
 }
 
-function TermCard({ label, value }: { label: string; value: string }) {
+function FixedContractTermCard({
+  index,
+  title,
+  description,
+}: {
+  index: number;
+  title: string;
+  description: string;
+}) {
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white p-4">
-      <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-        {label}
-      </p>
-      <p className="mt-2 break-words text-sm font-extrabold text-slate-950">
-        {value}
-      </p>
+    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-extrabold text-indigo-600 ring-1 ring-slate-200">
+          {index}
+        </span>
+        <div>
+          <p className="text-sm font-extrabold text-slate-950">{title}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            {description}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

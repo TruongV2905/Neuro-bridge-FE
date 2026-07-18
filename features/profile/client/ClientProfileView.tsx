@@ -1,9 +1,11 @@
-// src/app/profile/page.tsx
+// src/app/client/dashboard/profile/page.tsx
 "use client"
 
+import Image from "next/image"
 import { useRef, useState } from "react"
 import { useDispatch, useSelector } from "react-redux"
-import { logout } from "@/redux/features/userSlice"
+import { toast } from "react-toastify"
+import { login, logout } from "@/redux/features/userSlice"
 import {
     User,
     Mail,
@@ -16,9 +18,9 @@ import {
     BriefcaseBusiness,
     FileText,
     Clock,
+    Loader2,
 } from "lucide-react"
 
-import Header from "@/components/layout/Header"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -31,8 +33,9 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user/user.type"
+import { UserGender, type ClientProfileUpdateRequest, type UserResponse } from "@/types/user/user.type"
 import { formatMoney } from "@/utils/formatMoney"
+import { useUpdateClientProfile } from "@/services/user.service"
 
 import { ClientProfileFormField } from "./components/ClientProfileFormField"
 import { ClientReadOnlyItem } from "./components/ClientReadOnlyItem"
@@ -44,8 +47,6 @@ export function ClientProfileView() {
     const reduxUser = useSelector(
         (state: RootState) => state.user
     ) as UserResponse | null
-
-    console.log("reduxUser profile:", reduxUser)
 
     return (
         <ClientProfileEditor
@@ -84,6 +85,7 @@ function ClientProfileEditor({
 }) {
     const dispatch = useDispatch()
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const updateClientProfileMutation = useUpdateClientProfile()
 
     const [profile, setProfile] = useState<UserResponse | null>(reduxUser)
     const [avatar, setAvatar] = useState(
@@ -109,7 +111,10 @@ function ClientProfileEditor({
         reader.readAsDataURL(file)
     }
 
-    const updateProfile = (field: keyof UserResponse, value: string) => {
+    const updateProfile = (
+        field: keyof UserResponse,
+        value: UserResponse[keyof UserResponse],
+    ) => {
         setProfile((prev: UserResponse | null) => {
             if (!prev) return prev
 
@@ -125,8 +130,46 @@ function ClientProfileEditor({
         setAvatar(reduxUser?.avatarUrl || defaultAvatar)
     }
 
-    const handleSave = () => {
-        console.log("Saved client profile:", profile)
+    const handleSave = async () => {
+        if (!profile) return
+
+        const profileRequest = buildClientProfileUpdateRequest(profile, avatar)
+
+        if (!profileRequest.request) {
+            toast.error(profileRequest.error)
+            return
+        }
+
+        try {
+            const response = await updateClientProfileMutation.mutateAsync({
+                data: profileRequest.request,
+            })
+            const responseProfile = response.result
+
+            const updatedUser: UserResponse = {
+                ...profile,
+                ...responseProfile,
+                fullName: profileRequest.request.fullName,
+                gender: profileRequest.request.gender,
+                address: profileRequest.request.address,
+                dateOfBirth: profileRequest.request.dateOfBirth,
+                avatarUrl: profileRequest.request.avatarUrl ?? null,
+                phone: profileRequest.request.phone,
+                email: profileRequest.request.email,
+                companyName: profileRequest.request.companyName,
+                industry: profileRequest.request.industry,
+                companyDescription: profileRequest.request.companyDescription,
+                accessToken: profile.accessToken,
+                refreshToken: profile.refreshToken,
+            }
+
+            dispatch(login(updatedUser))
+            setProfile(updatedUser)
+            setAvatar(updatedUser.avatarUrl || defaultAvatar)
+            toast.success("Profile updated successfully.")
+        } catch (error) {
+            toast.error(getProfileApiErrorMessage(error))
+        }
     }
 
     const handleLogout = () => {
@@ -140,9 +183,8 @@ function ClientProfileEditor({
 
     if (!profile) {
         return (
-            <main className="min-h-screen bg-background text-foreground">
-                <Header />
-                <div className="flex min-h-screen items-center justify-center text-sm font-semibold text-destructive">
+            <main className="min-h-[calc(100dvh-4rem)] bg-background text-foreground">
+                <div className="flex min-h-[calc(100dvh-4rem)] items-center justify-center text-sm font-semibold text-destructive">
                     Failed to load profile.
                 </div>
             </main>
@@ -150,11 +192,10 @@ function ClientProfileEditor({
     }
 
     const isClient = profile.role === "CLIENT"
+    const isSaving = updateClientProfileMutation.isPending
 
     return (
-        <main className="min-h-screen bg-background text-foreground transition-colors duration-300">
-            <Header />
-
+        <main className="min-h-[calc(100dvh-4rem)] bg-background text-foreground transition-colors duration-300">
             <section
                 className="
           relative h-[100px] overflow-hidden border-b border-border
@@ -188,9 +229,12 @@ function ClientProfileEditor({
                                         className="hidden"
                                     />
 
-                                    <img
+                                    <Image
                                         src={avatar}
                                         alt={profile.fullName}
+                                        fill
+                                        sizes="176px"
+                                        unoptimized
                                         className="h-full w-full object-cover transition-transform duration-500 group-hover/avatar:scale-105"
                                         onClick={handleAvatarClick}
                                     />
@@ -258,6 +302,24 @@ function ClientProfileEditor({
                                         label="Email Address"
                                         value={profile.email || "No email"}
                                         onChange={(value) => updateProfile("email", value)}
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                                    <ClientProfileFormField
+                                        icon={<BadgeCheck size={16} />}
+                                        label="Gender"
+                                        value={profile.gender || ""}
+                                        onChange={(value) =>
+                                            updateProfile("gender", normalizeUserGender(value))
+                                        }
+                                    />
+
+                                    <ClientProfileFormField
+                                        icon={<Clock size={16} />}
+                                        label="Date of Birth"
+                                        value={profile.dateOfBirth || ""}
+                                        onChange={(value) => updateProfile("dateOfBirth", value)}
                                     />
                                 </div>
 
@@ -332,6 +394,7 @@ function ClientProfileEditor({
 
                             <Button
                                 onClick={handleSave}
+                                disabled={isSaving}
                                 className="
     h-11
     min-w-[150px]
@@ -344,8 +407,13 @@ function ClientProfileEditor({
     text-xs
     font-bold
     text-white
+    disabled:cursor-not-allowed
+    disabled:opacity-70
   "
                             >
+                                {isSaving ? (
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                ) : null}
                                 Save Changes
                             </Button>
                         </div>
@@ -405,4 +473,82 @@ function ClientProfileEditor({
             </section>
         </main>
     )
+}
+
+function buildClientProfileUpdateRequest(
+    profile: UserResponse,
+    avatar: string,
+): { request?: ClientProfileUpdateRequest; error?: string } {
+    const request: ClientProfileUpdateRequest = {
+        fullName: profile.fullName?.trim() ?? "",
+        gender: profile.gender ?? UserGender.OTHER,
+        address: profile.address?.trim() ?? "",
+        dateOfBirth: profile.dateOfBirth?.trim() ?? "",
+        avatarUrl: avatar || profile.avatarUrl || null,
+        phone: profile.phone?.trim() ?? "",
+        email: profile.email?.trim() ?? "",
+        companyName: profile.companyName?.trim() ?? "",
+        industry: profile.industry?.trim() ?? "",
+        companyDescription: profile.companyDescription?.trim() ?? "",
+    }
+
+    const missingField = getMissingClientProfileField(request)
+
+    if (missingField) {
+        return {
+            error: `${missingField} is required before saving your profile.`,
+        }
+    }
+
+    return { request }
+}
+
+function getMissingClientProfileField(request: ClientProfileUpdateRequest) {
+    const requiredFields: Array<[keyof ClientProfileUpdateRequest, string]> = [
+        ["fullName", "Full name"],
+        ["gender", "Gender"],
+        ["address", "Address"],
+        ["dateOfBirth", "Date of birth"],
+        ["phone", "Phone number"],
+        ["email", "Email address"],
+        ["companyName", "Company name"],
+        ["industry", "Operating industry"],
+        ["companyDescription", "Company description"],
+    ]
+
+    const missing = requiredFields.find(([field]) => !request[field])
+
+    return missing?.[1]
+}
+
+function normalizeUserGender(value: string) {
+    const normalizedValue = value.trim().toUpperCase()
+
+    if (
+        normalizedValue === UserGender.MALE ||
+        normalizedValue === UserGender.FEMALE ||
+        normalizedValue === UserGender.OTHER
+    ) {
+        return normalizedValue
+    }
+
+    return UserGender.OTHER
+}
+
+function getProfileApiErrorMessage(error: unknown) {
+    if (
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error
+    ) {
+        const response = error.response as {
+            data?: {
+                message?: string
+            }
+        }
+
+        return response.data?.message ?? "Failed to update profile."
+    }
+
+    return "Failed to update profile."
 }

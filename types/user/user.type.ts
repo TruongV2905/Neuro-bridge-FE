@@ -73,3 +73,16 @@ export interface UserResponse {
   // expert
   skillIds?: number[] | null;
 }
+
+export type ClientProfileUpdateRequest = {
+  fullName: string;
+  gender: UserGender;
+  address: string;
+  dateOfBirth: string;
+  avatarUrl?: string | null;
+  phone: string;
+  email: string;
+  companyName: string;
+  industry: string;
+  companyDescription: string;
+};

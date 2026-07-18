@@ -1,4 +1,9 @@
-import type { User, UserFilterRequest } from "@/types/user/user.type";
+import type {
+  ClientProfileUpdateRequest,
+  User,
+  UserFilterRequest,
+  UserResponse,
+} from "@/types/user/user.type";
 import {
   createMutationHook,
   createPostQueryHook,
@@ -29,3 +34,12 @@ export const useGetUserByCode = createQueryHook<User>(
   userKeys.detail,
   `${USER_ENDPOINT}/:code`,
 );
+
+export const useUpdateClientProfile = createMutationHook<
+  UserResponse,
+  ClientProfileUpdateRequest
+>({
+  url: `${USER_ENDPOINT}/client`,
+  method: "PUT",
+  queryKeyToInvalidate: [userKeys.all, userKeys.detail],
+});

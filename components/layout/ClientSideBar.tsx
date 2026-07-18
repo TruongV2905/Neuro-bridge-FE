@@ -12,6 +12,7 @@ import {
   PlusCircleIcon,
   SearchIcon,
   SparklesIcon,
+  UserRoundIcon,
   WalletCardsIcon,
   type LucideIcon,
 } from "lucide-react";
@@ -80,6 +81,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Project",
         url: "/client/dashboard/projects",
         icon: FolderIcon,
+      },
+      {
+        title: "Profile Account",
+        url: "/client/dashboard/profile",
+        icon: UserRoundIcon,
       },
     ],
   },

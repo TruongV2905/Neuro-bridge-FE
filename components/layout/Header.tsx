@@ -153,7 +153,11 @@ export default function Header() {
   };
 
   const profilePath =
-    currentUser?.role === "EXPERT" ? "/expert-profile" : "/profile";
+    currentUser?.role === "EXPERT"
+      ? "/expert-profile"
+      : currentUser?.role === "ADMIN"
+        ? "/admin/dashboard"
+        : "/client/dashboard/profile";
 
   const dashboardPath =
     currentUser?.role === "EXPERT"

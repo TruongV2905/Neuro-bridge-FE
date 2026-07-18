@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSelector } from "react-redux";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -13,6 +14,7 @@ export function DashboardHeader() {
   const currentUser = useSelector(
     (state: RootState) => state.user,
   ) as UserResponse | null;
+  const profileHref = getDashboardProfileHref(currentUser?.role);
 
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-indigo-100/70 bg-[linear-gradient(135deg,rgba(255,255,255,0.94)_0%,rgba(248,250,252,0.9)_48%,rgba(238,242,255,0.86)_100%)] px-4 shadow-[0_10px_30px_rgba(15,23,42,0.06)] backdrop-blur-xl sm:px-6">
@@ -22,7 +24,9 @@ export function DashboardHeader() {
 
       <div className="flex items-center gap-4">
         <NotificationBell />
-        <DashboardUserAvatar user={currentUser} />
+        <Link href={profileHref} aria-label="Open profile account">
+          <DashboardUserAvatar user={currentUser} />
+        </Link>
       </div>
     </header>
   );
@@ -70,4 +74,12 @@ function getInitials(value: string) {
       : `${parts[0][0]}${parts[parts.length - 1][0]}`;
 
   return initials.toUpperCase();
+}
+
+function getDashboardProfileHref(role?: string | null) {
+  if (role === "CLIENT") return "/client/dashboard/profile";
+  if (role === "EXPERT") return "/expert-profile";
+  if (role === "ADMIN") return "/admin/dashboard";
+
+  return "/";
 }

@@ -9,7 +9,6 @@ import {
   FolderIcon,
   HandshakeIcon,
   HomeIcon,
-  MessageCircleIcon,
   PlusCircleIcon,
   SearchIcon,
   SparklesIcon,
@@ -73,11 +72,6 @@ const WORKSPACE_CONFIG: Record<
         icon: FileSignatureIcon,
       },
       {
-        title: "Chat",
-        url: "/client/dashboard/chat",
-        icon: MessageCircleIcon,
-      },
-      {
         title: "Wallet",
         url: "/client/dashboard/wallet",
         icon: WalletCardsIcon,
@@ -116,11 +110,6 @@ const WORKSPACE_CONFIG: Record<
         title: "Project",
         url: "/expert/dashboard/projects",
         icon: FolderIcon,
-      },
-      {
-        title: "Chat",
-        url: "/expert/dashboard/chat",
-        icon: MessageCircleIcon,
       },
     ],
   },

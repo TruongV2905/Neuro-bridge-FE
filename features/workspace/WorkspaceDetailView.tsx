@@ -1,6 +1,15 @@
 "use client"
 
-import { useState, type ComponentType, type ReactNode } from "react"
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentType,
+  type MouseEvent as ReactMouseEvent,
+  type ReactNode,
+} from "react"
 import { useRouter } from "next/navigation"
 import { useSelector } from "react-redux"
 import {
@@ -11,12 +20,13 @@ import {
   CalendarDays,
   Loader2,
   MessageCircle,
+  Send,
   Save,
-  ShieldCheck,
   Sparkles,
   Star,
   Users,
   WalletCards,
+  X,
 } from "lucide-react"
 import { toast } from "react-toastify"
 
@@ -32,17 +42,20 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
+import { useChatSocket } from "@/hooks/useChatSocket"
 import type { RootState } from "@/redux/store"
-import { useUpdateProposalUnlock } from "@/services/job-post.service"
 import { useProjectEscrowPayment } from "@/services/payment.service"
 import {
   findCanonicalProjectChatSession,
+  useChatMessages,
+  useChatSessionById,
   useCreateWorkspaceChatSession,
   useMyChatSessions,
+  useSendChatMessage,
 } from "@/services/private-chat.service"
 import {
-  useProposalStrategy,
-  useUpdateProposalStrategy,
+  useUpdateWorkspaceDocument,
+  useWorkspaceDocument,
   useWorkspaceDetail,
 } from "@/services/workspace.service"
 import {
@@ -50,6 +63,15 @@ import {
   useRateProject,
 } from "@/services/rating.service"
 import { useProjectDetailByWorkspace } from "@/services/submission-package.service"
+import type {
+  ChatMessage,
+  ChatUser,
+} from "@/types/chat.types"
+import type {
+  ChatApiMessage,
+  ChatSession,
+  ChatSessionParticipant,
+} from "@/types/private-chat.type"
 import type { RatingResponse } from "@/types/rating.type"
 import type {
   WorkspaceDetail,
@@ -58,23 +80,13 @@ import type {
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 import { formatMoney } from "@/utils/formatMoney"
 
+import { PrivateChatMessage } from "../private-chat/components/PrivateChatMessage"
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
 import { SubmissionPackageReviewPanel } from "./submission/components/SubmissionPackageReviewPanel"
 
 type WorkspaceDetailViewProps = {
   workspaceId: string
 }
-
-type WorkspaceAction = {
-  title: string
-  description: string
-  icon: ComponentType<{ className?: string }>
-  state: string
-}
-
-const RATING_SCORE_OPTIONS = [
-  0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5,
-] as const
 
 export function WorkspaceDetailView({
   workspaceId,
@@ -89,16 +101,6 @@ export function WorkspaceDetailView({
 
   const workspaceQuery = useWorkspaceDetail(normalizedWorkspaceId)
   const projectDetailQuery = useProjectDetailByWorkspace(normalizedWorkspaceId)
-  const workspaceChatSessionsQuery =
-    useMyChatSessions(currentUserCode, {
-      enabled: false,
-    })
-  const createWorkspaceChatSessionMutation =
-    useCreateWorkspaceChatSession(currentUserCode)
-  const [openChatError, setOpenChatError] =
-    useState<string | null>(null)
-  const [isCheckingChatSession, setIsCheckingChatSession] =
-    useState(false)
   const workspace = workspaceQuery.data
   const handleBack = () => {
     const projectBaseRoute = getProjectBaseRoute(role)
@@ -109,102 +111,6 @@ export function WorkspaceDetailView({
     }
 
     router.back()
-  }
-  const chatRouteBase = getChatRouteBase(role)
-  const canOpenChat =
-    Boolean(chatRouteBase) &&
-    Boolean(normalizedWorkspaceId) &&
-    Boolean(currentUserCode)
-  const isOpeningChat =
-    isCheckingChatSession ||
-    createWorkspaceChatSessionMutation.isPending
-  const openChatErrorMessage =
-    openChatError ??
-    getChatErrorMessage(
-      createWorkspaceChatSessionMutation.error,
-    )
-
-  const handleOpenChat = async () => {
-    if (
-      isOpeningChat ||
-      !canOpenChat ||
-      !chatRouteBase
-    ) {
-      return
-    }
-
-    setOpenChatError(null)
-    createWorkspaceChatSessionMutation.reset()
-
-    try {
-      setIsCheckingChatSession(true)
-
-      const sessionsResult =
-        await workspaceChatSessionsQuery.refetch()
-
-      if (sessionsResult.isError) {
-        setOpenChatError(
-          getChatErrorMessage(sessionsResult.error),
-        )
-        return
-      }
-
-      const existingSession =
-        findCanonicalProjectChatSession(
-          sessionsResult.data?.result ?? [],
-          normalizedWorkspaceId,
-        )
-
-      if (existingSession) {
-        const existingSessionId =
-          existingSession.id?.trim()
-
-        if (!existingSessionId) {
-          setOpenChatError(
-            "Workspace chat exists, but no usable session ID was returned. Please try again.",
-          )
-          return
-        }
-
-        router.push(
-          `${chatRouteBase}/${encodeURIComponent(
-            existingSessionId,
-          )}`,
-        )
-        return
-      }
-
-      if (role !== UserRole.CLIENT) {
-        setOpenChatError(
-          "Workspace chat has not been initialized by the Client yet.",
-        )
-        return
-      }
-
-      const response =
-        await createWorkspaceChatSessionMutation.mutateAsync(
-          {
-            workspaceId: normalizedWorkspaceId,
-          },
-        )
-
-      const sessionId = response.result?.id?.trim()
-
-      if (!sessionId) {
-        setOpenChatError(
-          "Chat session was created, but no usable session ID was returned. Please try again.",
-        )
-        return
-      }
-
-      router.push(
-        `${chatRouteBase}/${encodeURIComponent(sessionId)}`,
-      )
-    } catch (error) {
-      setOpenChatError(getChatErrorMessage(error))
-    } finally {
-      setIsCheckingChatSession(false)
-    }
   }
 
   if (!normalizedWorkspaceId) {
@@ -294,18 +200,6 @@ export function WorkspaceDetailView({
           </div>
           
           <div className="space-y-6">
-            <WorkspaceQuickActions
-              canOpenChat={canOpenChat}
-              isOpeningChat={isOpeningChat}
-              openChatStatus={getOpenChatStatus({
-                role,
-                isCheckingChatSession,
-                isCreatingChatSession:
-                  createWorkspaceChatSessionMutation.isPending,
-              })}
-              openChatError={openChatErrorMessage}
-              onOpenChat={handleOpenChat}
-            />
             {role === UserRole.EXPERT ? (
               <ExpertSubmissionPackagePanel
                 workspaceId={workspace.workspaceId}
@@ -319,6 +213,12 @@ export function WorkspaceDetailView({
             )}
           </div>
         </div>
+
+        <WorkspaceChatPopup
+          workspace={workspace}
+          role={role}
+          currentUserCode={currentUserCode}
+        />
       </div>
     </WorkspacePageShell>
   )
@@ -484,94 +384,409 @@ function WorkspaceMembers({
   )
 }
 
-function WorkspaceQuickActions({
-  canOpenChat,
-  isOpeningChat,
-  openChatStatus,
-  openChatError,
-  onOpenChat,
+function WorkspaceChatPopup({
+  workspace,
+  role,
+  currentUserCode,
 }: {
-  canOpenChat: boolean
-  isOpeningChat: boolean
-  openChatStatus: string
-  openChatError?: string | null
-  onOpenChat: () => void
+  workspace: WorkspaceDetail
+  role?: UserRole
+  currentUserCode: string
 }) {
-  const actions: WorkspaceAction[] = [
-    {
-      title: "Open Chat",
-      description: isOpeningChat
-        ? openChatStatus
-        : canOpenChat
-          ? "Open the canonical PROJECT chat session for this workspace."
-        : "Workspace chat is available for Client and Expert accounts only.",
-      icon: MessageCircle,
-      state: canOpenChat ? "Ready" : "Unavailable",
+  const messagesEndRef = useRef<HTMLDivElement | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
+  const [sessionId, setSessionId] = useState("")
+  const [draftMessage, setDraftMessage] = useState("")
+  const [chatError, setChatError] = useState<string | null>(null)
+  const [isPreparingChat, setIsPreparingChat] = useState(false)
+  const normalizedWorkspaceId = workspace.workspaceId.trim()
+  const isSupportedRole =
+    role === UserRole.CLIENT || role === UserRole.EXPERT
+  const previewPartner = getWorkspaceChatPartner(workspace, role)
+  const previewPartnerUser = previewPartner
+    ? mapWorkspaceParticipantToChatUser(previewPartner, role)
+    : null
+  const sessionsQuery = useMyChatSessions(currentUserCode, {
+    enabled: false,
+  })
+  const createWorkspaceChatSessionMutation =
+    useCreateWorkspaceChatSession(currentUserCode)
+  const sessionQuery = useChatSessionById(sessionId, currentUserCode)
+  const session = sessionQuery.data?.result
+  const canLoadMessages =
+    Boolean(sessionId) && session?.id === sessionId
+  const messagesQuery = useChatMessages(
+    canLoadMessages ? sessionId : null,
+    0,
+    30,
+    currentUserCode,
+  )
+  const sendMessageMutation = useSendChatMessage(currentUserCode)
+
+  const currentUser = useMemo<ChatUser | null>(() => {
+    if (!session || !currentUserCode) {
+      return null
     }
-  ]
+
+    const participant =
+      getAuthenticatedChatParticipant(session, currentUserCode)
+
+    return participant
+      ? mapChatParticipantToChatUser(participant, session.status)
+      : null
+  }, [session, currentUserCode])
+
+  const partner = useMemo<ChatUser | null>(() => {
+    if (!session || !currentUserCode) {
+      return previewPartnerUser
+    }
+
+    const participant = getPartnerChatParticipant(
+      session,
+      currentUserCode,
+    )
+
+    return participant
+      ? mapChatParticipantToChatUser(participant, session.status)
+      : previewPartnerUser
+  }, [session, currentUserCode, previewPartnerUser])
+
+  const messages = useMemo<ChatMessage[]>(() => {
+    const apiMessages = messagesQuery.data?.result?.data ?? []
+
+    return [...apiMessages]
+      .sort((left, right) => {
+        return (
+          getTimeValue(left.createdAt) -
+          getTimeValue(right.createdAt)
+        )
+      })
+      .map((message) => ({
+        id: message.id,
+        senderId: resolveWorkspaceChatMessageSenderId({
+          message,
+          session,
+          currentUserCode,
+          currentUserRole: role,
+        }),
+        type: "text",
+        content: message.content,
+        time: formatMessageTime(message.createdAt),
+      }))
+  }, [messagesQuery.data, session, currentUserCode, role])
+
+  const handleRealtimeMessage = useCallback(() => {
+    void messagesQuery.refetch()
+  }, [messagesQuery])
+
+  useChatSocket({
+    enabled: isOpen && Boolean(sessionId) && Boolean(currentUserCode),
+    sessionId,
+    userCode: currentUserCode,
+    onMessage: handleRealtimeMessage,
+  })
+
+  useEffect(() => {
+    if (!isOpen) {
+      return
+    }
+
+    messagesEndRef.current?.scrollIntoView({
+      behavior: "smooth",
+    })
+  }, [isOpen, messages.length])
+
+  if (!isSupportedRole || !previewPartnerUser) {
+    return null
+  }
+
+  async function ensureChatSession() {
+    if (
+      isPreparingChat ||
+      createWorkspaceChatSessionMutation.isPending
+    ) {
+      return
+    }
+
+    if (!currentUserCode || !normalizedWorkspaceId) {
+      setChatError("Sign in again to open this workspace chat.")
+      return
+    }
+
+    setChatError(null)
+    createWorkspaceChatSessionMutation.reset()
+
+    try {
+      setIsPreparingChat(true)
+
+      const sessionsResult = await sessionsQuery.refetch()
+
+      if (sessionsResult.isError) {
+        setChatError(getChatErrorMessage(sessionsResult.error))
+        return
+      }
+
+      const existingSession = findCanonicalProjectChatSession(
+        sessionsResult.data?.result ?? [],
+        normalizedWorkspaceId,
+      )
+
+      if (existingSession?.id?.trim()) {
+        setSessionId(existingSession.id.trim())
+        return
+      }
+
+      if (role !== UserRole.CLIENT) {
+        setChatError(
+          "The Client needs to start this workspace chat first.",
+        )
+        return
+      }
+
+      const response =
+        await createWorkspaceChatSessionMutation.mutateAsync({
+          workspaceId: normalizedWorkspaceId,
+        })
+
+      const nextSessionId = response.result?.id?.trim()
+
+      if (!nextSessionId) {
+        setChatError(
+          "Chat session was created, but no usable session ID was returned.",
+        )
+        return
+      }
+
+      setSessionId(nextSessionId)
+    } catch (error) {
+      setChatError(getChatErrorMessage(error))
+    } finally {
+      setIsPreparingChat(false)
+    }
+  }
+
+  async function handleToggleChat() {
+    const nextOpen = !isOpen
+    setIsOpen(nextOpen)
+
+    if (nextOpen && !sessionId) {
+      await ensureChatSession()
+    }
+  }
+
+  async function handleSendMessage() {
+    const normalizedMessage = draftMessage.trim()
+
+    if (
+      !normalizedMessage ||
+      !session ||
+      !currentUser ||
+      session.status !== "ACTIVE" ||
+      sendMessageMutation.isPending
+    ) {
+      return
+    }
+
+    try {
+      await sendMessageMutation.mutateAsync({
+        chatSessionId: session.id,
+        content: normalizedMessage,
+      })
+      setDraftMessage("")
+      await messagesQuery.refetch()
+    } catch (error) {
+      toast.error(getWorkspaceApiErrorMessage(error))
+    }
+  }
+
+  const isChatLoading =
+    isPreparingChat ||
+    createWorkspaceChatSessionMutation.isPending ||
+    (Boolean(sessionId) && sessionQuery.isLoading)
+  const canSendMessage =
+    Boolean(draftMessage.trim()) &&
+    Boolean(session) &&
+    session?.status === "ACTIVE" &&
+    !sendMessageMutation.isPending
 
   return (
-    <WorkspaceCard
-      icon={ShieldCheck}
-      title="Quick Actions"
-      description="Prepared integration points without calling unsupported APIs."
-    >
-      <div className="grid gap-3">
-        {actions.map((action) => (
-          <button
-            key={action.title}
-            type="button"
-            disabled={
-              action.title !== "Open Chat" ||
-              !canOpenChat ||
-              isOpeningChat
-            }
-            onClick={
-              action.title === "Open Chat" ? onOpenChat : undefined
-            }
-            className={cn(
-              "flex items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 text-left transition",
-              action.title === "Open Chat" && canOpenChat
-                ? "hover:border-indigo-200 hover:bg-indigo-50/50"
-                : "opacity-80",
-              isOpeningChat && action.title === "Open Chat"
-                ? "cursor-wait opacity-70"
-                : "",
+    <div className="fixed bottom-6 right-6 z-50 flex max-w-[calc(100vw-3rem)] flex-col items-end gap-3">
+      {isOpen && (
+        <section className="flex h-[560px] max-h-[calc(100vh-7rem)] w-[380px] max-w-full overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-2xl shadow-slate-900/20">
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex h-16 shrink-0 items-center justify-between border-b border-slate-100 bg-white px-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage
+                    src={partner?.avatarUrl}
+                    alt={partner?.name ?? "Chat partner"}
+                  />
+                  <AvatarFallback className="bg-indigo-50 font-bold text-indigo-600">
+                    {getInitials(partner?.name ?? "Chat")}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-extrabold text-slate-900">
+                    {partner?.name ?? "Workspace chat"}
+                  </p>
+                  <p className="text-xs font-semibold text-emerald-500">
+                    Project chat
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-xl text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="Close chat"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/60 px-4 py-4">
+              {isChatLoading ? (
+                <ChatPopupState message="Opening chat..." />
+              ) : chatError ? (
+                <ChatPopupState
+                  message={chatError}
+                  actionLabel="Try again"
+                  onAction={ensureChatSession}
+                />
+              ) : sessionQuery.isError ? (
+                <ChatPopupState
+                  message={getWorkspaceApiErrorMessage(sessionQuery.error)}
+                  actionLabel="Reload"
+                  onAction={() => sessionQuery.refetch()}
+                />
+              ) : messagesQuery.isLoading ? (
+                <ChatPopupState message="Loading messages..." />
+              ) : messagesQuery.isError ? (
+                <ChatPopupState
+                  message={getWorkspaceApiErrorMessage(messagesQuery.error)}
+                  actionLabel="Reload"
+                  onAction={() => messagesQuery.refetch()}
+                />
+              ) : session && currentUser && partner ? (
+                <div className="flex flex-col gap-4">
+                  {messages.length > 0 ? (
+                    messages.map((message) => (
+                      <PrivateChatMessage
+                        key={message.id}
+                        message={message}
+                        currentUser={currentUser}
+                        partner={partner}
+                      />
+                    ))
+                  ) : (
+                    <ChatPopupState message="No messages yet. Send the first message to start." />
+                  )}
+                  <div ref={messagesEndRef} />
+                </div>
+              ) : (
+                <ChatPopupState message="Chat session is not ready yet." />
+              )}
+            </div>
+
+            {session?.status && session.status !== "ACTIVE" && (
+              <div className="border-t border-amber-100 bg-amber-50 px-4 py-2 text-center text-xs font-semibold text-amber-700">
+                This conversation is currently {session.status.toLowerCase()}.
+              </div>
             )}
-          >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
-              <action.icon className="h-5 w-5" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="flex items-center justify-between gap-3">
-                <span className="text-sm font-extrabold text-slate-900">
-                  {action.title === "Open Chat" && isOpeningChat
-                    ? "Opening Chat..."
-                    : action.title}
-                </span>
-                <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                  {action.title === "Open Chat" && isOpeningChat
-                    ? "Opening"
-                    : action.state}
-                </span>
-              </span>
-              <span className="mt-1 block text-xs leading-5 text-slate-500">
-                {action.description}
-              </span>
-            </span>
-          </button>
-        ))}
-      </div>
-      {openChatError && (
-        <div className="mt-4">
-          <SectionNotice
-            tone="warning"
-            title="Chat could not open"
-            message={openChatError}
-          />
-        </div>
+
+            <div className="shrink-0 border-t border-slate-100 bg-white p-3">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-2 focus-within:border-indigo-300 focus-within:bg-white">
+                <input
+                  value={draftMessage}
+                  onChange={(event) =>
+                    setDraftMessage(event.target.value)
+                  }
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                      event.preventDefault()
+                      void handleSendMessage()
+                    }
+                  }}
+                  disabled={!session || session.status !== "ACTIVE"}
+                  placeholder={
+                    session?.status && session.status !== "ACTIVE"
+                      ? "This chat is unavailable"
+                      : "Type a message..."
+                  }
+                  className="h-9 min-w-0 flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleSendMessage()}
+                  disabled={!canSendMessage}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  aria-label="Send message"
+                >
+                  {sendMessageMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
       )}
-    </WorkspaceCard>
+
+      <button
+        type="button"
+        onClick={() => void handleToggleChat()}
+        className="group relative flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-xl shadow-slate-900/20 ring-4 ring-white transition hover:-translate-y-0.5 hover:shadow-2xl"
+        aria-label="Open workspace chat"
+      >
+        <Avatar className="h-14 w-14">
+          <AvatarImage
+            src={previewPartnerUser.avatarUrl}
+            alt={previewPartnerUser.name}
+          />
+          <AvatarFallback className="bg-indigo-50 font-bold text-indigo-600">
+            {getInitials(previewPartnerUser.name)}
+          </AvatarFallback>
+        </Avatar>
+        <span className="absolute -right-0.5 -top-0.5 flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white shadow-sm">
+          {isPreparingChat ||
+          createWorkspaceChatSessionMutation.isPending ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <MessageCircle className="h-3.5 w-3.5" />
+          )}
+        </span>
+      </button>
+    </div>
+  )
+}
+
+function ChatPopupState({
+  message,
+  actionLabel,
+  onAction,
+}: {
+  message: string
+  actionLabel?: string
+  onAction?: () => void
+}) {
+  return (
+    <div className="flex min-h-40 flex-col items-center justify-center rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
+      <p className="text-sm font-semibold leading-5 text-slate-500">
+        {message}
+      </p>
+      {onAction && (
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onAction}
+          className="mt-3 h-9 rounded-xl"
+        >
+          {actionLabel ?? "Try again"}
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -587,60 +802,56 @@ function WorkspaceStrategySection({
   const normalizedWorkspaceId = workspaceId.trim()
   const isExpert = role === UserRole.EXPERT
   const isClient = role === UserRole.CLIENT
-  const strategyQuery = useProposalStrategy(normalizedWorkspaceId)
-  const updateStrategyMutation = useUpdateProposalStrategy()
-  const updateProposalUnlockMutation = useUpdateProposalUnlock()
+  const documentQuery = useWorkspaceDocument(normalizedWorkspaceId)
+  const updateDocumentMutation = useUpdateWorkspaceDocument()
   const [isStrategyDialogOpen, setIsStrategyDialogOpen] = useState(false)
-  const [draftStrategy, setDraftStrategy] = useState("")
+  const [draftDocument, setDraftDocument] = useState("")
   const [hasEditedDraft, setHasEditedDraft] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
-  const strategy = strategyQuery.data
-  const strategyDetail = strategy?.strategyDetail?.trim() ?? ""
-  const formValue = hasEditedDraft ? draftStrategy : strategyDetail
-  const isMissingStrategy = strategyQuery.isError && getErrorStatus(strategyQuery.error) === 404
+  const workspaceDocument = documentQuery.data
+  const documentDetail = workspaceDocument?.document?.trim() ?? ""
+  const formValue = hasEditedDraft ? draftDocument : documentDetail
+  const isDocumentRequired = Boolean(workspaceDocument?.documentRequired)
   const canEdit = isExpert && Boolean(normalizedWorkspaceId)
-  const isSavingStrategy =
-    updateStrategyMutation.isPending || updateProposalUnlockMutation.isPending
-  const saveStrategyError =
-    updateProposalUnlockMutation.error ?? updateStrategyMutation.error
+  const isSavingDocument = updateDocumentMutation.isPending
+  const saveDocumentError = updateDocumentMutation.error
+
+  useEffect(() => {
+    if (isExpert && isDocumentRequired) {
+      const timeoutId = window.setTimeout(() => {
+        setIsStrategyDialogOpen(true)
+      }, 0)
+
+      return () => window.clearTimeout(timeoutId)
+    }
+  }, [isExpert, isDocumentRequired])
 
   const handleSubmitStrategy = async () => {
-    if (!canEdit || isSavingStrategy) {
+    if (!canEdit || isSavingDocument) {
       return
     }
 
-    const nextStrategy = formValue.trim()
+    const nextDocument = formValue.trim()
 
-    if (!nextStrategy) {
-      setFormError("Strategy detail is required.")
+    if (!nextDocument) {
+      setFormError("Workspace document is required.")
       return
     }
 
     setFormError(null)
 
     try {
-      if (strategy?.proposalUnlockId) {
-        await updateProposalUnlockMutation.mutateAsync({
-          pathParams: {
-            id: strategy.proposalUnlockId,
-          },
-          data: {
-            strategyDetail: nextStrategy,
-            unlockCost: strategy.unlockCost,
-          },
-        })
-        await strategyQuery.refetch()
-      } else {
-        await updateStrategyMutation.mutateAsync({
-          workspaceId: normalizedWorkspaceId,
-          request: {
-            strategyDetail: nextStrategy,
-          },
-        })
-      }
+      await updateDocumentMutation.mutateAsync({
+        workspaceId: normalizedWorkspaceId,
+        request: {
+          document: nextDocument,
+        },
+      })
 
       setHasEditedDraft(false)
-      setDraftStrategy("")
+      setDraftDocument("")
+      setIsStrategyDialogOpen(false)
+      toast.success("Workspace document updated.")
     } catch {
       // Error message is rendered from the mutation state below.
     }
@@ -652,31 +863,78 @@ function WorkspaceStrategySection({
       title="Proposal Strategy"
       description={
         isExpert
-          ? "Create or update the detailed strategy for this workspace."
-          : "Read the approved proposal strategy for this workspace."
+          ? "Complete the required workspace document before continuing delivery."
+          : "Read the expert's workspace document for this project."
       }
     >
+      {isExpert && isDocumentRequired && (
+        <div className="mb-4">
+          <SectionNotice
+            tone="warning"
+            title="Workspace document required"
+            message="This step is mandatory. Open the editor and submit the workspace document before continuing."
+          />
+        </div>
+      )}
+
       <button
         type="button"
         onClick={() => setIsStrategyDialogOpen(true)}
-        className="flex w-full items-start gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 text-left transition hover:border-indigo-200 hover:bg-indigo-50/50"
+        className={cn(
+          "flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition",
+          isExpert && isDocumentRequired
+            ? "border-amber-300 bg-amber-50/90 shadow-sm shadow-amber-100 hover:border-amber-400 hover:bg-amber-100/80"
+            : "border-slate-200/70 bg-slate-50/70 hover:border-indigo-200 hover:bg-indigo-50/50",
+        )}
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm">
+        <span
+          className={cn(
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm",
+            isExpert && isDocumentRequired
+              ? "text-amber-700"
+              : "text-indigo-600",
+          )}
+        >
           <Sparkles className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
           <span className="flex items-center justify-between gap-3">
-            <span className="text-sm font-extrabold text-slate-900">
-              {isExpert ? "Edit strategy" : "View strategy"}
+            <span
+              className={cn(
+                "text-sm font-extrabold",
+                isExpert && isDocumentRequired
+                  ? "text-amber-950"
+                  : "text-slate-900",
+              )}
+            >
+              {isExpert ? "Edit document" : "View document"}
             </span>
-            <span className="rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">
-              {isExpert ? "Editor" : "Viewer"}
+            <span
+              className={cn(
+                "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider",
+                isExpert && isDocumentRequired
+                  ? "bg-amber-600 text-white shadow-sm shadow-amber-200"
+                  : "bg-white text-slate-400",
+              )}
+            >
+              {isExpert && isDocumentRequired
+                ? "Required"
+                : isExpert
+                  ? "Editor"
+                  : "Viewer"}
             </span>
           </span>
-          <span className="mt-1 block text-xs font-semibold leading-5 text-slate-500">
+          <span
+            className={cn(
+              "mt-1 block text-xs font-semibold leading-5",
+              isExpert && isDocumentRequired
+                ? "text-amber-700"
+                : "text-slate-500",
+            )}
+          >
             {isExpert
-              ? "Open the proposal-style editor to create or update this workspace strategy."
-              : "Open the proposal strategy viewer for this workspace."}
+              ? "Open the workspace document editor required for expert delivery."
+              : "Open the workspace document viewer for this project."}
           </span>
         </span>
       </button>
@@ -686,17 +944,17 @@ function WorkspaceStrategySection({
           <div className="max-h-[calc(100vh-2rem)] overflow-y-auto p-6">
             <DialogHeader>
               <DialogTitle className="text-xl font-extrabold tracking-tight text-slate-950">
-                Proposal Strategy
+                Workspace Document
               </DialogTitle>
               <DialogDescription className="leading-6 text-slate-500">
                 {isExpert
-                  ? "Create or update the detailed strategy for this workspace."
-                  : "Read the expert's proposal strategy for this workspace."}
+                  ? "Create or update the required document for this workspace."
+                  : "Read the expert's workspace document for this project."}
               </DialogDescription>
             </DialogHeader>
 
             <div className="mt-5">
-              {strategyQuery.isLoading ? (
+              {documentQuery.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-5 w-40" />
                   <Skeleton className="h-28 rounded-2xl" />
@@ -704,37 +962,38 @@ function WorkspaceStrategySection({
                 </div>
               ) : canEdit ? (
                 <div className="space-y-4">
-                  {isMissingStrategy && (
+                  {isDocumentRequired && (
                     <SectionNotice
-                      title="No proposal strategy yet"
-                      message="Write the first detailed strategy for this workspace. Saving will create or update the strategy through the Workspace API."
+                      tone="warning"
+                      title="Required before continuing"
+                      message="The backend marked this workspace document as required. Submit it here to complete this mandatory step."
                     />
                   )}
 
-                  {strategyQuery.isError && !isMissingStrategy && (
+                  {documentQuery.isError && (
                     <SectionNotice
                       tone="warning"
-                      title="Unable to load proposal strategy"
-                      message={getWorkspaceApiErrorMessage(strategyQuery.error)}
+                      title="Unable to load workspace document"
+                      message={getWorkspaceApiErrorMessage(documentQuery.error)}
                     />
                   )}
 
                   <div>
                     <label
-                      htmlFor="proposal-strategy-detail"
+                      htmlFor="workspace-document-detail"
                       className="text-xs font-bold uppercase tracking-wider text-slate-400"
                     >
-                      Detailed strategy
+                      Workspace document
                     </label>
                     <Textarea
-                      id="proposal-strategy-detail"
+                      id="workspace-document-detail"
                       value={formValue}
                       onChange={(event) => {
-                        setDraftStrategy(event.target.value)
+                        setDraftDocument(event.target.value)
                         setHasEditedDraft(true)
                         setFormError(null)
                       }}
-                      placeholder="Describe the implementation strategy, milestones, risks, and delivery approach..."
+                      placeholder="Enter the required project document, implementation details, notes, and delivery plan..."
                       className="mt-2 min-h-44 rounded-2xl border-slate-200 bg-slate-50/70 text-sm leading-6 shadow-none focus-visible:border-indigo-300 focus-visible:ring-indigo-100"
                     />
                     {formError && (
@@ -747,73 +1006,70 @@ function WorkspaceStrategySection({
                   <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <p className="text-sm font-extrabold text-slate-900">
-                        Unlock cost
+                        Document status
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {strategy
-                          ? formatMoney(strategy.unlockCost, "Not available")
-                          : "Cost will stay unchanged when strategy is saved."}
+                        {isDocumentRequired
+                          ? "Required by Workspace API"
+                          : "Document is available for this workspace."}
                       </p>
                     </div>
                     <Button
                       type="button"
                       onClick={handleSubmitStrategy}
-                      disabled={isSavingStrategy || !formValue.trim()}
+                      disabled={isSavingDocument || !formValue.trim()}
                       className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 px-4 text-sm font-bold text-white"
                     >
-                      {isSavingStrategy ? (
+                      {isSavingDocument ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
                         <Save className="mr-2 h-4 w-4" />
                       )}
-                      Save strategy
+                      Save document
                     </Button>
                   </div>
 
-                  {saveStrategyError && (
+                  {saveDocumentError && (
                     <SectionNotice
                       tone="warning"
-                      title="Strategy could not be saved"
-                      message={getWorkspaceApiErrorMessage(saveStrategyError)}
+                      title="Document could not be saved"
+                      message={getWorkspaceApiErrorMessage(saveDocumentError)}
                     />
                   )}
                 </div>
               ) : isClient ? (
-                strategy ? (
+                workspaceDocument ? (
                   <div className="space-y-4">
                     <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                        Detailed strategy
+                        Workspace document
                       </p>
                       <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                        {strategyDetail || "No detailed strategy is available."}
+                        {documentDetail || "No workspace document is available."}
                       </p>
                     </div>
-                    <DetailTile
-                      label="Unlock cost"
-                      value={formatMoney(strategy.unlockCost, "Not available")}
-                    />
+                    
                   </div>
                 ) : (
                   <SectionNotice
-                    tone={strategyQuery.isError && !isMissingStrategy ? "warning" : "neutral"}
+                    tone={documentQuery.isError ? "warning" : "neutral"}
                     title={
-                      strategyQuery.isError && !isMissingStrategy
-                        ? "Unable to load proposal strategy"
-                        : "No proposal strategy yet"
+                      documentQuery.isError
+                        ? "Unable to load workspace document"
+                        : "No workspace document yet"
                     }
                     message={
-                      strategyQuery.isError && !isMissingStrategy
-                        ? getWorkspaceApiErrorMessage(strategyQuery.error)
-                        : "The expert has not shared a proposal strategy for this workspace yet."
+                      documentQuery.isError
+                        ? getWorkspaceApiErrorMessage(documentQuery.error)
+                        : "The expert has not shared a workspace document for this project yet."
                     }
                   />
                 )
               ) : (
                 <SectionNotice
                   tone="warning"
-                  title="Proposal strategy unavailable"
-                  message="Sign in as the Client or Expert of this workspace to view proposal strategy."
+                  title="Workspace document unavailable"
+                  message="Sign in as the Client or Expert of this workspace to view the document."
                 />
               )}
             </div>
@@ -969,32 +1225,26 @@ function WorkspaceRatingSection({
         <ProjectRatingSummary rating={existingRating} />
       ) : canSubmitRating ? (
         <div className="space-y-4">
-          <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
-            <p className="text-sm font-extrabold text-slate-900">
-              Rate the expert
-            </p>
-            <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
-              Choose a score from 0.5 to 5 stars. Feedback can be left blank.
-            </p>
-            <div className="mt-4 grid grid-cols-5 gap-2 sm:grid-cols-10">
-              {RATING_SCORE_OPTIONS.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setScore(option)}
-                  className={cn(
-                    "flex h-9 items-center justify-center rounded-xl border text-xs font-extrabold transition",
-                    score === option
-                      ? "border-amber-300 bg-amber-50 text-amber-700"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-amber-200 hover:text-amber-600",
-                  )}
-                >
-                  {option}
-                </button>
-              ))}
+          <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 via-white to-slate-50 p-5 shadow-sm shadow-amber-100/60">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-extrabold text-slate-900">
+                  Rate the expert
+                </p>
+                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                  Click the left or right half of a star to choose 0.5 increments.
+                </p>
+              </div>
+              <div className="inline-flex h-10 items-center rounded-full border border-amber-200 bg-white px-3 text-sm font-extrabold text-amber-700 shadow-sm">
+                {formatScore(score)} / 5
+              </div>
             </div>
-            <div className="mt-4">
-              <RatingStars value={score} />
+
+            <div className="mt-5">
+              <RatingStarsInput value={score} onChange={setScore} />
+              <p className="mt-3 text-xs font-semibold text-slate-500">
+                {getRatingLabel(score)}
+              </p>
             </div>
           </div>
 
@@ -1284,6 +1534,67 @@ function StatusBadge({
   )
 }
 
+function RatingStarsInput({
+  value,
+  onChange,
+}: {
+  value: number
+  onChange: (value: number) => void
+}) {
+  const [hoverValue, setHoverValue] = useState<number | null>(null)
+  const displayValue = hoverValue ?? value
+
+  const getScoreFromPointer = (
+    event: ReactMouseEvent<HTMLButtonElement>,
+    starValue: number,
+  ) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const isHalfStar = event.clientX - rect.left < rect.width / 2
+
+    return starValue - (isHalfStar ? 0.5 : 0)
+  }
+
+  return (
+    <div
+      className="inline-flex items-center gap-1.5 rounded-2xl border border-amber-200 bg-white p-2 shadow-sm"
+      onMouseLeave={() => setHoverValue(null)}
+    >
+      {Array.from({ length: 5 }).map((_, index) => {
+        const starValue = index + 1
+        const isFilled = displayValue >= starValue
+        const isHalfFilled =
+          !isFilled && displayValue >= starValue - 0.5
+
+        return (
+          <button
+            key={starValue}
+            type="button"
+            aria-label={`Rate ${starValue} star${starValue > 1 ? "s" : ""}`}
+            onClick={(event) =>
+              onChange(getScoreFromPointer(event, starValue))
+            }
+            onMouseMove={(event) =>
+              setHoverValue(getScoreFromPointer(event, starValue))
+            }
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-amber-400 transition hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300"
+          >
+            <Star
+              className={cn(
+                "h-8 w-8 transition",
+                isFilled && "fill-amber-400 text-amber-400",
+                isHalfFilled && "fill-amber-200 text-amber-400",
+                !isFilled &&
+                  !isHalfFilled &&
+                  "text-slate-300 hover:text-amber-300",
+              )}
+            />
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
 function RatingStars({ value }: { value: number }) {
   return (
     <div className="flex items-center gap-1">
@@ -1487,6 +1798,15 @@ function formatScore(value?: number | null) {
   return Number(value).toFixed(1).replace(/\.0$/, "")
 }
 
+function getRatingLabel(value: number) {
+  if (value >= 4.5) return "Excellent collaboration and delivery."
+  if (value >= 3.5) return "Good delivery with minor improvements."
+  if (value >= 2.5) return "Average experience."
+  if (value >= 1.5) return "Needs improvement."
+
+  return "Poor experience."
+}
+
 function isProjectCompleted(value?: string | null) {
   const normalized = value?.trim().toUpperCase()
 
@@ -1505,6 +1825,148 @@ function isZeroMoneyValue(value?: number | string | null) {
   }
 
   return false
+}
+
+function getWorkspaceChatPartner(
+  workspace: WorkspaceDetail,
+  role?: UserRole,
+) {
+  if (role === UserRole.CLIENT) {
+    return workspace.expert
+  }
+
+  if (role === UserRole.EXPERT) {
+    return workspace.client
+  }
+
+  return null
+}
+
+function mapWorkspaceParticipantToChatUser(
+  participant: WorkspaceParticipant,
+  currentRole?: UserRole,
+): ChatUser {
+  return {
+    id: participant.userId,
+    name: participant.name || "Workspace member",
+    avatarUrl: participant.avatarUrl || "/img/default-avatar.png",
+    role: currentRole === UserRole.CLIENT ? "expert" : "client",
+    status: "Online",
+  }
+}
+
+function getAuthenticatedChatParticipant(
+  session: ChatSession,
+  currentUserCode: string,
+) {
+  return (
+    session.participants.find(
+      (participant) =>
+        participant.code?.trim() === currentUserCode,
+    ) ?? null
+  )
+}
+
+function getPartnerChatParticipant(
+  session: ChatSession,
+  currentUserCode: string,
+) {
+  if (!currentUserCode) {
+    return null
+  }
+
+  return (
+    session.participants.find(
+      (participant) =>
+        participant.code?.trim() !== currentUserCode,
+    ) ?? null
+  )
+}
+
+function mapChatParticipantToChatUser(
+  participant: ChatSessionParticipant,
+  sessionStatus: ChatSession["status"],
+): ChatUser {
+  const normalizedRole = participant.role?.trim().toUpperCase()
+
+  return {
+    id: participant.code,
+    name: participant.fullName || "Workspace member",
+    avatarUrl: participant.avatarUrl || "/img/default-avatar.png",
+    role: normalizedRole === "CLIENT" ? "client" : "expert",
+    status: sessionStatus === "ACTIVE" ? "Online" : "Offline",
+  }
+}
+
+function resolveWorkspaceChatMessageSenderId({
+  message,
+  session,
+  currentUserCode,
+  currentUserRole,
+}: {
+  message: ChatApiMessage
+  session?: ChatSession
+  currentUserCode: string
+  currentUserRole?: UserRole
+}) {
+  const senderCode = message.senderCode?.trim()
+
+  if (senderCode) {
+    return senderCode
+  }
+
+  if (!session || !currentUserCode) {
+    return ""
+  }
+
+  const normalizedSenderRole = normalizeRole(message.senderRole)
+  const normalizedCurrentUserRole = normalizeRole(currentUserRole)
+
+  if (!normalizedSenderRole) {
+    return ""
+  }
+
+  if (normalizedSenderRole === normalizedCurrentUserRole) {
+    return currentUserCode
+  }
+
+  const senderParticipant = session.participants.find(
+    (participant) =>
+      normalizeRole(participant.role) === normalizedSenderRole,
+  )
+
+  return senderParticipant?.code?.trim() ?? ""
+}
+
+function normalizeRole(role?: string | null) {
+  return role?.trim().toUpperCase() ?? ""
+}
+
+function formatMessageTime(value?: string | null) {
+  if (!value) {
+    return ""
+  }
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) {
+    return ""
+  }
+
+  return date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+function getTimeValue(value?: string | null) {
+  if (!value) {
+    return 0
+  }
+
+  const time = new Date(value).getTime()
+
+  return Number.isFinite(time) ? time : 0
 }
 
 function getInitials(name: string) {
@@ -1528,45 +1990,6 @@ function getProjectBaseRoute(role?: UserRole) {
   }
 
   return null
-}
-
-function getChatRouteBase(role?: UserRole) {
-  if (role === UserRole.CLIENT) {
-    return "/client/dashboard/chat"
-  }
-
-  if (role === UserRole.EXPERT) {
-    return "/expert/dashboard/chat"
-  }
-
-  return null
-}
-
-function getOpenChatStatus({
-  role,
-  isCheckingChatSession,
-  isCreatingChatSession,
-}: {
-  role?: UserRole
-  isCheckingChatSession: boolean
-  isCreatingChatSession: boolean
-}) {
-  if (isCheckingChatSession) {
-    return "Checking existing Chat session..."
-  }
-
-  if (
-    role === UserRole.CLIENT &&
-    isCreatingChatSession
-  ) {
-    return "Creating Chat session..."
-  }
-
-  if (isCreatingChatSession) {
-    return "Opening Chat..."
-  }
-
-  return "Opening Chat..."
 }
 
 function getChatErrorMessage(error: unknown) {

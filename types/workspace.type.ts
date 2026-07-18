@@ -50,12 +50,11 @@ export type WorkspaceMember = {
   role: string;
 };
 
-export type ProposalStrategy = {
-  proposalUnlockId: string;
-  strategyDetail: string;
-  unlockCost: number;
+export type WorkspaceDocument = {
+  document: string;
+  documentRequired: boolean;
 };
 
-export type ProposalStrategyUpdateRequest = {
-  strategyDetail: string;
+export type WorkspaceDocumentUpdateRequest = {
+  document: string;
 };

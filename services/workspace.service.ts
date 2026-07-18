@@ -7,8 +7,8 @@ import type { RootState } from "@/redux/store";
 import type { APIResponse } from "@/types/common.starter";
 import { UserRole, type UserResponse } from "@/types/user/user.type";
 import type {
-  ProposalStrategy,
-  ProposalStrategyUpdateRequest,
+  WorkspaceDocument,
+  WorkspaceDocumentUpdateRequest,
   WorkspaceDashboardPage,
   WorkspaceDetail,
   WorkspaceMember,
@@ -16,7 +16,7 @@ import type {
 
 const WORKSPACE_ENDPOINT = "/workspace/api/v1/workspaces";
 const WORKSPACE_MEMBER_ENDPOINT = "/workspace/api/v1/workspace-members";
-const PROPOSAL_STRATEGY_ENDPOINT = "/workspace/api/workspace";
+const WORKSPACE_DOCUMENT_ENDPOINT = "/workspace/api/workspace";
 
 type WorkspaceApiError = AxiosError<APIResponse<null>>;
 
@@ -41,8 +41,8 @@ export const workspaceKeys = {
     ] as const,
   members: (workspaceId: string) =>
     [...workspaceKeys.all, "members", workspaceId] as const,
-  proposalStrategy: (workspaceId: string) =>
-    [...workspaceKeys.all, "proposal-strategy", workspaceId] as const,
+  document: (workspaceId: string) =>
+    [...workspaceKeys.all, "document", workspaceId] as const,
 };
 
 export type WorkspaceDashboardParams = {
@@ -83,25 +83,25 @@ export async function getWorkspaceMembers(workspaceId: string) {
   return data;
 }
 
-export async function getProposalStrategy(workspaceId: string) {
-  const { data } = await api.get<ProposalStrategy>(
-    `${PROPOSAL_STRATEGY_ENDPOINT}/${encodeURIComponent(workspaceId)}/proposal-strategy`,
+export async function getWorkspaceDocument(workspaceId: string) {
+  const { data } = await api.get<WorkspaceDocument>(
+    `${WORKSPACE_DOCUMENT_ENDPOINT}/${encodeURIComponent(workspaceId)}/document`,
   );
 
   return data;
 }
 
-export type UpdateProposalStrategyVariables = {
+export type UpdateWorkspaceDocumentVariables = {
   workspaceId: string;
-  request: ProposalStrategyUpdateRequest;
+  request: WorkspaceDocumentUpdateRequest;
 };
 
-export async function updateProposalStrategy({
+export async function updateWorkspaceDocument({
   workspaceId,
   request,
-}: UpdateProposalStrategyVariables) {
-  const { data } = await api.patch<ProposalStrategy>(
-    `${PROPOSAL_STRATEGY_ENDPOINT}/${encodeURIComponent(workspaceId)}/proposal-strategy`,
+}: UpdateWorkspaceDocumentVariables) {
+  const { data } = await api.put<WorkspaceDocument>(
+    `${WORKSPACE_DOCUMENT_ENDPOINT}/${encodeURIComponent(workspaceId)}/document`,
     request,
   );
 
@@ -134,32 +134,32 @@ export function useWorkspaceMembers(workspaceId?: string | null) {
   });
 }
 
-export function useProposalStrategy(workspaceId?: string | null) {
+export function useWorkspaceDocument(workspaceId?: string | null) {
   const normalizedWorkspaceId = normalizeWorkspaceId(workspaceId);
 
-  return useQuery<ProposalStrategy, WorkspaceApiError>({
+  return useQuery<WorkspaceDocument, WorkspaceApiError>({
     queryKey: normalizedWorkspaceId
-      ? workspaceKeys.proposalStrategy(normalizedWorkspaceId)
-      : workspaceKeys.proposalStrategy(""),
-    queryFn: () => getProposalStrategy(normalizedWorkspaceId ?? ""),
+      ? workspaceKeys.document(normalizedWorkspaceId)
+      : workspaceKeys.document(""),
+    queryFn: () => getWorkspaceDocument(normalizedWorkspaceId ?? ""),
     enabled: Boolean(normalizedWorkspaceId),
     retry: 0,
   });
 }
 
-export function useUpdateProposalStrategy() {
+export function useUpdateWorkspaceDocument() {
   const queryClient = useQueryClient();
 
   return useMutation<
-    ProposalStrategy,
+    WorkspaceDocument,
     WorkspaceApiError,
-    UpdateProposalStrategyVariables
+    UpdateWorkspaceDocumentVariables
   >({
-    mutationFn: updateProposalStrategy,
+    mutationFn: updateWorkspaceDocument,
     retry: 0,
-    onSuccess: async (_strategy, { workspaceId }) => {
+    onSuccess: async (_document, { workspaceId }) => {
       await queryClient.invalidateQueries({
-        queryKey: workspaceKeys.proposalStrategy(workspaceId),
+        queryKey: workspaceKeys.document(workspaceId),
       });
     },
   });

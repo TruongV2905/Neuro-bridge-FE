@@ -78,7 +78,7 @@ function getInitials(value: string) {
 
 function getDashboardProfileHref(role?: string | null) {
   if (role === "CLIENT") return "/client/dashboard/profile";
-  if (role === "EXPERT") return "/expert-profile";
+  if (role === "EXPERT") return "/expert/dashboard/profile";
   if (role === "ADMIN") return "/admin/dashboard";
 
   return "/";

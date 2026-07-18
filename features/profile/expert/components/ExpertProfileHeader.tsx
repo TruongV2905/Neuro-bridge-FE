@@ -1,6 +1,7 @@
 "use client"
 
-import { useRef, useState } from "react"
+import Image from "next/image"
+import { useEffect, useRef, useState } from "react"
 import { BadgeCheck, Camera, Star } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -26,20 +27,32 @@ export function ExpertProfileHeader({
 }: ExpertProfileHeaderProps) {
   const defaultAvatar = "/images/expert-avatar.png"
 
-  const [avatar, setAvatar] = useState(() => {
-    if (typeof window === "undefined" || !editable) {
-      return expert.avatarUrl || defaultAvatar
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const avatarPreviewUrlRef = useRef<string | null>(null)
+  const [avatar, setAvatar] = useState(expert.avatarUrl || defaultAvatar)
+  const displayedAvatar = editable ? avatar : expert.avatarUrl || defaultAvatar
+
+  useEffect(() => {
+    if (editable) {
+      try {
+        localStorage.removeItem("expert-avatar")
+      } catch {
+        // Ignore unavailable storage; avatar preview no longer depends on it.
+      }
     }
 
-    return (
-      localStorage.getItem("expert-avatar") ||
-      expert.avatarUrl ||
-      defaultAvatar
-    )
-  })
+    return () => {
+      if (avatarPreviewUrlRef.current) {
+        URL.revokeObjectURL(avatarPreviewUrlRef.current)
+      }
+    }
+  }, [editable])
 
-  const fileInputRef = useRef<HTMLInputElement>(null)
-  const displayedAvatar = editable ? avatar : expert.avatarUrl || defaultAvatar
+  useEffect(() => {
+    if (!avatarPreviewUrlRef.current) {
+      setAvatar(expert.avatarUrl || defaultAvatar)
+    }
+  }, [defaultAvatar, expert.avatarUrl])
 
   const handleAvatarClick = () => {
     fileInputRef.current?.click()
@@ -51,16 +64,13 @@ export function ExpertProfileHeader({
     const file = event.target.files?.[0]
     if (!file) return
 
-    const reader = new FileReader()
-
-    reader.onloadend = () => {
-      const base64Image = reader.result as string
-      setAvatar(base64Image)
-      localStorage.setItem("expert-avatar", base64Image)
-      window.dispatchEvent(new Event("avatar-updated"))
+    if (avatarPreviewUrlRef.current) {
+      URL.revokeObjectURL(avatarPreviewUrlRef.current)
     }
 
-    reader.readAsDataURL(file)
+    const previewUrl = URL.createObjectURL(file)
+    avatarPreviewUrlRef.current = previewUrl
+    setAvatar(previewUrl)
   }
 
   const legitScore = expert.status === "ACTIVE" ? 95 : 60
@@ -94,9 +104,12 @@ export function ExpertProfileHeader({
                 />
               )}
 
-              <img
+              <Image
                 src={displayedAvatar}
                 alt={expert.fullName}
+                fill
+                sizes="144px"
+                unoptimized
                 onClick={editable ? handleAvatarClick : undefined}
                 className="h-full w-full rounded-full border-4 border-primary object-cover shadow-lg transition-transform duration-300 group-hover/avatar:scale-105"
               />

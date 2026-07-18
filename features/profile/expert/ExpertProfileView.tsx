@@ -7,11 +7,7 @@ import type { User as UserType, UserResponse } from "@/types/user/user.type"
 
 // import { expertProfile } from "./data/mockExpertProfile"
 import { ExpertProfileHeader } from "./components/ExpertProfileHeader"
-import { ExpertStatsCard } from "./components/ExpertStatsCard"
 import { ExpertPortfolioCard } from "./components/ExpertPortfolioCard"
-import { ExpertTestimonialCard } from "./components/ExpertTestimonialCard"
-import { ExpertSidebarCard } from "./components/ExpertSidebarCard"
-import { ExpertWalletCard } from "./components/ExpertWalletCard"
 import { ExpertSkillCard } from "./components/ExpertSkillCard"
 import { ExpertCertificateCard } from "./components/ExpertCertificateCard"
 
@@ -20,8 +16,6 @@ import { useGetSkillsByExpertCode } from "@/services/skill.service"
 import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
 import { useGetCertificatesByExpertCode } from "@/services/certificate.service"
 import { useExpertRatingSummary } from "@/services/rating.service"
-
-import Header from "@/components/layout/Header"
 
 export function ExpertProfileView() {
   const currentUser = useSelector(
@@ -82,8 +76,7 @@ export function ExpertProfileView() {
   const certificates = certificateData?.result ?? []
 
   return (
-    <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">
-      <Header />
+    <main className="min-h-[calc(100dvh-4rem)] bg-background px-4 py-8 text-foreground sm:px-6">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
         <section className="space-y-8">
           {expertUserLoading ? (

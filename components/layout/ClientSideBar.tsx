@@ -117,6 +117,11 @@ const WORKSPACE_CONFIG: Record<
         url: "/expert/dashboard/projects",
         icon: FolderIcon,
       },
+      {
+        title: "Profile Account",
+        url: "/expert/dashboard/profile",
+        icon: UserRoundIcon,
+      },
     ],
   },
 };

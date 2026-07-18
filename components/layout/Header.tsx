@@ -45,27 +45,11 @@ export default function Header() {
     (state: RootState) => state.user,
   ) as UserResponse | null;
 
-  const [headerAvatar, setHeaderAvatar] = useState<string | null>(null);
   const [activeSectionId, setActiveSectionId] =
     useState<NavSectionId | null>("home");
   const [hasScrolled, setHasScrolled] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const updateAvatar = () => {
-      const savedAvatar = localStorage.getItem("expert-avatar");
-      setHeaderAvatar(savedAvatar || currentUser?.avatarUrl || null);
-    };
-
-    updateAvatar();
-
-    window.addEventListener("avatar-updated", updateAvatar);
-
-    return () => {
-      window.removeEventListener("avatar-updated", updateAvatar);
-    };
-  }, [currentUser?.avatarUrl]);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -154,7 +138,7 @@ export default function Header() {
 
   const profilePath =
     currentUser?.role === "EXPERT"
-      ? "/expert-profile"
+      ? "/expert/dashboard/profile"
       : currentUser?.role === "ADMIN"
         ? "/admin/dashboard"
         : "/client/dashboard/profile";
@@ -262,7 +246,6 @@ export default function Header() {
                 <Avatar className="h-10 w-10 border border-white/70 shadow-sm">
                   <AvatarImage
                     src={
-                      headerAvatar ||
                       currentUser.avatarUrl ||
                       "/img/default-avatar.png"
                     }
@@ -288,7 +271,6 @@ export default function Header() {
                   <Avatar className="h-11 w-11 border border-slate-200">
                     <AvatarImage
                       src={
-                        headerAvatar ||
                         currentUser.avatarUrl ||
                         "/img/default-avatar.png"
                       }

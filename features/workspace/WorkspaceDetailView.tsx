@@ -62,7 +62,10 @@ import {
   useProjectRating,
   useRateProject,
 } from "@/services/rating.service"
-import { useProjectDetailByWorkspace } from "@/services/submission-package.service"
+import {
+  useProjectDetailByWorkspace,
+  useSubmissionPackagesByWorkspace,
+} from "@/services/submission-package.service"
 import type {
   ChatMessage,
   ChatUser,
@@ -73,6 +76,7 @@ import type {
   ChatSessionParticipant,
 } from "@/types/private-chat.type"
 import type { RatingResponse } from "@/types/rating.type"
+import type { SubmissionPackageSummary } from "@/types/submission-package.type"
 import type {
   WorkspaceDetail,
   WorkspaceParticipant,
@@ -101,6 +105,14 @@ export function WorkspaceDetailView({
 
   const workspaceQuery = useWorkspaceDetail(normalizedWorkspaceId)
   const projectDetailQuery = useProjectDetailByWorkspace(normalizedWorkspaceId)
+  const packageListQuery = useSubmissionPackagesByWorkspace(
+    currentUserCode,
+    normalizedWorkspaceId,
+  )
+  const latestPackage = useMemo(
+    () => getLatestSubmissionPackage(packageListQuery.data ?? []),
+    [packageListQuery.data],
+  )
   const workspace = workspaceQuery.data
   const handleBack = () => {
     const projectBaseRoute = getProjectBaseRoute(role)
@@ -166,7 +178,10 @@ export function WorkspaceDetailView({
     )
   }
 
-  const progress = getProgressMeta(workspace.progressPercentage)
+  const progress = getProgressMeta(
+    workspace.progressPercentage,
+    latestPackage?.status,
+  )
 
   return (
     <WorkspacePageShell>
@@ -344,7 +359,7 @@ function WorkspaceOverview({
               Project progress
             </p>
             <p className="mt-1 text-xs leading-5 text-slate-500">
-              Progress is provided by the Workspace API and is not calculated from submission files.
+              Progress uses the Workspace API and becomes complete when the latest submission package is approved.
             </p>
           </div>
           <span className="text-lg font-extrabold text-indigo-600">
@@ -1744,7 +1759,17 @@ type ProgressMeta = {
   clamped: number
 }
 
-function getProgressMeta(value: number): ProgressMeta {
+function getProgressMeta(
+  value: number,
+  latestPackageStatus?: string | null,
+): ProgressMeta {
+  if (normalizeStatusValue(latestPackageStatus) === "APPROVED") {
+    return {
+      label: "100%",
+      clamped: 100,
+    }
+  }
+
   if (!Number.isFinite(value)) {
     return {
       label: "Not available",
@@ -1759,6 +1784,22 @@ function getProgressMeta(value: number): ProgressMeta {
     label: `${clamped}%`,
     clamped,
   }
+}
+
+function getLatestSubmissionPackage(packages: SubmissionPackageSummary[]) {
+  return [...packages]
+    .filter((item) => !item.isDelete)
+    .sort((left, right) => {
+      const versionDelta = (right.version ?? 0) - (left.version ?? 0)
+
+      if (versionDelta !== 0) return versionDelta
+
+      return getTimeValue(right.submittedAt) - getTimeValue(left.submittedAt)
+    })[0]
+}
+
+function normalizeStatusValue(value?: string | null) {
+  return value?.trim().toUpperCase() ?? ""
 }
 
 function formatStatus(value?: string | null) {

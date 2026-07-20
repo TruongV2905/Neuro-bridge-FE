@@ -26,12 +26,14 @@ import type { RootState } from "@/redux/store"
 import {
   useAddDeliverableFile,
   useDeliverableFilesByPackage,
+  useResubmitSubmissionPackage,
   useSubmissionPackagesByWorkspace,
   useSubmitExpertWorkspacePackage,
   useUpdateDeliverableFile,
 } from "@/services/submission-package.service"
 import type {
   DeliverableFile,
+  DeliverableFileReviewStatus,
   SubmissionDraftFile,
   SubmissionFileType,
   SubmissionPackageSummary,
@@ -71,8 +73,16 @@ export function ExpertSubmissionPackagePanel({
     () => groupFilesByType(files),
     [files],
   )
+  const resubmittableFiles = useMemo(
+    () =>
+      files.filter((file) =>
+        canResubmitFileStatus(getFileReviewStatus(file)),
+      ),
+    [files],
+  )
   const addFileMutation = useAddDeliverableFile(currentUserCode)
   const submitPackageMutation = useSubmitExpertWorkspacePackage(currentUserCode)
+  const resubmitPackageMutation = useResubmitSubmissionPackage(currentUserCode)
   const updateFileMutation = useUpdateDeliverableFile(currentUserCode)
   const { uploadSubmissionFile, uploadingType } = useSubmissionFileUpload()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -86,8 +96,17 @@ export function ExpertSubmissionPackagePanel({
   const isMutating =
     addFileMutation.isPending ||
     submitPackageMutation.isPending ||
+    resubmitPackageMutation.isPending ||
     updateFileMutation.isPending ||
     uploadingType !== null
+  const packageStatus = normalizePackageStatus(latestPackage?.status)
+  const packageFeedback = latestPackage?.feedback?.trim() ?? ""
+  const canEditFiles = !latestPackage || packageStatus === "REJECTED"
+  const canResubmitPackage =
+    Boolean(latestPackage && packageId && normalizedWorkspaceId) &&
+    packageStatus === "REJECTED" &&
+    resubmittableFiles.length > 0 &&
+    !isMutating
   const draftFileCount = Object.keys(draftFiles).length
   const requiredFileCount = submissionFileSlots.length
   const canCreatePackage =
@@ -115,6 +134,11 @@ export function ExpertSubmissionPackagePanel({
           [String(fileType).toUpperCase()]: uploadedFile,
         }))
         toast.success("Deliverable file is ready for package creation.")
+        return
+      }
+
+      if (!canEditFiles) {
+        toast.error("This package is approved or under review, so files cannot be edited.")
         return
       }
 
@@ -188,6 +212,36 @@ export function ExpertSubmissionPackagePanel({
     }
   }
 
+  const handleResubmitPackage = async () => {
+    if (!canResubmitPackage || !latestPackage) {
+      toast.error("Only rejected or pending deliverable files can be resubmitted.")
+      return
+    }
+
+    try {
+      await resubmitPackageMutation.mutateAsync({
+        packageId,
+        workspaceId: normalizedWorkspaceId,
+        request: {
+          currentPackageId: packageId,
+          notes: "",
+          updatedFiles: resubmittableFiles.map((file) => ({
+            fileName: file.fileName,
+            fileUrl: file.fileUrl,
+            fileSize: file.fileSize,
+            fileType: file.fileType,
+          })),
+        },
+      })
+      await packageListQuery.refetch()
+      await filesQuery.refetch()
+      setIsDialogOpen(false)
+      toast.success("Submission package resubmitted successfully.")
+    } catch (error) {
+      toast.error(getRequestErrorMessage(error))
+    }
+  }
+
   return (
     <>
       <section className="rounded-3xl border border-slate-200/70 bg-white shadow-sm shadow-slate-200/40">
@@ -254,13 +308,24 @@ export function ExpertSubmissionPackagePanel({
                 </div>
               </div>
 
+              {packageStatus === "REJECTED" && packageFeedback && (
+                <SubmissionNotice
+                  tone="warning"
+                  title="Revision feedback"
+                  message={packageFeedback}
+                />
+              )}
+
               <Button
                 type="button"
                 onClick={() => setIsDialogOpen(true)}
+                disabled={packageStatus === "APPROVED"}
                 className="h-11 w-full rounded-xl bg-gradient-to-r from-sky-500 to-indigo-500 text-sm font-bold text-white"
               >
                 <FileArchive className="mr-2 h-4 w-4" />
-                Submit or edit deliverable files
+                {packageStatus === "REJECTED"
+                  ? "Edit and resubmit deliverable files"
+                  : "Submit or edit deliverable files"}
               </Button>
             </>
           )}
@@ -282,11 +347,7 @@ export function ExpertSubmissionPackagePanel({
             </DialogHeader>
 
             <div className="mt-5 space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <MetaTile
-                  label="Package ID"
-                  value={packageId ? shortId(packageId) : "Will be created"}
-                />
+              <div className="grid gap-3">
                 <MetaTile
                   label="Package status"
                   value={
@@ -296,6 +357,14 @@ export function ExpertSubmissionPackagePanel({
                   }
                 />
               </div>
+
+              {packageStatus === "REJECTED" && packageFeedback && (
+                <SubmissionNotice
+                  tone="warning"
+                  title="Client feedback"
+                  message={packageFeedback}
+                />
+              )}
 
               <div className="grid gap-3">
                 {submissionFileSlots.map((slot) => {
@@ -310,6 +379,11 @@ export function ExpertSubmissionPackagePanel({
                     existingFile?.fileName ?? draftFile?.fileName
                   const displayFileSize =
                     existingFile?.fileSize ?? draftFile?.fileSize
+                  const fileReviewStatus = getFileReviewStatus(existingFile)
+                  const fileFeedback = existingFile?.feedback?.trim() ?? ""
+                  const canEditSlot =
+                    !latestPackage ||
+                    (canEditFiles && canResubmitFileStatus(fileReviewStatus))
 
                   return (
                     <article
@@ -333,9 +407,19 @@ export function ExpertSubmissionPackagePanel({
                                 {displayFileSize || "-"}
                                 {existingFile
                                   ? ` - Uploaded ${formatDateTime(
-                                      existingFile.uploadedAt,
-                                    )}`
+                                    existingFile.uploadedAt,
+                                  )}`
                                   : " - Ready to submit"}
+                              </p>
+                            )}
+                            {existingFile && (
+                              <p className="mt-1 text-xs font-bold text-slate-500">
+                                Review: {formatStatus(fileReviewStatus)}
+                              </p>
+                            )}
+                            {fileFeedback && (
+                              <p className="mt-1 text-xs font-semibold leading-5 text-amber-700">
+                                Feedback: {fileFeedback}
                               </p>
                             )}
                           </div>
@@ -358,7 +442,7 @@ export function ExpertSubmissionPackagePanel({
                             id={inputId}
                             type="file"
                             accept={slot.accept}
-                            disabled={isMutating}
+                            disabled={isMutating || !canEditSlot}
                             onChange={(event) => {
                               const selectedFile =
                                 event.target.files?.[0] ?? null
@@ -371,7 +455,7 @@ export function ExpertSubmissionPackagePanel({
                           <Button
                             type="button"
                             variant={existingFile ? "outline" : "default"}
-                            disabled={isMutating}
+                            disabled={isMutating || !canEditSlot}
                             onClick={() =>
                               document.getElementById(inputId)?.click()
                             }
@@ -389,7 +473,9 @@ export function ExpertSubmissionPackagePanel({
                               <FileUp className="mr-1.5 h-3.5 w-3.5" />
                             )}
                             {existingFile
-                              ? "Edit file"
+                              ? canEditSlot
+                                ? "Edit file"
+                                : "Edit locked"
                               : draftFile
                                 ? "Change file"
                                 : "Upload file"}
@@ -425,6 +511,35 @@ export function ExpertSubmissionPackagePanel({
                         <PackagePlus className="mr-2 h-4 w-4" />
                       )}
                       Create package
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {latestPackage && packageStatus === "REJECTED" && (
+                <div className="rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-sm font-extrabold text-slate-900">
+                        Resubmit package
+                      </p>
+                      <p className="mt-1 text-xs font-semibold leading-5 text-slate-500">
+                        After updating the requested files, send this package
+                        back to the client for review.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => void handleResubmitPackage()}
+                      disabled={!canResubmitPackage}
+                      className="h-10 rounded-xl bg-sky-600 px-4 text-sm font-bold text-white hover:bg-sky-700 disabled:opacity-50"
+                    >
+                      {resubmitPackageMutation.isPending ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      Resubmit package
                     </Button>
                   </div>
                 </div>
@@ -559,13 +674,31 @@ function formatDateTime(value?: string | null) {
   })
 }
 
-function shortId(value?: string | null) {
-  const normalized = value?.trim()
+function getFileReviewStatus(
+  file?: DeliverableFile | null,
+): DeliverableFileReviewStatus {
+  return normalizeReviewStatus(file?.fileStatus ?? file?.status)
+}
 
-  if (!normalized) return "Not available"
-  if (normalized.length <= 12) return normalized
+function normalizeReviewStatus(
+  value?: string | null,
+): DeliverableFileReviewStatus {
+  const normalized = String(value ?? "PENDING").toUpperCase()
 
-  return `${normalized.slice(0, 8)}...${normalized.slice(-4)}`
+  if (
+    normalized === "APPROVED" ||
+    normalized === "REJECTED" ||
+    normalized === "REVISION_REQUIRED" ||
+    normalized === "SUPERSEDED"
+  ) {
+    return normalized
+  }
+
+  return "PENDING"
+}
+
+function canResubmitFileStatus(status: DeliverableFileReviewStatus) {
+  return status === "REJECTED" || status === "PENDING"
 }
 
 function getRequestErrorMessage(error: unknown) {
@@ -590,4 +723,8 @@ function getRequestErrorMessage(error: unknown) {
   if (error instanceof Error && error.message) return error.message
 
   return "Please try again."
+}
+
+function normalizePackageStatus(value?: string | null) {
+  return String(value ?? "PENDING").trim().toUpperCase()
 }

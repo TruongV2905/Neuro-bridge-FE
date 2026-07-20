@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { useRouter } from "next/navigation";
 import { useSelector } from "react-redux";
 
 import { NOTIFICATION_PREVIEW_LIMIT } from "@/features/notification/constants/notification.constants";
@@ -22,7 +21,6 @@ type CurrentUserWithId = UserResponse & {
 };
 
 export function useNotificationBell() {
-  const router = useRouter();
   const currentUser = useSelector(
     (state: RootState) => state.user,
   ) as CurrentUserWithId | null;
@@ -63,15 +61,24 @@ export function useNotificationBell() {
   };
 
   const handleOpenNotification = (notification: NotificationItem) => {
-    if (!notification.read) {
-      markAsReadMutation.mutate(notification.id);
-    }
-
     const href = resolveNotificationHref(notification, currentUser?.role);
 
-    if (href) {
-      router.push(href);
+    if (!href) {
+      if (!notification.read) {
+        markAsReadMutation.mutate(notification.id);
+      }
+
+      return;
     }
+
+    if (!notification.read) {
+      void markAsReadMutation
+        .mutateAsync(notification.id)
+        .finally(() => navigateWithPageReload(href));
+      return;
+    }
+
+    navigateWithPageReload(href);
   };
 
   return {
@@ -90,4 +97,20 @@ export function useNotificationBell() {
     handleOpenNotification,
     handleMarkAllAsRead,
   };
+}
+
+function navigateWithPageReload(href: string) {
+  if (typeof window === "undefined") return;
+
+  const targetUrl = new URL(href, window.location.origin);
+  const currentUrl = new URL(window.location.href);
+  const targetPath = `${targetUrl.pathname}${targetUrl.search}${targetUrl.hash}`;
+  const currentPath = `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+
+  if (targetUrl.origin === currentUrl.origin && targetPath === currentPath) {
+    window.location.reload();
+    return;
+  }
+
+  window.location.assign(targetUrl.toString());
 }

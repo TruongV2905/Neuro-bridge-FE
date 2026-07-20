@@ -22,6 +22,7 @@ export type DeliverableFile = {
   fileType: SubmissionFileType;
   uploadedAt: string;
   isDelete: boolean;
+  fileStatus?: string | null;
   status?: string | null;
   feedback?: string | null;
   reviewedAt?: string | null;

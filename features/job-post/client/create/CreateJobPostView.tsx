@@ -44,8 +44,8 @@ export function CreateJobPostView() {
     defaultValues: {
       title: "",
       description: "",
-      budgetFrom: 5000,
-      budgetTo: 15000,
+      budgetFrom: 100000,
+      budgetTo: 1000000,
       estimatedDays: 14,
     },
     mode: "onChange",
@@ -62,6 +62,15 @@ export function CreateJobPostView() {
   const createJobPostMutation = useCreateJobPost();
 
   const isAnalyzing = analyzeMutation.isPending || skillsMutation.isPending;
+  const isLaunching = createJobPostMutation.isPending;
+  const isNavigationLoading =
+    (step === 1 && isAnalyzing) || (step === 4 && isLaunching);
+  const navigationLoadingLabel =
+    step === 1
+      ? "Analyzing project..."
+      : step === 4
+        ? "Launching job post..."
+        : undefined;
 
   const progress = step * 25;
 
@@ -252,7 +261,7 @@ export function CreateJobPostView() {
   const canContinue = () => {
     if (step === 1) return isStepOneValid && !isAnalyzing;
     if (step === 3) return isStepThreeValid;
-    if (step === 4) return !createJobPostMutation.isPending;
+    if (step === 4) return !isLaunching;
     return true;
   };
 
@@ -343,6 +352,8 @@ export function CreateJobPostView() {
                 <StepNavigation
                   step={step}
                   canContinue={canContinue()}
+                  isLoading={isNavigationLoading}
+                  loadingLabel={navigationLoadingLabel}
                   onContinue={handleContinue}
                 />
                 <p className="mt-5 min-h-5 max-w-3xl text-right text-sm text-red-500">

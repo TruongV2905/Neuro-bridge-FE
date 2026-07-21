@@ -51,8 +51,8 @@ const sectionCardClassName =
 const sectionIconClassName =
   "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300";
 
-const BUDGET_MIN = 1000;
-const BUDGET_MAX = 100000;
+const BUDGET_MIN = 100000;
+const BUDGET_MAX = 10000000;
 const BUDGET_STEP = 1000;
 const DAYS_MIN = 1;
 const DAYS_MAX = 90;

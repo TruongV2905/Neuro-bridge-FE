@@ -1,5 +1,7 @@
 type MoneyValue = number | string | null | undefined;
 
+const PLATFORM_FEE_RATE_LABEL = "10%";
+
 export function formatMoney(amount: MoneyValue, fallback = "—"): string {
   const normalizedAmount = normalizeMoneyAmount(amount);
 
@@ -12,6 +14,16 @@ export function formatMoney(amount: MoneyValue, fallback = "—"): string {
     currency: "VND",
     maximumFractionDigits: 0,
   }).format(normalizedAmount);
+}
+
+export function formatPlatformFee(amount: MoneyValue, fallback = "-"): string {
+  const formattedAmount = formatMoney(amount, fallback);
+
+  if (formattedAmount === fallback) {
+    return fallback;
+  }
+
+  return `${formattedAmount} (${PLATFORM_FEE_RATE_LABEL})`;
 }
 
 function normalizeMoneyAmount(amount: MoneyValue) {

@@ -42,7 +42,7 @@ import type {
 } from "@/types/submission-package.type"
 import type { ProjectEscrowPayment } from "@/types/payment.type"
 import type { UserResponse } from "@/types/user/user.type"
-import { formatMoney } from "@/utils/formatMoney"
+import { formatMoney, formatPlatformFee } from "@/utils/formatMoney"
 
 type ReviewDecision = "ACCEPTED" | "REJECTED" | null
 
@@ -489,27 +489,7 @@ export function SubmissionPackageReviewPanel({
                     Confirm transfer
                   </Button>
                 </>
-              ) : (
-                !isPackageAccepted && (
-                  <Button
-                    type="button"
-                    onClick={handlePrepareAccept}
-                    disabled={!canAccept || projectEscrowQuery.isFetching}
-                    className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
-                  >
-                    {projectEscrowQuery.isFetching ? (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    ) : (
-                      <CheckCircle2 className="mr-2 h-4 w-4" />
-                    )}
-                    {projectEscrowQuery.isFetching
-                      ? "Checking transfer"
-                      : isPackageApproved
-                        ? "Disbursement"
-                        : "Accept"}
-                  </Button>
-                )
-              )}
+              ) : null}
             </DialogFooter>
           </div>
         </DialogContent>
@@ -818,7 +798,7 @@ function TransferReleasePreview({
             />
             <MetaTile
               label="Platform fee"
-              value={formatMoney(platformFee, "Not available")}
+              value={formatPlatformFee(platformFee, "Not available")}
             />
             <MetaTile
               label="Project escrow"

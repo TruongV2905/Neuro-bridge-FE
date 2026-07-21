@@ -82,7 +82,7 @@ import type {
   WorkspaceParticipant,
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
-import { formatMoney } from "@/utils/formatMoney"
+import { formatMoney, formatPlatformFee } from "@/utils/formatMoney"
 
 import { PrivateChatMessage } from "../private-chat/components/PrivateChatMessage"
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
@@ -981,7 +981,7 @@ function WorkspaceStrategySection({
                     <SectionNotice
                       tone="warning"
                       title="Required before continuing"
-                      message="The backend marked this workspace document as required. Submit it here to complete this mandatory step."
+                      message=""
                     />
                   )}
 
@@ -1025,7 +1025,7 @@ function WorkspaceStrategySection({
                       </p>
                       <p className="mt-1 text-xs font-semibold text-slate-500">
                         {isDocumentRequired
-                          ? "Required by Workspace API"
+                          ? ""
                           : "Document is available for this workspace."}
                       </p>
                     </div>
@@ -1149,7 +1149,10 @@ function WorkspaceFinancialSection({
           />
           <DetailTile
             label="Platform fee"
-            value={formatMoney(projectEscrow.platformFee, "Not available")}
+            value={formatPlatformFee(
+              projectEscrow.platformFee,
+              "Not available",
+            )}
           />
         </div>
       ) : (

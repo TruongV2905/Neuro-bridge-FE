@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
@@ -38,10 +38,12 @@ import {
   useChangeJobPostStatus,
   useUpdateJobPost,
 } from "@/services/job-post.service";
+import { useGetSkillsByIds } from "@/services/skill.service";
 import type {
   JobPostListItem,
   UpdateJobPostRequest,
 } from "@/types/job-post.type";
+import type { SkillResponse } from "@/types/skill.types";
 import { ClientApplicantsSection } from "./components/ClientApplicantsSection";
 import {
   formatBudgetRange,
@@ -125,13 +127,61 @@ function ClientJobPostDetailContent({
   const [formErrors, setFormErrors] = useState<EditFormErrors>({});
   const [activeWorkspace, setActiveWorkspace] =
     useState<WorkspaceTab>("Overview");
+  const [resolvedSkills, setResolvedSkills] = useState<SkillResponse[]>([]);
   const updateJobPostMutation = useUpdateJobPost();
   const changeJobPostStatusMutation = useChangeJobPostStatus();
+  const {
+    isPending: isSkillNamesLoading,
+    mutateAsync: getSkillsByIds,
+  } = useGetSkillsByIds();
   const job = jobOverride ?? initialJob;
+  const skillIds = useMemo(() => {
+    return Array.from(
+      new Set([
+        ...(job.requiredSkillIds ?? []),
+        ...(job.preferredSkillIds ?? []),
+      ]),
+    );
+  }, [job.preferredSkillIds, job.requiredSkillIds]);
+  const skillIdKey = skillIds.join(",");
+  const skillNameById = useMemo(() => {
+    return new Map(resolvedSkills.map((skill) => [skill.id, skill.skillName]));
+  }, [resolvedSkills]);
 
   const [form, setForm] = useState<EditFormState>(() =>
     buildFormState(initialJob),
   );
+
+  useEffect(() => {
+    let isCurrent = true;
+    const idsToFetch = skillIdKey
+      .split(",")
+      .filter(Boolean)
+      .map(Number);
+
+    if (idsToFetch.length === 0) {
+      setResolvedSkills([]);
+      return () => {
+        isCurrent = false;
+      };
+    }
+
+    getSkillsByIds({ data: idsToFetch })
+      .then((response) => {
+        if (isCurrent) {
+          setResolvedSkills(response.result ?? []);
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setResolvedSkills([]);
+        }
+      });
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [getSkillsByIds, skillIdKey]);
 
   const statusMeta = getStatusMeta(job.status);
   const StatusIcon = statusMeta.icon;
@@ -462,7 +512,12 @@ function ClientJobPostDetailContent({
                   }}
                 />
               ) : (
-                <Overview job={job} statusLabel={statusMeta.label} />
+                <Overview
+                  job={job}
+                  isSkillNamesLoading={isSkillNamesLoading}
+                  skillNameById={skillNameById}
+                  statusLabel={statusMeta.label}
+                />
               )}
             </CardContent>
           </Card>
@@ -574,9 +629,13 @@ function ClientJobPostDetailContent({
 
 function Overview({
   job,
+  isSkillNamesLoading,
+  skillNameById,
   statusLabel,
 }: {
   job: JobPostListItem;
+  isSkillNamesLoading: boolean;
+  skillNameById: Map<number, string>;
   statusLabel: string;
 }) {
   return (
@@ -592,10 +651,20 @@ function Overview({
 
       <div className="grid gap-5 md:grid-cols-2">
         <InfoBlock title="Required Skills">
-          <SkillList ids={job.requiredSkillIds} tone="indigo" />
+          <SkillList
+            ids={job.requiredSkillIds}
+            isLoading={isSkillNamesLoading}
+            skillNameById={skillNameById}
+            tone="indigo"
+          />
         </InfoBlock>
         <InfoBlock title="Preferred Skills">
-          <SkillList ids={job.preferredSkillIds} tone="violet" />
+          <SkillList
+            ids={job.preferredSkillIds}
+            isLoading={isSkillNamesLoading}
+            skillNameById={skillNameById}
+            tone="violet"
+          />
         </InfoBlock>
       </div>
 
@@ -754,32 +823,46 @@ function InfoBlock({
 
 function SkillList({
   ids,
+  isLoading,
+  skillNameById,
   tone,
 }: {
   ids: number[];
+  isLoading: boolean;
+  skillNameById: Map<number, string>;
   tone: "indigo" | "violet";
 }) {
   if (!ids.length) {
     return <p className="text-sm text-slate-400">No skills selected.</p>;
   }
 
+  if (isLoading) {
+    return (
+      <p className="text-sm font-medium text-slate-400">Loading skills...</p>
+    );
+  }
+
   return (
     <div className="flex flex-wrap gap-2">
-      {ids.map((id) => (
-        <Badge
-          key={`${tone}-${id}`}
-          variant="outline"
-          className={cn(
-            "h-7 rounded-lg px-2.5 text-xs font-bold",
-            tone === "indigo"
-              ? "border-indigo-200 bg-indigo-50 text-indigo-600"
-              : "border-violet-200 bg-violet-50 text-violet-600",
-          )}
-        >
-          <Sparkles className="h-3 w-3" />
-          Skill #{id}
-        </Badge>
-      ))}
+      {ids.map((id) => {
+        const skillName = skillNameById.get(id) ?? `Skill #${id}`;
+
+        return (
+          <Badge
+            key={`${tone}-${id}`}
+            variant="outline"
+            className={cn(
+              "h-7 rounded-lg px-2.5 text-xs font-bold",
+              tone === "indigo"
+                ? "border-indigo-200 bg-indigo-50 text-indigo-600"
+                : "border-violet-200 bg-violet-50 text-violet-600",
+            )}
+          >
+            <Sparkles className="h-3 w-3" />
+            {skillName}
+          </Badge>
+        );
+      })}
     </div>
   );
 }

@@ -482,7 +482,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                     type="button"
                     disabled={hireExpert.isPending}
                     onClick={handleOpenFinalizeConfirm}
-                    className="h-11 w-full rounded-xl bg-slate-950 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60"
+                    className="h-11 w-full rounded-xl from-indigo-500 to-sky-500 text-sm font-bold text-white hover:bg-slate-800 disabled:opacity-60"
                   >
                     {hireExpert.isPending ? (
                       <>
@@ -492,7 +492,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                     ) : (
                       <>
                         <ShieldCheck className="mr-2 h-4 w-4" />
-                        Initialize workspace
+                        Initialize workspace 
                       </>
                     )}
                   </Button>
@@ -501,7 +501,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                 {contract.workspaceId && (
                   <Button
                     asChild
-                    className="h-11 w-full rounded-xl bg-slate-950 text-sm font-bold text-white hover:bg-slate-800"
+                    className="h-11 w-full rounded-xl from-indigo-500 to-sky-500 text-sm font-bold text-white hover:bg-slate-800"
                   >
                     <Link
                       href={getWorkspaceHref(
@@ -595,7 +595,7 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
                 event.preventDefault();
                 void handleConfirmFinalizeWorkspace();
               }}
-              className="bg-slate-950 text-white hover:bg-slate-800"
+              className="from-indigo-500 to-sky-500 text-white hover:bg-slate-800"
             >
               {hireExpert.isPending ? "Processing..." : "Accept payment"}
             </AlertDialogAction>

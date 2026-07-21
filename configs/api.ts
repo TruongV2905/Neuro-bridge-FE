@@ -14,6 +14,9 @@ const authUtils = {
 
 const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
+  headers: {
+      "ngrok-skip-browser-warning": "true"
+  }
 });
 // Quản lý trạng thái refresh token
 let isRefreshing = false;

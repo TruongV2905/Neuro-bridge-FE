@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { toast } from "react-toastify"
 
+import { RichTextEditor } from "@/components/shared/rich-text-editor"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
@@ -83,6 +84,7 @@ import type {
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 import { formatMoney, formatPlatformFee } from "@/utils/formatMoney"
+import { isRichTextEmpty } from "@/utils/richText"
 
 import { PrivateChatMessage } from "../private-chat/components/PrivateChatMessage"
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
@@ -848,7 +850,7 @@ function WorkspaceStrategySection({
 
     const nextDocument = formValue.trim()
 
-    if (!nextDocument) {
+    if (isRichTextEmpty(nextDocument)) {
       setFormError("Workspace document is required.")
       return
     }
@@ -994,23 +996,21 @@ function WorkspaceStrategySection({
                   )}
 
                   <div>
-                    <label
-                      htmlFor="workspace-document-detail"
-                      className="text-xs font-bold uppercase tracking-wider text-slate-400"
-                    >
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Workspace document
                     </label>
-                    <Textarea
-                      id="workspace-document-detail"
-                      value={formValue}
-                      onChange={(event) => {
-                        setDraftDocument(event.target.value)
-                        setHasEditedDraft(true)
-                        setFormError(null)
-                      }}
-                      placeholder="Enter the required project document, implementation details, notes, and delivery plan..."
-                      className="mt-2 min-h-44 rounded-2xl border-slate-200 bg-slate-50/70 text-sm leading-6 shadow-none focus-visible:border-indigo-300 focus-visible:ring-indigo-100"
-                    />
+                    <div className="mt-2">
+                      <RichTextEditor
+                        value={formValue}
+                        onChange={(value) => {
+                          setDraftDocument(value)
+                          setHasEditedDraft(true)
+                          setFormError(null)
+                        }}
+                        placeholder="Enter the required project document, implementation details, notes, and delivery plan..."
+                        variant="job-post"
+                      />
+                    </div>
                     {formError && (
                       <p className="mt-2 text-xs font-semibold text-rose-600">
                         {formError}
@@ -1032,7 +1032,7 @@ function WorkspaceStrategySection({
                     <Button
                       type="button"
                       onClick={handleSubmitStrategy}
-                      disabled={isSavingDocument || !formValue.trim()}
+                      disabled={isSavingDocument || isRichTextEmpty(formValue)}
                       className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 px-4 text-sm font-bold text-white"
                     >
                       {isSavingDocument ? (
@@ -1059,9 +1059,16 @@ function WorkspaceStrategySection({
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                         Workspace document
                       </p>
-                      <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                        {documentDetail || "No workspace document is available."}
-                      </p>
+                      {documentDetail ? (
+                        <div
+                          className="prose prose-sm mt-3 max-w-none text-slate-700"
+                          dangerouslySetInnerHTML={{ __html: documentDetail }}
+                        />
+                      ) : (
+                        <p className="mt-3 text-sm leading-6 text-slate-700">
+                          No workspace document is available.
+                        </p>
+                      )}
                     </div>
                     
                   </div>

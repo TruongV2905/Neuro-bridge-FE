@@ -3,13 +3,14 @@
 import * as React from "react";
 import { FileText, Loader2 } from "lucide-react";
 
+import { RichTextEditor } from "@/components/shared/rich-text-editor";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
 import type { ApplyJobPostRequest, JobPost } from "@/types/job-post.type";
 import { formatMoney } from "@/utils/formatMoney";
+import { isRichTextEmpty } from "@/utils/richText";
 
 type ExpertUnifiedApplyFormProps = {
   job: JobPost;
@@ -179,13 +180,11 @@ export function ExpertUnifiedApplyForm({
                 label="Strategy summary"
                 error={errors.strategySummary}
               >
-                <Textarea
+                <RichTextEditor
                   value={form.strategySummary}
-                  onChange={(event) =>
-                    setForm("strategySummary", event.target.value)
-                  }
-                  className="min-h-24 rounded-xl border-slate-200 bg-white"
+                  onChange={(value) => setForm("strategySummary", value)}
                   placeholder="Summarize your approach in a few sentences."
+                  variant="job-post"
                 />
               </FieldErrorMessage>
 
@@ -193,13 +192,11 @@ export function ExpertUnifiedApplyForm({
                 label="Strategy detail"
                 error={errors.strategyDetail}
               >
-                <Textarea
+                <RichTextEditor
                   value={form.strategyDetail}
-                  onChange={(event) =>
-                    setForm("strategyDetail", event.target.value)
-                  }
-                  className="min-h-32 rounded-xl border-slate-200 bg-white"
+                  onChange={(value) => setForm("strategyDetail", value)}
                   placeholder="Describe the deeper implementation plan the client can unlock."
+                  variant="job-post"
                 />
               </FieldErrorMessage>
 
@@ -312,11 +309,11 @@ function validateForm(
     errors.proposalTitle = "Proposal title is required.";
   }
 
-  if (!form.strategySummary.trim()) {
+  if (isRichTextEmpty(form.strategySummary)) {
     errors.strategySummary = "Strategy summary is required.";
   }
 
-  if (!form.strategyDetail.trim()) {
+  if (isRichTextEmpty(form.strategyDetail)) {
     errors.strategyDetail = "Strategy detail is required.";
   }
 

@@ -489,7 +489,27 @@ export function SubmissionPackageReviewPanel({
                     Confirm transfer
                   </Button>
                 </>
-              ) : null}
+              ) : (
+                !isPackageAccepted && (
+                  <Button
+                    type="button"
+                    onClick={handlePrepareAccept}
+                    disabled={!canAccept || projectEscrowQuery.isFetching}
+                    className="h-10 rounded-xl bg-emerald-600 px-4 font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
+                  >
+                    {projectEscrowQuery.isFetching ? (
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="mr-2 h-4 w-4" />
+                    )}
+                    {projectEscrowQuery.isFetching
+                      ? "Checking transfer"
+                      : isPackageApproved
+                        ? "Disbursement"
+                        : "Accept"}
+                  </Button>
+                )
+              )}
             </DialogFooter>
           </div>
         </DialogContent>

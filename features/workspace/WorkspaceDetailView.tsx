@@ -84,7 +84,7 @@ import type {
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 import { formatMoney, formatPlatformFee } from "@/utils/formatMoney"
-import { isRichTextEmpty, normalizeRichTextHtml } from "@/utils/richText"
+import { isRichTextEmpty } from "@/utils/richText"
 
 import { PrivateChatMessage } from "../private-chat/components/PrivateChatMessage"
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
@@ -93,6 +93,18 @@ import { SubmissionPackageReviewPanel } from "./submission/components/Submission
 type WorkspaceDetailViewProps = {
   workspaceId: string
 }
+
+const ALLOWED_RICH_TEXT_TAGS = new Set([
+  "B",
+  "BR",
+  "EM",
+  "I",
+  "LI",
+  "OL",
+  "P",
+  "STRONG",
+  "UL",
+])
 
 export function WorkspaceDetailView({
   workspaceId,
@@ -1022,17 +1034,8 @@ function WorkspaceStrategySection({
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="text-sm font-extrabold text-slate-900">
-                        Document status
-                      </p>
-                      <p className="mt-1 text-xs font-semibold text-slate-500">
-                        {isDocumentRequired
-                          ? ""
-                          : "Document is available for this workspace."}
-                      </p>
-                    </div>
+                    <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/70 bg-slate-50/70 p-4 sm:items-end">
+                    
                     <Button
                       type="button"
                       onClick={handleSubmitStrategy}
@@ -1815,6 +1818,79 @@ function getLatestSubmissionPackage(packages: SubmissionPackageSummary[]) {
 
       return getTimeValue(right.submittedAt) - getTimeValue(left.submittedAt)
     })[0]
+}
+
+function normalizeRichTextHtml(value: string) {
+  const normalizedValue = value.trim()
+
+  if (!normalizedValue || typeof window === "undefined") {
+    return normalizedValue
+  }
+
+  const parser = new DOMParser()
+  const document = parser.parseFromString(
+    decodeHtmlEntities(normalizedValue),
+    "text/html",
+  )
+
+  sanitizeRichTextNode(document.body)
+  removeEmptyRichTextBlocks(document.body)
+
+  return document.body.innerHTML.trim()
+}
+
+function decodeHtmlEntities(value: string) {
+  const textArea = document.createElement("textarea")
+  textArea.innerHTML = value
+
+  return textArea.value
+}
+
+function sanitizeRichTextNode(parent: ParentNode) {
+  Array.from(parent.childNodes).forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      node.remove()
+      return
+    }
+
+    const element = node as HTMLElement
+
+    if (!ALLOWED_RICH_TEXT_TAGS.has(element.tagName)) {
+      const childNodes = Array.from(element.childNodes)
+      element.replaceWith(...childNodes)
+      sanitizeRichTextNode(parent)
+      return
+    }
+
+    Array.from(element.attributes).forEach((attribute) => {
+      element.removeAttribute(attribute.name)
+    })
+    sanitizeRichTextNode(element)
+  })
+}
+
+function removeEmptyRichTextBlocks(parent: HTMLElement) {
+  let removedBlock = true
+
+  while (removedBlock) {
+    removedBlock = false
+
+    parent.querySelectorAll("p, li, ul, ol").forEach((element) => {
+      const hasLineBreak = Boolean(element.querySelector("br"))
+      const hasNestedList = Boolean(element.querySelector("ul, ol"))
+      const hasText = Boolean(element.textContent?.trim())
+      const isList = element.tagName === "UL" || element.tagName === "OL"
+
+      if (!hasLineBreak && (!hasNestedList || isList) && !hasText) {
+        element.remove()
+        removedBlock = true
+      }
+    })
+  }
 }
 
 function normalizeStatusValue(value?: string | null) {

@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 
 import { AiBadge } from "../ui/AiBadge";
-import { ExpertMatch } from "../ui/ExpertMatch";
+// import { ExpertMatch } from "../ui/ExpertMatch";
 import { SkillPill } from "../ui/SkillPill";
 import { StepBadge } from "../ui/StepBadge";
 import { formatMoney } from "@/utils/formatMoney";
@@ -401,7 +401,7 @@ export function ReviewLaunchStep({
         />
       </div>
 
-      <motion.div
+      {/* <motion.div
         variants={fadeUp}
         whileHover={{ y: -2, transition: { duration: 0.25 } }}
         className={`${cardClassName} mt-5`}
@@ -444,7 +444,7 @@ export function ReviewLaunchStep({
             score="94%"
           />
         </div>
-      </motion.div>
+      </motion.div> */}
     </motion.div>
   );
 }

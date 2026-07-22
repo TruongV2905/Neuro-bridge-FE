@@ -84,7 +84,7 @@ import type {
 } from "@/types/workspace.type"
 import { UserRole, type UserResponse } from "@/types/user/user.type"
 import { formatMoney, formatPlatformFee } from "@/utils/formatMoney"
-import { isRichTextEmpty } from "@/utils/richText"
+import { isRichTextEmpty, normalizeRichTextHtml } from "@/utils/richText"
 
 import { PrivateChatMessage } from "../private-chat/components/PrivateChatMessage"
 import { ExpertSubmissionPackagePanel } from "./submission/components/ExpertSubmissionPackagePanel"
@@ -827,6 +827,10 @@ function WorkspaceStrategySection({
   const [formError, setFormError] = useState<string | null>(null)
   const workspaceDocument = documentQuery.data
   const documentDetail = workspaceDocument?.document?.trim() ?? ""
+  const renderedDocumentDetail = useMemo(
+    () => normalizeRichTextHtml(documentDetail),
+    [documentDetail],
+  )
   const formValue = hasEditedDraft ? draftDocument : documentDetail
   const isDocumentRequired = Boolean(workspaceDocument?.documentRequired)
   const canEdit = isExpert && Boolean(normalizedWorkspaceId)
@@ -1059,10 +1063,15 @@ function WorkspaceStrategySection({
                       <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
                         Workspace document
                       </p>
-                      {documentDetail ? (
+                      {renderedDocumentDetail ? (
                         <div
-                          className="prose prose-sm mt-3 max-w-none text-slate-700"
-                          dangerouslySetInnerHTML={{ __html: documentDetail }}
+                          className={cn(
+                            "prose prose-sm mt-3 max-w-none text-slate-700",
+                            "[&_p]:my-2 [&_li_p]:m-0",
+                            "[&_ul]:my-2 [&_ul]:ml-6 [&_ul]:list-disc [&_ul]:pl-2",
+                            "[&_ol]:my-2 [&_ol]:ml-6 [&_ol]:list-decimal [&_ol]:pl-2",
+                          )}
+                          dangerouslySetInnerHTML={{ __html: renderedDocumentDetail }}
                         />
                       ) : (
                         <p className="mt-3 text-sm leading-6 text-slate-700">

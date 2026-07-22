@@ -1,10 +1,12 @@
 "use client";
 
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Clock4, FileText, LockKeyhole, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import { useGetUserByCode } from "@/services/user.service";
 import type {
   ApplicantProposal,
@@ -12,6 +14,7 @@ import type {
   JobPostApplicant,
 } from "@/types/job-post.type";
 import { formatMoney } from "@/utils/formatMoney";
+import { normalizeRichTextHtml } from "@/utils/richText";
 
 type ClientApplicantCardProps = {
   applicant: JobPostApplicant;
@@ -25,6 +28,10 @@ export function ClientApplicantCard({
   onViewProposal,
 }: ClientApplicantCardProps) {
   const { expertApply, proposal } = applicant;
+  const renderedStrategySummary = useMemo(
+    () => normalizeRichTextHtml(proposal?.strategySummary ?? ""),
+    [proposal?.strategySummary],
+  );
   const unlockCost = resolveApplicantUnlockCost(proposal);
   const expertProfileHref = getExpertProfileHref(expertApply.expertCode);
   const expertQuery = useGetUserByCode(
@@ -91,9 +98,21 @@ export function ClientApplicantCard({
             <h3 className="mt-2 line-clamp-2 font-extrabold text-slate-950">
               {proposal.title}
             </h3>
-            <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
-              {proposal.strategySummary || "No strategy summary was provided."}
-            </p>
+            {renderedStrategySummary ? (
+              <div
+                className={cn(
+                  "prose prose-sm mt-2 max-h-[4.5rem] max-w-none overflow-hidden text-sm leading-6 text-slate-500",
+                  "[&_p]:my-0 [&_li_p]:m-0",
+                  "[&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:pl-1",
+                  "[&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:pl-1",
+                )}
+                dangerouslySetInnerHTML={{ __html: renderedStrategySummary }}
+              />
+            ) : (
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                No strategy summary was provided.
+              </p>
+            )}
           </div>
 
           <div className="mt-4 flex items-end justify-between gap-3">

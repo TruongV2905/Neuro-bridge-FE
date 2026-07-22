@@ -33,6 +33,7 @@ import type {
   JobPostListItem,
   JobPostStatus,
 } from "@/types/job-post.type";
+import { normalizeRichTextHtml } from "@/utils/richText";
 import {
   formatApplicantMoney,
   resolveApplicantUnlockCost,
@@ -578,6 +579,10 @@ function HiringApplicantCard({
   onHire: () => void;
 }) {
   const { expertApply, proposal } = applicant;
+  const renderedStrategySummary = useMemo(
+    () => normalizeRichTextHtml(proposal?.strategySummary ?? ""),
+    [proposal?.strategySummary],
+  );
   const unlockCost = resolveApplicantUnlockCost(proposal);
   const expertQuery = useGetUserByCode(
     { code: expertApply.expertCode },
@@ -646,9 +651,21 @@ function HiringApplicantCard({
             <h4 className="mt-2 line-clamp-2 text-sm font-extrabold text-slate-950">
               {proposal.title}
             </h4>
-            <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
-              {proposal.strategySummary || "No strategy summary was provided."}
-            </p>
+            {renderedStrategySummary ? (
+              <div
+                className={cn(
+                  "prose prose-sm mt-2 max-h-[4.5rem] max-w-none overflow-hidden text-sm leading-6 text-slate-500",
+                  "[&_p]:my-0 [&_li_p]:m-0",
+                  "[&_ul]:my-1 [&_ul]:ml-5 [&_ul]:list-disc [&_ul]:pl-1",
+                  "[&_ol]:my-1 [&_ol]:ml-5 [&_ol]:list-decimal [&_ol]:pl-1",
+                )}
+                dangerouslySetInnerHTML={{ __html: renderedStrategySummary }}
+              />
+            ) : (
+              <p className="mt-2 line-clamp-3 text-sm leading-6 text-slate-500">
+                No strategy summary was provided.
+              </p>
+            )}
             <div className="mt-3 rounded-xl border border-slate-100 bg-white px-3 py-2">
               <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                 Unlock cost

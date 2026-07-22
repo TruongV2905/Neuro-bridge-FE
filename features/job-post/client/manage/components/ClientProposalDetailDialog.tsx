@@ -1,7 +1,7 @@
 "use client";
 
 import { isAxiosError } from "axios";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -42,6 +42,8 @@ import type {
   ClientProposalDialogSummary,
   ProposalUnlock,
 } from "@/types/job-post.type";
+import { cn } from "@/lib/utils";
+import { normalizeRichTextHtml } from "@/utils/richText";
 import {
   formatApplicantMoney,
   resolveApplicantUnlockCost,
@@ -63,6 +65,10 @@ export function ClientProposalDetailDialog({
     null,
   );
   const proposal = proposalSummary?.proposal;
+  const renderedStrategySummary = useMemo(
+    () => normalizeRichTextHtml(proposal?.strategySummary ?? ""),
+    [proposal?.strategySummary],
+  );
   const proposalId = proposal?.id.trim() ?? "";
   const expertCode = proposalSummary?.expertApply.expertCode.trim() ?? "";
   const hasProposal = Boolean(proposalSummary && proposal);
@@ -283,10 +289,18 @@ export function ClientProposalDetailDialog({
               <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-400">
                 Strategy summary
               </h3>
-              <p className="mt-2 whitespace-pre-line rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm leading-7 text-slate-600">
-                {proposal.strategySummary ||
-                  "No strategy summary was provided."}
-              </p>
+              {renderedStrategySummary ? (
+                <div
+                  className={getRichTextDisplayClassName(
+                    "border-slate-200 bg-slate-50/60 text-slate-600",
+                  )}
+                  dangerouslySetInnerHTML={{ __html: renderedStrategySummary }}
+                />
+              ) : (
+                <p className="mt-2 rounded-2xl border border-slate-200 bg-slate-50/60 p-4 text-sm leading-7 text-slate-600">
+                  No strategy summary was provided.
+                </p>
+              )}
             </section>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -795,6 +809,16 @@ function getExpertDisplayName(fullName: string | undefined, isLoading: boolean) 
   return "Expert applicant";
 }
 
+function getRichTextDisplayClassName(toneClassName: string) {
+  return cn(
+    "prose prose-sm mt-2 max-w-none rounded-2xl border p-4 text-sm leading-7",
+    "[&_p]:my-2 [&_li_p]:m-0",
+    "[&_ul]:my-2 [&_ul]:ml-6 [&_ul]:list-disc [&_ul]:pl-2",
+    "[&_ol]:my-2 [&_ol]:ml-6 [&_ol]:list-decimal [&_ol]:pl-2",
+    toneClassName,
+  );
+}
+
 function ProtectedDetailSection({
   isLoading,
   isError,
@@ -809,6 +833,10 @@ function ProtectedDetailSection({
   onRetry: () => void;
 }) {
   const isLocked = isError && isProtectedDetailLocked(error);
+  const renderedStrategyDetail = useMemo(
+    () => normalizeRichTextHtml(proposalUnlock?.strategyDetail ?? ""),
+    [proposalUnlock?.strategyDetail],
+  );
 
   return (
     <section>
@@ -820,11 +848,14 @@ function ProtectedDetailSection({
         <ProtectedDetailMessage tone="neutral">
           Loading protected proposal detail...
         </ProtectedDetailMessage>
-      ) : proposalUnlock?.strategyDetail ? (
+      ) : renderedStrategyDetail ? (
         <>
-          <p className="mt-2 whitespace-pre-line rounded-2xl border border-indigo-100 bg-indigo-50/50 p-4 text-sm leading-7 text-slate-700">
-            {proposalUnlock.strategyDetail}
-          </p>
+          <div
+            className={getRichTextDisplayClassName(
+              "border-indigo-100 bg-indigo-50/50 text-slate-700",
+            )}
+            dangerouslySetInnerHTML={{ __html: renderedStrategyDetail }}
+          />
           <p className="mt-2 text-xs leading-5 text-slate-500">
             Detailed strategy is shown from the authorized Proposal Unlock
             endpoint response.

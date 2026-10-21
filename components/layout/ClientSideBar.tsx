@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   BriefcaseIcon,
+  BoxesIcon,
   FolderIcon,
   HandshakeIcon,
   HomeIcon,
@@ -12,6 +13,7 @@ import {
   PlusCircleIcon,
   SearchIcon,
   SparklesIcon,
+  WalletCardsIcon,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +77,16 @@ const WORKSPACE_CONFIG: Record<
         url: "/client/dashboard/projects",
         icon: FolderIcon,
       },
+      {
+        title: "AI Place",
+        url: "/client/dashboard/ai-place",
+        icon: BoxesIcon,
+      },
+      {
+        title: "Wallet",
+        url: "/client/dashboard/wallet",
+        icon: WalletCardsIcon,
+      },
     ],
   },
   EXPERT: {
@@ -91,19 +103,29 @@ const WORKSPACE_CONFIG: Record<
         icon: SparklesIcon,
       },
       {
+        title: "AI Products",
+        url: "/expert/dashboard/ai-place/products",
+        icon: BoxesIcon,
+      },
+      {
         title: "My Applications",
         url: "/expert/dashboard/my-applications",
         icon: SparklesIcon,
       },
       {
         title: "Browse Jobpost",
-        url: "/expert/dashboard/browse-job-posts",
+        url: "/expert/dashboard",
         icon: SearchIcon,
       },
       {
         title: "Project",
         url: "/expert/dashboard/projects",
         icon: FolderIcon,
+      },
+      {
+        title: "Wallet",
+        url: "/expert/dashboard/wallet",
+        icon: WalletCardsIcon,
       },
     ],
   },

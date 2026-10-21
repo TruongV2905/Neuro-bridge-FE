@@ -6,15 +6,37 @@ export type ExtensibleString<TKnown extends string> =
 
 export type PaymentSortDirection = "ASCENDING" | "DESCENDING";
 
-export type WalletStatus = ExtensibleString<"ACTIVE">;
+export type WalletStatus = ExtensibleString<
+  "ACTIVE" | "INACTIVE" | "LOCKED" | "PENDING_VERIFICATION"
+>;
 
-export type PaymentTransactionType = ExtensibleString<"WALLET_DEPOSIT">;
+export type PaymentTransactionType = ExtensibleString<
+  | "WALLET_DEPOSIT"
+  | "WALLET_WITHDRAW"
+  | "PROPOSAL_PAYMENT"
+  | "AI_PRODUCT_PAYMENT"
+  | "PROJECT_ESCROW_DEPOSIT"
+  | "PROJECT_RELEASE"
+  | "PROJECT_REFUND"
+  | "REFUND"
+  | "SYSTEM_FEE"
+  | "ADMIN_ADD"
+  | "ADMIN_DEDUCT"
+>;
 
 export type PaymentTransactionStatus = ExtensibleString<
   "PENDING" | "SUCCESS" | "FAILED" | "CANCELLED"
 >;
 
-export type PaymentReferenceType = ExtensibleString<"PROPOSAL">;
+export type PaymentReferenceType = ExtensibleString<
+  | "PROPOSAL"
+  | "AI_PRODUCT"
+  | "PROJECT"
+  | "JOB_POST"
+  | "WITHDRAW_REQUEST"
+  | "DEPOSIT_REQUEST"
+  | "ADMIN_ACTION"
+>;
 
 export type UpdateMyWalletBankInfoRequest = {
   accountHolderName: string;
@@ -23,10 +45,7 @@ export type UpdateMyWalletBankInfoRequest = {
 };
 
 export type PayProposalByWalletRequest = {
-  amount: number;
-  expertCode: string;
   proposalId: string;
-  description?: string;
 };
 
 export type UserWallet = {
@@ -45,14 +64,14 @@ export type WalletResponse = UserWallet;
 
 export type PaymentTransaction = {
   id: string;
-  fromUserCode: string;
-  toUserCode: string;
+  fromUserCode: string | null;
+  toUserCode: string | null;
   amount: number;
   type: PaymentTransactionType;
   status: PaymentTransactionStatus;
-  referenceId: string;
+  referenceId: string | null;
   referenceType: PaymentReferenceType;
-  description: string;
+  description: string | null;
   createdAt: string;
 };
 

@@ -4,6 +4,7 @@ import type { AxiosError } from "axios";
 import api from "@/configs/api";
 import type { APIResponse } from "@/types/common.starter";
 import type {
+  WorkspaceDashboardPage,
   WorkspaceDetail,
   WorkspaceMember,
 } from "@/types/workspace.type";
@@ -26,6 +27,25 @@ export const workspaceKeys = {
 export async function getWorkspaceDetail(workspaceId: string) {
   const { data } = await api.get<WorkspaceDetail>(
     `${WORKSPACE_ENDPOINT}/${encodeURIComponent(workspaceId)}`,
+  );
+
+  return data;
+}
+
+export type WorkspaceDashboardParams = {
+  pageNo: number;
+  pageSize: number;
+};
+
+export async function getWorkspaceDashboard({
+  pageNo,
+  pageSize,
+}: WorkspaceDashboardParams) {
+  const { data } = await api.get<WorkspaceDashboardPage>(
+    `${WORKSPACE_ENDPOINT}/dashboard`,
+    {
+      params: { pageNo, pageSize },
+    },
   );
 
   return data;
@@ -61,6 +81,17 @@ export function useWorkspaceMembers(workspaceId?: string | null) {
       : workspaceKeys.members(""),
     queryFn: () => getWorkspaceMembers(normalizedWorkspaceId ?? ""),
     enabled: Boolean(normalizedWorkspaceId),
+    retry: 0,
+  });
+}
+
+export function useWorkspaceDashboard({
+  pageNo,
+  pageSize,
+}: WorkspaceDashboardParams) {
+  return useQuery<WorkspaceDashboardPage, WorkspaceApiError>({
+    queryKey: workspaceKeys.dashboard(pageNo, pageSize),
+    queryFn: () => getWorkspaceDashboard({ pageNo, pageSize }),
     retry: 0,
   });
 }

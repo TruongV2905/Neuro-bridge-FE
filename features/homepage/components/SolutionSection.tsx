@@ -210,7 +210,7 @@ export default function ActivitiesSection({
             >
               <AvailableAICard
                 {...activity}
-                onViewDetails={() => router.push("/availableAI")}
+                onViewDetails={() => router.push("/ai-place")}
               />
             </div>
           ))}
@@ -220,7 +220,7 @@ export default function ActivitiesSection({
             showCta ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
-          <GradientCtaLink href="/availableAI" className="mt-16 min-w-[280px]">
+          <GradientCtaLink href="/ai-place" className="mt-16 min-w-[280px]">
             View all AI solutions
           </GradientCtaLink>
         </div>

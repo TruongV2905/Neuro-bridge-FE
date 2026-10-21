@@ -6,11 +6,6 @@ import type {
   UseMutationOptions,
   UseQueryOptions,
 } from "@tanstack/react-query";
-import {
-  createMutationHook,
-  createPostQueryHook,
-  createQueryHook,
-} from "@/hooks/userAPI";
 import type { APIResponse } from "@/types/common.starter";
 import type {
   MyPaymentTransactionsParams,
@@ -78,17 +73,14 @@ export async function getPaymentTransactionById(id: string) {
 export async function payProposalByWallet(
   request: PayProposalByWalletRequest,
 ): Promise<APIResponse<PaymentTransaction>> {
-  const { amount, description, expertCode, proposalId } = request;
+  const { proposalId } = request;
 
   const { data } = await api.post<APIResponse<PaymentTransaction>>(
     `${PAYMENT_TRANSACTION_ENDPOINT}/proposal/pay-by-wallet`,
     undefined,
     {
       params: {
-        amount,
-        expertCode,
         proposalId,
-        ...(description ? { description } : {}),
       },
     },
   );
@@ -96,9 +88,9 @@ export async function payProposalByWallet(
   return data;
 }
 
-// TODO: Confirm GET /payment-transactions/mine parameter convention with BE.
-// Swagger currently shows a GET request body, while the existing API helper
-// safely supports query params only for GET requests.
+// The current controller binds its PageRequest fields from GET query parameters.
+// It always scopes records to the authenticated user; its nested type/status
+// filter is intentionally not accepted by this private-history endpoint.
 export async function getMyPaymentTransactions(
   params?: MyPaymentTransactionsParams,
 ) {
@@ -173,33 +165,87 @@ export function usePayProposalByWallet(
   });
 }
 
-export const useUpdateMyWalletBankInfo = createMutationHook<
-  WalletResponse,
-  UpdateMyWalletBankInfoRequest
->({
-  url: `${WALLET_ENDPOINT}/me/bank-info`,
-  method: "PUT",
-  queryKeyToInvalidate: paymentKeys.wallet,
-});
+export function useUpdateMyWalletBankInfo(
+  options?: Omit<
+    UseMutationOptions<
+      APIResponse<WalletResponse>,
+      PaymentApiError,
+      UpdateMyWalletBankInfoRequest,
+      unknown
+    >,
+    "mutationFn" | "retry"
+  >,
+) {
+  const queryClient = useQueryClient();
 
-export const useFilterPaymentTransactions = createPostQueryHook<
-  PaymentTransactionPageResponse,
-  PaymentTransactionFilterRequest
->(
-  paymentKeys.transactionsFilter,
-  `${PAYMENT_TRANSACTION_ENDPOINT}/filter`,
-);
+  return useMutation({
+    ...options,
+    mutationFn: updateMyWalletBankInfo,
+    retry: 0,
+    onSuccess: async (data, variables, onMutateResult, context) => {
+      await queryClient.invalidateQueries({ queryKey: paymentKeys.walletMine });
+      options?.onSuccess?.(data, variables, onMutateResult, context);
+    },
+  });
+}
 
-export const useGetPaymentTransactionById =
-  createQueryHook<PaymentTransaction>(
-    paymentKeys.transactionDetail,
-    `${PAYMENT_TRANSACTION_ENDPOINT}/:id`,
-  );
+export function useFilterPaymentTransactions(
+  payload: PaymentTransactionFilterRequest,
+  options?: Omit<
+    UseQueryOptions<
+      APIResponse<PaymentTransactionPageResponse>,
+      PaymentApiError,
+      APIResponse<PaymentTransactionPageResponse>,
+      QueryKey
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: [...paymentKeys.transactionsFilter, payload],
+    queryFn: () => filterPaymentTransactions(payload),
+    retry: 0,
+    ...options,
+  });
+}
 
-// TODO: Confirm GET /payment-transactions/mine parameter convention with BE
-// before relying on pagination/filter fields in production.
-export const useGetMyPaymentTransactions =
-  createQueryHook<PaymentTransactionPageResponse>(
-    paymentKeys.myTransactions,
-    `${PAYMENT_TRANSACTION_ENDPOINT}/mine`,
-  );
+export function useGetPaymentTransactionById(
+  id?: string,
+  options?: Omit<
+    UseQueryOptions<
+      APIResponse<PaymentTransaction>,
+      PaymentApiError,
+      APIResponse<PaymentTransaction>,
+      QueryKey
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: [...paymentKeys.transactionDetail, id],
+    queryFn: () => getPaymentTransactionById(id!),
+    enabled: Boolean(id) && (options?.enabled ?? true),
+    retry: 0,
+    ...options,
+  });
+}
+
+export function useGetMyPaymentTransactions(
+  params?: MyPaymentTransactionsParams,
+  options?: Omit<
+    UseQueryOptions<
+      APIResponse<PaymentTransactionPageResponse>,
+      PaymentApiError,
+      APIResponse<PaymentTransactionPageResponse>,
+      QueryKey
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  return useQuery({
+    queryKey: [...paymentKeys.myTransactions, params],
+    queryFn: () => getMyPaymentTransactions(params),
+    retry: 0,
+    ...options,
+  });
+}

@@ -2,6 +2,7 @@
 "use client"
 
 import { useRef, useState } from "react"
+import Link from "next/link"
 import { useDispatch, useSelector } from "react-redux"
 import { logout } from "@/redux/features/userSlice"
 import {
@@ -15,7 +16,6 @@ import {
     Building2,
     BriefcaseBusiness,
     FileText,
-    Clock,
 } from "lucide-react"
 
 import Header from "@/components/layout/Header"
@@ -290,14 +290,13 @@ function ClientProfileEditor({
                         </CardHeader>
 
                         <CardContent className="p-6">
-                            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                                <ClientProfileFormField icon={<Hash size={16} />} label="Wallet ID" value="WAL-0002" />
-                                <ClientProfileFormField icon={<Building2 size={16} />} label="Bank Name" value="Vietcombank" />
-                                <ClientProfileFormField icon={<FileText size={16} />} label="Account Number" value="0123456789" />
-                                <ClientProfileFormField icon={<User size={16} />} label="Account Holder Name" value={profile.fullName} />
-                                <ClientProfileFormField icon={<BriefcaseBusiness size={16} />} label="Wallet Balance" value="2,500,000 VND" />
-                                <ClientProfileFormField icon={<Clock size={16} />} label="Total Withdrawn" value="500,000 VND" />
-                            </div>
+                            <p className="text-sm text-muted-foreground">
+                                Wallet balances and bank information are managed in the
+                                Wallet dashboard so they always reflect the Payment service.
+                            </p>
+                            <Button asChild className="mt-4">
+                                <Link href="/client/dashboard/wallet">Open Wallet</Link>
+                            </Button>
                         </CardContent>
                     </Card>
 

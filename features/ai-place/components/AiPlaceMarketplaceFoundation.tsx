@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ArrowLeft, ArrowRight, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, ReceiptText, RefreshCw, Search, SlidersHorizontal, Sparkles, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -69,10 +69,15 @@ export function AiPlaceMarketplaceFoundation() {
   return (
     <main className="min-h-screen bg-[#f6f1f1] p-6 text-slate-950 sm:p-8 lg:p-10">
       <div className="mx-auto max-w-7xl space-y-7">
-        <section className="max-w-3xl">
-          <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-md shadow-indigo-500/20"><Sparkles className="h-3.5 w-3.5" /> AI Place</div>
-          <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Discover published AI products.</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Explore production-ready AI products and their capabilities before purchase becomes available.</p>
+        <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 to-violet-600 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-white shadow-md shadow-indigo-500/20"><Sparkles className="h-3.5 w-3.5" /> AI Place</div>
+            <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 sm:text-4xl">Discover published AI products.</h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">Explore production-ready AI products, purchase them securely, and access your purchase history.</p>
+          </div>
+          <Button asChild variant="outline" className="shrink-0 rounded-xl border-slate-200 bg-white text-indigo-700 hover:bg-indigo-50 hover:text-indigo-800">
+            <Link href={AI_PLACE_ROUTES.purchases}><ReceiptText /> My purchases</Link>
+          </Button>
         </section>
 
         <Card className="rounded-3xl border-slate-200/80 bg-white py-0 shadow-sm shadow-slate-200/50">

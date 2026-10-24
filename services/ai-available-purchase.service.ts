@@ -16,6 +16,7 @@ import type { APIResponse } from "@/types/common.starter";
 
 const CLIENT_ENDPOINT = `${AI_PLACE_API_BASE}/client`;
 const PURCHASES_ENDPOINT = `${CLIENT_ENDPOINT}/purchases`;
+const PURCHASE_LOOKUP_PAGE_SIZE = 50;
 
 export async function buyAiProduct(productId: string) {
   const { data } = await api.post<APIResponse<PurchaseSettlement>>(
@@ -40,6 +41,37 @@ export async function getAiPlacePurchaseHistory(params: PageParams = {}) {
   );
 
   return data;
+}
+
+/**
+ * The current backend exposes no purchase-by-product endpoint. The client
+ * therefore searches its server-paginated successful-purchase history rather
+ * than assuming a marketplace product has not been purchased.
+ */
+export async function findAiPlacePurchaseForProduct(
+  productId: string,
+): Promise<PurchaseHistoryItem | null> {
+  let page = 0;
+
+  while (true) {
+    const response = await getAiPlacePurchaseHistory({
+      page,
+      size: PURCHASE_LOOKUP_PAGE_SIZE,
+    });
+    const match = response.result.data.find(
+      (purchase) => purchase.productId === productId,
+    );
+
+    if (match) {
+      return match;
+    }
+
+    if (!response.result.metadata.hasNext) {
+      return null;
+    }
+
+    page += 1;
+  }
 }
 
 export async function getAiPlacePurchaseDetail(purchaseId: string) {
@@ -80,6 +112,9 @@ export function useBuyAiProduct() {
         queryClient.invalidateQueries({
           queryKey: aiPlaceQueryKeys.purchases.detail(data.result.purchaseId),
         }),
+        queryClient.invalidateQueries({
+          queryKey: aiPlaceQueryKeys.marketplace.detail(data.result.productId),
+        }),
       ]);
     },
   });
@@ -99,6 +134,9 @@ export function useRetryAiProductPurchasePayment() {
         queryClient.invalidateQueries({
           queryKey: aiPlaceQueryKeys.purchases.detail(data.result.purchaseId),
         }),
+        queryClient.invalidateQueries({
+          queryKey: aiPlaceQueryKeys.marketplace.detail(data.result.productId),
+        }),
       ]);
     },
   });
@@ -108,6 +146,17 @@ export function useAiPlacePurchaseHistory(params: PageParams = {}) {
   return useQuery({
     queryKey: aiPlaceQueryKeys.purchases.history(params),
     queryFn: () => getAiPlacePurchaseHistory(params),
+    retry: 0,
+  });
+}
+
+export function useAiPlacePurchaseForProduct(productId?: string | null) {
+  const normalizedProductId = productId?.trim() || "";
+
+  return useQuery<PurchaseHistoryItem | null>({
+    queryKey: aiPlaceQueryKeys.purchases.byProduct(normalizedProductId),
+    queryFn: () => findAiPlacePurchaseForProduct(normalizedProductId),
+    enabled: Boolean(normalizedProductId),
     retry: 0,
   });
 }

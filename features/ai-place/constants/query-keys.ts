@@ -29,6 +29,8 @@ export const aiPlaceQueryKeys = {
     all: ["ai-place", "purchases"] as const,
     history: (params: PageParams = {}) =>
       ["ai-place", "purchases", "history", params] as const,
+    byProduct: (productId: string) =>
+      ["ai-place", "purchases", "by-product", productId] as const,
     detail: (purchaseId: string) =>
       ["ai-place", "purchases", "detail", purchaseId] as const,
   },

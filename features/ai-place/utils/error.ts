@@ -13,8 +13,14 @@ export const AI_PLACE_ERROR_CODES = [
   "PURCHASE_ALREADY_OWNED",
   "PURCHASE_NOT_FOUND",
   "PAYMENT_INSUFFICIENT_BALANCE",
+  "WALLET_NOT_ACTIVE",
+  "PAYMENT_IN_PROGRESS",
+  "PAYMENT_IDEMPOTENCY_CONFLICT",
+  "PAYMENT_FAILED",
   "PAYMENT_SERVICE_UNAVAILABLE",
+  "SELLER_IDENTITY_INVALID",
   "ENTITLEMENT_EXPIRED",
+  "PRODUCT_ASSET_NOT_FOUND",
   "RATING_NOT_ALLOWED",
   "RATING_ALREADY_EXISTS",
   "VALIDATION_ERROR",
@@ -45,9 +51,20 @@ const AI_PLACE_ERROR_MESSAGES: Record<AiPlaceErrorCode, string> = {
   PURCHASE_NOT_FOUND: "This purchase could not be found.",
   PAYMENT_INSUFFICIENT_BALANCE:
     "Your wallet balance is insufficient. The purchase remains pending for retry.",
+  WALLET_NOT_ACTIVE:
+    "Your wallet is not active. The purchase remains pending for retry.",
+  PAYMENT_IN_PROGRESS:
+    "Payment settlement is still in progress. Please wait, then check again.",
+  PAYMENT_IDEMPOTENCY_CONFLICT:
+    "Payment settlement needs reconciliation. Please try again later.",
+  PAYMENT_FAILED:
+    "Payment did not complete. The purchase remains pending and may be retried.",
   PAYMENT_SERVICE_UNAVAILABLE:
     "Payment is temporarily unavailable. Please try again later.",
+  SELLER_IDENTITY_INVALID:
+    "The seller is not currently eligible for payment settlement.",
   ENTITLEMENT_EXPIRED: "Your download entitlement has expired.",
+  PRODUCT_ASSET_NOT_FOUND: "This protected product file is not available.",
   RATING_NOT_ALLOWED: "You are not eligible to manage a rating for this purchase.",
   RATING_ALREADY_EXISTS: "A rating already exists for this purchase.",
   VALIDATION_ERROR: "Please correct the highlighted fields and try again.",

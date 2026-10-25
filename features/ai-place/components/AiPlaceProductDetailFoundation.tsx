@@ -8,6 +8,7 @@ import { toast } from "react-toastify";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AiPlacePurchaseConfirmationDialog } from "@/features/ai-place/components/AiPlacePurchaseConfirmationDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MarketplacePreview, PreviewKindLabel } from "@/features/ai-place/components/MarketplacePreview";
 import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
@@ -30,6 +31,7 @@ export function AiPlaceProductDetailFoundation({ productId }: { productId: strin
   const retryMutation = useRetryAiProductPurchasePayment();
   const [pendingPurchase, setPendingPurchase] = useState<PendingPurchaseState>();
   const [knownPurchaseId, setKnownPurchaseId] = useState("");
+  const [purchaseConfirmationOpen, setPurchaseConfirmationOpen] = useState(false);
   const recoveredPurchaseQuery = useAiPlacePurchaseDetail(knownPurchaseId);
   const product = productQuery.data?.result;
   // A null successful-history lookup is the normal, explicit "not owned"
@@ -37,14 +39,22 @@ export function AiPlaceProductDetailFoundation({ productId }: { productId: strin
   const ownedPurchase = recoveredPurchaseQuery.data?.result ?? ownershipQuery.data ?? null;
   const successfulOutcome = buyMutation.data?.result ?? retryMutation.data?.result;
 
+  const openPurchaseConfirmation = () => {
+    setPurchaseConfirmationOpen(true);
+  };
+
   const buyProduct = () => {
+    if (buyMutation.isPending) return;
+
     buyMutation.mutate(productId, {
       onSuccess: (response) => {
+        setPurchaseConfirmationOpen(false);
         setPendingPurchase(undefined);
         setKnownPurchaseId(response.result.purchaseId);
         toast.success("Payment succeeded. This AI product is now owned by you.");
       },
       onError: (error) => {
+        setPurchaseConfirmationOpen(false);
         const pending = getPendingPurchaseFromError(error);
         const ownedPurchaseId = getPurchaseIdFromError(error, "PURCHASE_ALREADY_OWNED");
 
@@ -81,7 +91,8 @@ export function AiPlaceProductDetailFoundation({ productId }: { productId: strin
         <Button asChild variant="ghost" className="w-fit px-0 text-indigo-700 hover:bg-transparent hover:text-indigo-900"><Link href={AI_PLACE_ROUTES.marketplace}><ArrowLeft /> Back to AI Place</Link></Button>
         {productQuery.isLoading ? <DetailLoading /> : null}
         {!productQuery.isLoading && (productQuery.isError || !product) ? <DetailError message={productQuery.isError ? getAiPlaceErrorMessage(productQuery.error) : "This AI product could not be found."} onRetry={() => void productQuery.refetch()} /> : null}
-        {product ? <ProductDetail product={product} ownedPurchase={ownedPurchase} successfulOutcome={successfulOutcome} pendingPurchase={pendingPurchase} isCheckingOwnership={ownershipQuery.isLoading || recoveredPurchaseQuery.isLoading} ownershipError={ownershipQuery.isError || recoveredPurchaseQuery.isError ? getAiPlaceErrorMessage(ownershipQuery.error ?? recoveredPurchaseQuery.error) : undefined} buyPending={buyMutation.isPending} retryPending={retryMutation.isPending} onBuy={buyProduct} onRetryPayment={retryPayment} /> : null}
+        {product ? <ProductDetail product={product} ownedPurchase={ownedPurchase} successfulOutcome={successfulOutcome} pendingPurchase={pendingPurchase} isCheckingOwnership={ownershipQuery.isLoading || recoveredPurchaseQuery.isLoading} ownershipError={ownershipQuery.isError || recoveredPurchaseQuery.isError ? getAiPlaceErrorMessage(ownershipQuery.error ?? recoveredPurchaseQuery.error) : undefined} buyPending={buyMutation.isPending} retryPending={retryMutation.isPending} onBuy={openPurchaseConfirmation} onRetryPayment={retryPayment} /> : null}
+        {product ? <AiPlacePurchaseConfirmationDialog product={product} open={purchaseConfirmationOpen} isConfirming={buyMutation.isPending} onOpenChange={setPurchaseConfirmationOpen} onConfirm={buyProduct} /> : null}
       </div>
     </main>
   );

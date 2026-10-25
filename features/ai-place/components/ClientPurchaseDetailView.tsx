@@ -1,31 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowLeft, Download, FileArchive, FileCode2, FileText, Film, RefreshCw, ShieldCheck } from "lucide-react";
-import { toast } from "react-toastify";
+import { ArrowLeft, RefreshCw, ShieldCheck } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AiPlaceProtectedPackage } from "@/features/ai-place/components/AiPlaceProtectedPackage";
 import { PurchaseRatingPanel } from "@/features/ai-place/components/PurchaseRatingPanel";
 import { EntitlementBadge, SuccessBadge } from "@/features/ai-place/components/ClientPurchaseHistoryView";
 import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
-import type { ProductAssetType, PurchaseDetail } from "@/features/ai-place/types";
+import type { PurchaseDetail } from "@/features/ai-place/types";
 import { formatDate, formatVnd } from "@/features/ai-place/expert/utils/presentation";
 import { getAiPlaceErrorMessage } from "@/features/ai-place/utils/error";
-import { useAiPlacePurchaseDetail, useProtectedDownloadAccess } from "@/services/ai-available-purchase.service";
-
-const PROTECTED_ASSETS: Array<{
-  type: ProductAssetType;
-  label: string;
-  description: string;
-  icon: typeof FileCode2;
-}> = [
-  { type: "SOURCE_CODE", label: "Source code", description: "Protected source deliverable", icon: FileCode2 },
-  { type: "VIDEO", label: "Video", description: "Protected video deliverable", icon: Film },
-  { type: "DATASET", label: "Dataset", description: "Protected data deliverable", icon: FileArchive },
-  { type: "DOCUMENT", label: "Document", description: "Protected document deliverable", icon: FileText },
-];
+import { useAiPlacePurchaseDetail } from "@/services/ai-available-purchase.service";
 
 export function ClientPurchaseDetailView({ purchaseId }: { purchaseId: string }) {
   const purchaseQuery = useAiPlacePurchaseDetail(purchaseId);
@@ -87,89 +75,11 @@ function PurchaseDetailContent({ purchase }: { purchase: PurchaseDetail }) {
             </dl>
           </CardContent>
         </Card>
-        <EntitlementPanel purchase={purchase} />
+        <AiPlaceProtectedPackage purchase={purchase} />
       </section>
 
       <PurchaseRatingPanel purchaseId={purchase.purchaseId} productId={purchase.productId} rating={purchase.rating} />
     </>
-  );
-}
-
-function EntitlementPanel({ purchase }: { purchase: PurchaseDetail }) {
-  const downloadMutation = useProtectedDownloadAccess();
-  const entitlementActive = purchase.entitlementStatus === "ACTIVE" && purchase.canDownload;
-
-  const downloadAsset = (assetType: ProductAssetType) => {
-    downloadMutation.mutate(
-      { purchaseId: purchase.purchaseId, productId: purchase.productId, assetType },
-      {
-        onSuccess: (response) => {
-          const accessUrl = response.result.accessUrl;
-
-          if (!isTemporaryHttpUrl(accessUrl)) {
-            toast.error("The secure download link is invalid. Please retry.");
-            return;
-          }
-
-          const temporaryLink = document.createElement("a");
-          temporaryLink.href = accessUrl;
-          temporaryLink.target = "_blank";
-          temporaryLink.rel = "noopener noreferrer";
-          temporaryLink.style.display = "none";
-          document.body.appendChild(temporaryLink);
-          temporaryLink.click();
-          temporaryLink.remove();
-          toast.success("Your secure download is opening.");
-        },
-        onError: (error) => toast.error(getAiPlaceErrorMessage(error)),
-      },
-    );
-  };
-
-  return (
-    <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
-      <CardHeader className="px-6 pt-6">
-        <CardTitle className="text-xl font-extrabold text-slate-950">Protected files</CardTitle>
-        <p className="text-sm leading-6 text-slate-500">
-          {entitlementActive
-            ? "Access is granted by the backend for this active entitlement. Secure links are requested only when you choose a file."
-            : "This purchase remains in your history, but its protected-file entitlement has expired."}
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-3 px-6 pb-6">
-        {PROTECTED_ASSETS.map(({ type, label, description, icon: Icon }) => {
-          const available = entitlementActive && purchase.availableAssetTypes.includes(type);
-
-          return (
-            <div key={type} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-100 bg-slate-50/70 p-3.5">
-              <div className="flex min-w-0 items-center gap-3">
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-600 shadow-sm"><Icon className="h-5 w-5" /></span>
-                <div>
-                  <p className="font-bold text-slate-950">{label}</p>
-                  <p className="text-xs text-slate-500">{description}</p>
-                </div>
-              </div>
-              {available ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => downloadAsset(type)}
-                  disabled={downloadMutation.isPending}
-                  className="rounded-xl bg-indigo-600 text-white hover:bg-indigo-700"
-                >
-                  <Download />
-                  {downloadMutation.isPending ? "Requesting…" : "Download"}
-                </Button>
-              ) : (
-                <span className="text-xs font-semibold text-slate-500">
-                  {entitlementActive ? "Not available" : "Access expired"}
-                </span>
-              )}
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
   );
 }
 
@@ -183,13 +93,4 @@ function PurchaseDetailLoading() {
 
 function PurchaseDetailError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return <Card className="rounded-3xl border-rose-100 bg-white py-0 shadow-sm shadow-rose-100/50"><CardContent className="flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center sm:justify-between"><div><p className="font-bold text-slate-950">Purchase unavailable</p><p className="mt-1 text-sm text-slate-500">{message}</p></div><Button type="button" variant="outline" onClick={onRetry} className="rounded-xl border-rose-200 text-rose-700 hover:bg-rose-50 hover:text-rose-800"><RefreshCw /> Retry</Button></CardContent></Card>;
-}
-
-function isTemporaryHttpUrl(value: string) {
-  try {
-    const url = new URL(value);
-    return url.protocol === "https:" || url.protocol === "http:";
-  } catch {
-    return false;
-  }
 }

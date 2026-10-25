@@ -59,10 +59,15 @@ product (including `PENDING_PAYMENT`) is required to close this gap.
 
 | File | Change |
 | --- | --- |
-| `features/ai-place/components/AiPlaceProductDetailFoundation.tsx` | Added buy, pending/retry, already-owned recovery, owned/expired presentation, wallet link, and safe ownership verification; explicitly treats a nullable ownership lookup as the normal not-owned Buy state. |
+| `features/ai-place/components/AiPlaceProductDetailFoundation.tsx` | Added buy, pending/retry, already-owned recovery, owned/expired presentation, wallet link, and safe ownership verification; explicitly treats a nullable ownership lookup as the normal not-owned Buy state. The initial Buy action now opens the AI Place-local confirmation dialog; only explicit confirmation invokes the existing buy mutation. |
+| `features/ai-place/components/AiPlacePurchaseConfirmationDialog.tsx` | New AI Place-local purchase-review dialog. It shows product/seller/current backend product price and advisory read-only wallet balance/status, without calculating payment eligibility, fees, or remaining balance. |
 | `features/ai-place/components/AiPlaceMarketplaceFoundation.tsx` | Added the in-dashboard “My purchases” entry point; marketplace behavior otherwise remains intact. |
 | `features/ai-place/components/ClientPurchaseHistoryView.tsx` | New server-paginated successful purchase history UI. |
-| `features/ai-place/components/ClientPurchaseDetailView.tsx` | New snapshot, entitlement, four-slot protected-download, and rating detail UI. |
+| `features/ai-place/components/ClientPurchaseDetailView.tsx` | Integrates the AI Place-local protected-package view while preserving the purchase snapshot and rating panels. |
+| `features/ai-place/components/AiPlaceProtectedPackage.tsx` | New entitlement-backed package container. It renders all four slots, owns per-action temporary-access requests, and clears preview access when its dialog closes. |
+| `features/ai-place/components/AiPlaceProtectedAssetCard.tsx` | New read-only deliverable card with Workspace-inspired visual hierarchy, active/unavailable/expired state, and scoped Preview/Download actions. |
+| `features/ai-place/components/AiPlaceProtectedAssetPreviewDialog.tsx` | New AI Place-local dialog for transient image, video, and PDF preview plus the unsupported-file fallback. Its Download action always asks the container for a fresh entitlement access response. |
+| `features/ai-place/utils/protected-asset-presentation.ts` | New local four-slot labels/icons, content-type preview classification, and temporary HTTP(S) URL validation. |
 | `features/ai-place/components/PurchaseRatingPanel.tsx` | New accessible 1–5 integer rating create/update/delete controls; form reset is keyed to the server rating identity rather than synchronously setting state from an effect. |
 | `app/client/dashboard/ai-place/purchases/page.tsx` | New client purchase-history route. |
 | `app/client/dashboard/ai-place/purchases/[purchaseId]/page.tsx` | New client purchase-detail route. |
@@ -91,6 +96,23 @@ existing routes were modified.
   backend messages. The current backend cannot always supply the ID required
   to retry these states after an error.
 
+### Purchase confirmation follow-up
+
+- The first Buy click now only opens `AiPlacePurchaseConfirmationDialog`; it
+  does not call `POST /purchases`, create a purchase, or mutate wallet/payment
+  state.
+- Cancel closes the dialog with no API call.
+- Confirm purchase is the sole new call site for the existing
+  `useBuyAiProduct` mutation. It disables confirmation while the mutation is
+  pending, then closes on either backend success or error so the pre-existing
+  success, pending/retry, and already-owned states remain visible.
+- The dialog uses the Product DTO's name, seller, and price as review data.
+  Its optional `useGetMyWallet` read is advisory only; no browser-side
+  balance/fee/net/eligibility/remaining-balance calculation was added.
+- Existing buy/retry query invalidations, backend error mapping,
+  `PAYMENT_INSUFFICIENT_BALANCE` same-purchase retry behavior, and the
+  documented pending-purchase navigation/reload limitation remain unchanged.
+
 ## 4. Purchase History / Detail
 
 - History route: `/client/dashboard/ai-place/purchases`.
@@ -108,15 +130,35 @@ existing routes were modified.
 
 - The UI uses `accessExpiresAt`, `entitlementStatus`, `canDownload`, and
   `availableAssetTypes` from the backend. It does not calculate a 30-day term.
-- All four known protected slots are shown: `SOURCE_CODE`, `VIDEO`, `DATASET`,
-  and `DOCUMENT`.
-- Download buttons appear only when the successful purchase detail says the
-  entitlement is active and the asset type is available.
-- Clicking a slot calls the entitlement endpoint, validates the returned
-  temporary HTTP(S) URL, and opens it through an ephemeral DOM link. The URL
-  is never rendered, stored in React state, Redux, local storage, or a query
-  cache.
-- Expired entitlement remains visibly purchased but cannot download.
+- The Protected deliverables package now renders all four known slots:
+  `SOURCE_CODE`, `VIDEO`, `DATASET`, and `DOCUMENT`. It uses only purchase
+  detail metadata before a user action; it does not mint links or fabricate a
+  filename, content type, or file size during page render.
+- The package/card/dialog presentation adapts the visual hierarchy of the
+  Workspace Client deliverable review components, but it does not import their
+  package models, direct `fileUrl` values, Supabase helpers, or authorization.
+- Active and available slots expose scoped actions. Source code and datasets
+  are Download-only; video and document slots expose Preview plus Download.
+  Missing slots stay visible as “Not included,” and an expired entitlement
+  leaves all slots visible but action-free.
+- Each request disables competing actions while it is in flight. Errors are
+  mapped with the existing AI Place error mapper, shown both as a toast and on
+  the affected card, and remain retryable through the same explicit action.
+- Each Preview/Download click calls the existing entitlement endpoint for the
+  selected asset and validates the returned temporary HTTP(S) URL. Preview
+  access is held only in AI Place component-local state while its dialog is
+  open, then cleared when the dialog closes. It is not written to Redux,
+  local/session storage, a durable purchase model, or a React Query query.
+- Preview uses returned metadata: image responses use an image view, video
+  responses use `<video controls>`, PDF uses an iframe, and unsupported types
+  receive an explicit download fallback. No temporary URL is fetched merely to
+  decide card presentation.
+- Download always requests a fresh entitlement URL, including from the preview
+  dialog; a preview URL is never reused as a durable download URL. The browser
+  link uses a best-effort `download` filename while retaining a new-tab
+  fallback. Cross-origin MP4 attachment remains dependent on backend/storage
+  `Content-Disposition`; the frontend does not claim to guarantee it or proxy
+  protected bytes.
 
 ## 6. Rating CRUD
 
@@ -158,7 +200,8 @@ existing routes were modified.
   interceptor.
 - The client calls the existing API-gateway base path only.
 - No access token is attached to a signed URL. No signed protected URL is
-  persisted.
+  persisted. A preview URL exists only in the AI Place dialog's transient
+  component state and is cleared on close.
 - No client code renders protected bucket/object keys or uses a Supabase
   service-role credential/API.
 - Payment amounts and access dates are received from the backend; there is no
@@ -199,16 +242,37 @@ Follow-up query-runtime correction verification:
 | `npx tsc --noEmit` | PASS |
 | `git diff --check` | PASS |
 
+Purchase-confirmation follow-up verification:
+
+| Check | Result |
+| --- | --- |
+| `npm run lint` | PASS |
+| `npx tsc --noEmit` | PASS |
+| `git diff --check` | PASS |
+| Protected Client and Expert route presence | PASS — verified without route-file changes |
+
+Protected-package UI follow-up verification:
+
+| Check | Result |
+| --- | --- |
+| `npm run lint` | PASS |
+| `npx tsc --noEmit` | PASS |
+| `git diff --check` | PASS |
+| Workspace/Project/Wallet/JobPost/route source changes | None introduced by this follow-up |
+
 ## 11. Runtime Status
 
 - **SOURCE VERIFIED:** Yes — static lint, strict TypeScript validation, route
   presence, and diff checks passed.
 - **BUILD VERIFIED:** No — the production build cannot fetch Google Fonts in
   this environment.
-- **RUNTIME VERIFIED:** No.
-- **RUNTIME NOT YET VERIFIED:** Yes — authenticated payment, entitlement, and
-  rating paths require a live gateway, AI Available service, Payment service,
-  Identity service, storage, and test Client data.
+- **RUNTIME VERIFIED:** The previously implemented purchase-confirmation,
+  purchase, purchase-detail, active-entitlement, and source-code/dataset/
+  document access paths were manually verified before this follow-up.
+- **RUNTIME NOT YET VERIFIED:** Yes — the newly implemented protected-package
+  UI, especially in-dialog video/PDF/image preview, unavailable/expired
+  states, fresh download after preview, and MP4 attachment behavior require
+  manual verification against the live entitlement/storage integration.
 
 Manual runtime matrix:
 
@@ -218,6 +282,7 @@ Manual runtime matrix:
 | Retry | Retry the same returned `purchaseId`; current-price retry after a pending state; in-progress/reconciliation response. |
 | History/detail | Successful item visible; frozen values; expired purchase stays visible; pending-state API limitation observed/documented. |
 | Entitlement | Active access to each of the four asset types; absent asset; expired denial; no asset before success. |
+| Protected package UI | All four cards shown; per-card loading/error state; video stays in the in-app preview dialog; PDF/image preview; unsupported preview fallback; closing preview clears its temporary URL; Download after Preview requests a new entitlement URL. |
 | Rating | Create scores 1–5; update; delete; duplicate create rejection; non-success denial. |
 | Security | Confirm protected URL appears only after the entitlement endpoint succeeds and no permanent bucket/key/service-role value appears in browser storage/UI. |
 

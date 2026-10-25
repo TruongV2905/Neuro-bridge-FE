@@ -155,31 +155,9 @@ export default function ClientDashboardPage() {
                 asChild
                 className="w-full justify-start rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 py-6 text-sm font-bold text-white shadow-[0_8px_24px_rgba(99,102,241,0.3)] transition-all duration-300 hover:shadow-[0_12px_32px_rgba(99,102,241,0.4)] hover:from-indigo-600 hover:to-violet-600"
               >
-                <Link href="/create-jobpost">
+                <Link href="/client/dashboard/create-job-post">
                   <Briefcase className="mr-3 h-5 w-5" />
                   Post a New Project
-                </Link>
-              </Button>
-
-              <Button
-                variant="outline"
-                asChild
-                className="w-full justify-start rounded-xl border-slate-200 py-6 text-sm font-semibold text-[#0A0D17] transition-all duration-300 hover:border-indigo-200 hover:bg-indigo-50/40"
-              >
-                <Link href="/client/dashboard/create-proposal">
-                  <MessageSquare className="mr-3 h-5 w-5 text-sky-500" />
-                  Create Proposal
-                </Link>
-              </Button>
-
-              <Button
-                variant="outline"
-                asChild
-                className="w-full justify-start rounded-xl border-slate-200 py-6 text-sm font-semibold text-[#0A0D17] transition-all duration-300 hover:border-amber-200 hover:bg-amber-50/40"
-              >
-                <Link href="/client/dashboard/saved">
-                  <Star className="mr-3 h-5 w-5 text-amber-500" />
-                  Saved Experts
                 </Link>
               </Button>
             </CardContent>

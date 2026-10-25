@@ -7,7 +7,6 @@ import {
   BriefcaseIcon,
   BoxesIcon,
   FolderIcon,
-  HandshakeIcon,
   HomeIcon,
   LayoutDashboardIcon,
   PlusCircleIcon,
@@ -68,11 +67,6 @@ const WORKSPACE_CONFIG: Record<
         icon: PlusCircleIcon,
       },
       {
-        title: "Hiring",
-        url: "/client/dashboard/hiring",
-        icon: HandshakeIcon,
-      },
-      {
         title: "Project",
         url: "/client/dashboard/projects",
         icon: FolderIcon,
@@ -92,16 +86,6 @@ const WORKSPACE_CONFIG: Record<
   EXPERT: {
     label: "Expert Workspace",
     navMain: [
-      {
-        title: "Dashboard",
-        url: "/expert/dashboard",
-        icon: LayoutDashboardIcon,
-      },
-      {
-        title: "My Services",
-        url: "/expert/dashboard/my-services",
-        icon: SparklesIcon,
-      },
       {
         title: "AI Products",
         url: "/expert/dashboard/ai-place/products",

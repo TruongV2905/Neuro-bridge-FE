@@ -2,9 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useSelector } from "react-redux";
 import { useInView, useReducedMotion } from "framer-motion";
 import { AvailableAICard } from "@/features/available-ai";
+import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
+import type { RootState } from "@/redux/store";
 import type { HomepageActivity } from "@/types/homepage";
+import type { UserResponse } from "@/types/user/user.type";
 import { GradientCtaLink } from "./HomepagePrimitives";
 
 interface ActivitiesSectionProps {
@@ -15,6 +19,10 @@ export default function ActivitiesSection({
   activities,
 }: Readonly<ActivitiesSectionProps>) {
   const router = useRouter();
+  const currentUser = useSelector(
+    (state: RootState) => state.user,
+  ) as UserResponse | null;
+  const aiSolutionsDestination = getAiSolutionsDestination(currentUser?.role);
   const sectionRef = useRef<HTMLElement | null>(null);
   const introVideoRef = useRef<HTMLVideoElement | null>(null);
   const finalVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -210,7 +218,7 @@ export default function ActivitiesSection({
             >
               <AvailableAICard
                 {...activity}
-                onViewDetails={() => router.push("/ai-place")}
+                onViewDetails={() => router.push(aiSolutionsDestination)}
               />
             </div>
           ))}
@@ -220,11 +228,26 @@ export default function ActivitiesSection({
             showCta ? "translate-y-0 opacity-100" : "translate-y-6 opacity-0"
           }`}
         >
-          <GradientCtaLink href="/ai-place" className="mt-16 min-w-[280px]">
+          <GradientCtaLink
+            href={aiSolutionsDestination}
+            className="mt-16 min-w-[280px]"
+          >
             View all AI solutions
           </GradientCtaLink>
         </div>
       </div>
     </section>
   );
+}
+
+function getAiSolutionsDestination(role?: UserResponse["role"] | null) {
+  if (role === "CLIENT") {
+    return AI_PLACE_ROUTES.marketplace;
+  }
+
+  if (role === "EXPERT") {
+    return AI_PLACE_ROUTES.expertProducts;
+  }
+
+  return "/ai-place";
 }

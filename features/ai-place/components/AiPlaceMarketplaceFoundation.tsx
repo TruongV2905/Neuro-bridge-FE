@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MarketplacePreview, PreviewKindLabel } from "@/features/ai-place/components/MarketplacePreview";
+import { ProductRatingSummary } from "@/features/ai-place/components/ProductRatingSummary";
 import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
 import type { BrowseMarketplaceProductsParams, MarketplaceProductListItem } from "@/features/ai-place/types";
 import { formatDate, formatVnd } from "@/features/ai-place/expert/utils/presentation";
@@ -118,7 +119,7 @@ function MarketplaceCard({ product }: { product: MarketplaceProductListItem }) {
     <Card className="overflow-hidden rounded-3xl border-slate-800/70 bg-[radial-gradient(circle_at_90%_4%,rgba(129,140,248,0.34),transparent_28%),linear-gradient(145deg,#111b3b,#26134c)] py-0 text-white shadow-lg shadow-slate-900/15 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-300/70 hover:shadow-xl hover:shadow-indigo-950/20">
       <div className="aspect-[16/10] overflow-hidden border-b border-white/10"><MarketplacePreview preview={product.preview} className="h-full min-h-0 w-full rounded-none" /></div>
       <CardHeader className="gap-3 px-5 pt-5"><div className="flex items-start justify-between gap-3"><CardTitle className="line-clamp-2 text-xl font-extrabold text-white">{product.name}</CardTitle><span className="shrink-0 rounded-full border border-indigo-200/25 bg-indigo-300/15 px-2.5 py-1 text-[11px] font-bold text-indigo-100">{product.categoryCode}</span></div><p className="text-xl font-extrabold tracking-tight text-emerald-200">{formatVnd(product.priceVnd)}</p></CardHeader>
-      <CardContent className="space-y-4 px-5 pb-5"><PreviewKindLabel preview={product.preview} /><TagList values={product.technologies} emptyLabel="No technologies listed" /><div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-indigo-100/75"><span>Published {formatDate(product.lastPublishedAt)}</span><Button asChild size="sm" className="rounded-lg bg-white px-3 text-indigo-800 shadow-sm hover:bg-indigo-50"><Link href={`${AI_PLACE_ROUTES.marketplace}/${encodeURIComponent(product.id)}`}>View details <ArrowRight /></Link></Button></div></CardContent>
+      <CardContent className="space-y-4 px-5 pb-5"><PreviewKindLabel preview={product.preview} /><ProductRatingSummary averageScore={product.averageScore} ratingCount={product.ratingCount} className="text-amber-200" /><TagList values={product.technologies} emptyLabel="No technologies listed" /><div className="flex items-center justify-between gap-3 border-t border-white/10 pt-4 text-xs text-indigo-100/75"><span>Published {formatDate(product.lastPublishedAt)}</span><Button asChild size="sm" className="rounded-lg bg-white px-3 text-indigo-800 shadow-sm hover:bg-indigo-50"><Link href={`${AI_PLACE_ROUTES.marketplace}/${encodeURIComponent(product.id)}`}>View details <ArrowRight /></Link></Button></div></CardContent>
     </Card>
   );
 }

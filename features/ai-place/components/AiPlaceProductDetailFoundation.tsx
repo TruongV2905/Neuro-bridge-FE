@@ -11,11 +11,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AiPlacePurchaseConfirmationDialog } from "@/features/ai-place/components/AiPlacePurchaseConfirmationDialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MarketplacePreview, PreviewKindLabel } from "@/features/ai-place/components/MarketplacePreview";
+import { ProductRatingSummary } from "@/features/ai-place/components/ProductRatingSummary";
 import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
 import type { MarketplaceProductDetail, PurchaseSettlement } from "@/features/ai-place/types";
 import { formatDate, formatVnd } from "@/features/ai-place/expert/utils/presentation";
 import { extractAiPlaceError, getAiPlaceErrorMessage } from "@/features/ai-place/utils/error";
 import { useMarketplaceProduct } from "@/services/ai-available-product.service";
+import { useProductRatingSummary, useProductRatings } from "@/services/ai-available-rating.service";
 import { useAiPlacePurchaseDetail, useAiPlacePurchaseForProduct, useBuyAiProduct, useRetryAiProductPurchasePayment } from "@/services/ai-available-purchase.service";
 
 type PendingPurchaseState = {
@@ -26,6 +28,8 @@ type PendingPurchaseState = {
 
 export function AiPlaceProductDetailFoundation({ productId }: { productId: string }) {
   const productQuery = useMarketplaceProduct(productId);
+  const ratingSummaryQuery = useProductRatingSummary(productId);
+  const ratingsQuery = useProductRatings(productId, { page: 0, size: 5 });
   const ownershipQuery = useAiPlacePurchaseForProduct(productId);
   const buyMutation = useBuyAiProduct();
   const retryMutation = useRetryAiProductPurchasePayment();
@@ -91,7 +95,7 @@ export function AiPlaceProductDetailFoundation({ productId }: { productId: strin
         <Button asChild variant="ghost" className="w-fit px-0 text-indigo-700 hover:bg-transparent hover:text-indigo-900"><Link href={AI_PLACE_ROUTES.marketplace}><ArrowLeft /> Back to AI Place</Link></Button>
         {productQuery.isLoading ? <DetailLoading /> : null}
         {!productQuery.isLoading && (productQuery.isError || !product) ? <DetailError message={productQuery.isError ? getAiPlaceErrorMessage(productQuery.error) : "This AI product could not be found."} onRetry={() => void productQuery.refetch()} /> : null}
-        {product ? <ProductDetail product={product} ownedPurchase={ownedPurchase} successfulOutcome={successfulOutcome} pendingPurchase={pendingPurchase} isCheckingOwnership={ownershipQuery.isLoading || recoveredPurchaseQuery.isLoading} ownershipError={ownershipQuery.isError || recoveredPurchaseQuery.isError ? getAiPlaceErrorMessage(ownershipQuery.error ?? recoveredPurchaseQuery.error) : undefined} buyPending={buyMutation.isPending} retryPending={retryMutation.isPending} onBuy={openPurchaseConfirmation} onRetryPayment={retryPayment} /> : null}
+        {product ? <ProductDetail product={product} ratingSummary={ratingSummaryQuery.data?.result} ratings={ratingsQuery.data?.result.data ?? []} ratingsLoading={ratingsQuery.isLoading} ownedPurchase={ownedPurchase} successfulOutcome={successfulOutcome} pendingPurchase={pendingPurchase} isCheckingOwnership={ownershipQuery.isLoading || recoveredPurchaseQuery.isLoading} ownershipError={ownershipQuery.isError || recoveredPurchaseQuery.isError ? getAiPlaceErrorMessage(ownershipQuery.error ?? recoveredPurchaseQuery.error) : undefined} buyPending={buyMutation.isPending} retryPending={retryMutation.isPending} onBuy={openPurchaseConfirmation} onRetryPayment={retryPayment} /> : null}
         {product ? <AiPlacePurchaseConfirmationDialog product={product} open={purchaseConfirmationOpen} isConfirming={buyMutation.isPending} onOpenChange={setPurchaseConfirmationOpen} onConfirm={buyProduct} /> : null}
       </div>
     </main>
@@ -100,6 +104,9 @@ export function AiPlaceProductDetailFoundation({ productId }: { productId: strin
 
 function ProductDetail({
   product,
+  ratingSummary,
+  ratings,
+  ratingsLoading,
   ownedPurchase,
   successfulOutcome,
   pendingPurchase,
@@ -111,6 +118,9 @@ function ProductDetail({
   onRetryPayment,
 }: {
   product: MarketplaceProductDetail;
+  ratingSummary?: { averageScore?: number; ratingCount: number };
+  ratings: Array<{ ratingId: string; score: number; reviewText?: string; createdAt: string; updatedAt: string }>;
+  ratingsLoading: boolean;
   ownedPurchase: { purchaseId: string; purchasedAt: string; accessExpiresAt: string; entitlementStatus: "ACTIVE" | "EXPIRED" } | null;
   successfulOutcome?: PurchaseSettlement;
   pendingPurchase?: PendingPurchaseState;
@@ -129,6 +139,7 @@ function ProductDetail({
           <CardContent className="border-t border-slate-100 px-5 py-3"><PreviewKindLabel preview={product.preview} className="text-slate-500" /></CardContent>
         </Card>
         <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm shadow-slate-200/60"><CardHeader className="px-6 pt-6"><CardTitle className="text-xl font-extrabold text-slate-950">About this product</CardTitle></CardHeader><CardContent className="whitespace-pre-wrap px-6 pb-6 text-sm leading-7 text-slate-600">{product.description}</CardContent></Card>
+        <ProductReviews summary={ratingSummary} ratings={ratings} loading={ratingsLoading} />
         <CapabilitySection title="Technologies" values={product.technologies} />
         <CapabilitySection title="AI Capabilities" values={product.aiCapabilities} checked />
       </div>
@@ -136,12 +147,36 @@ function ProductDetail({
       <aside className="space-y-5 xl:sticky xl:top-24 xl:self-start">
         <Card className="overflow-hidden rounded-3xl border-indigo-950/30 bg-[radial-gradient(circle_at_88%_8%,rgba(167,139,250,0.42),transparent_33%),linear-gradient(145deg,#181449,#352064)] py-0 text-white shadow-xl shadow-indigo-950/15">
           <CardHeader className="space-y-4 px-6 pt-6"><div className="inline-flex w-fit items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-indigo-100"><Sparkles className="h-3.5 w-3.5" /> AI Place product</div><div className="space-y-3"><span className="inline-flex rounded-full bg-indigo-300/15 px-2.5 py-1 text-xs font-bold text-indigo-100 ring-1 ring-indigo-100/20">{product.categoryCode}</span><CardTitle className="text-3xl font-extrabold tracking-tight text-white">{product.name}</CardTitle></div></CardHeader>
-          <CardContent className="space-y-4 px-6 pb-6"><div className="rounded-2xl border border-emerald-200/15 bg-emerald-300/10 p-4"><p className="text-xs font-bold uppercase tracking-wide text-emerald-100/80">Price</p><p className="mt-1 text-2xl font-extrabold text-emerald-100">{formatVnd(product.priceVnd)}</p></div><DetailRow label="Published" value={formatDate(product.lastPublishedAt)} /></CardContent>
+          <CardContent className="space-y-4 px-6 pb-6"><div className="rounded-2xl border border-emerald-200/15 bg-emerald-300/10 p-4"><p className="text-xs font-bold uppercase tracking-wide text-emerald-100/80">Price</p><p className="mt-1 text-2xl font-extrabold text-emerald-100">{formatVnd(product.priceVnd)}</p></div><div className="rounded-2xl border border-white/15 bg-white/10 p-4"><p className="text-xs font-bold uppercase tracking-wide text-indigo-100/80">Product rating</p><ProductRatingSummary averageScore={ratingSummary?.averageScore} ratingCount={ratingSummary?.ratingCount} className="mt-1 text-amber-200" /></div><DetailRow label="Published" value={formatDate(product.lastPublishedAt)} /></CardContent>
         </Card>
         <PurchasePanel product={product} ownedPurchase={ownedPurchase} successfulOutcome={successfulOutcome} pendingPurchase={pendingPurchase} isCheckingOwnership={isCheckingOwnership} ownershipError={ownershipError} buyPending={buyPending} retryPending={retryPending} onBuy={onBuy} onRetryPayment={onRetryPayment} />
         <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm shadow-slate-200/60"><CardHeader className="px-6 pt-6"><CardTitle className="text-base font-extrabold text-slate-950">Seller</CardTitle></CardHeader><CardContent className="flex items-center gap-3 px-6 pb-6"><div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600"><CircleUserRound className="h-5 w-5" /></div><div className="min-w-0"><p className="truncate font-bold text-slate-950">{product.seller.displayName}</p><p className="mt-0.5 text-xs text-slate-500">AI Product seller</p></div></CardContent></Card>
       </aside>
     </section>
+  );
+}
+
+function ProductReviews({
+  summary,
+  ratings,
+  loading,
+}: {
+  summary?: { averageScore?: number; ratingCount: number };
+  ratings: Array<{ ratingId: string; score: number; reviewText?: string; createdAt: string; updatedAt: string }>;
+  loading: boolean;
+}) {
+  return (
+    <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm shadow-slate-200/60">
+      <CardHeader className="px-6 pt-6">
+        <CardTitle className="text-xl font-extrabold text-slate-950">Reviews</CardTitle>
+        <ProductRatingSummary averageScore={summary?.averageScore} ratingCount={summary?.ratingCount} className="mt-1" />
+      </CardHeader>
+      <CardContent className="space-y-4 px-6 pb-6">
+        {loading ? <p className="text-sm text-slate-500">Loading reviews…</p> : null}
+        {!loading && ratings.length === 0 ? <p className="text-sm text-slate-500">No ratings yet.</p> : null}
+        {ratings.map((rating) => <article key={rating.ratingId} className="rounded-2xl border border-slate-100 bg-slate-50 p-4"><p className="font-bold text-amber-700">{rating.score}/5</p>{rating.reviewText ? <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{rating.reviewText}</p> : <p className="mt-2 text-sm text-slate-500">No written review.</p>}<p className="mt-3 text-xs text-slate-400">Rated {formatDate(rating.createdAt)}{rating.updatedAt !== rating.createdAt ? ` · Updated ${formatDate(rating.updatedAt)}` : ""}</p></article>)}
+      </CardContent>
+    </Card>
   );
 }
 

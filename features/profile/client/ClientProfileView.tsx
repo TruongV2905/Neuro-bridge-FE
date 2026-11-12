@@ -1,10 +1,10 @@
 // src/app/profile/page.tsx
 "use client"
 
-import { useRef, useState } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useDispatch, useSelector } from "react-redux"
-import { logout } from "@/redux/features/userSlice"
+import { login, logout } from "@/redux/features/userSlice"
 import {
     User,
     Mail,
@@ -31,7 +31,9 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import type { RootState } from "@/redux/store"
-import type { UserResponse } from "@/types/user/user.type"
+import { UserGender, type UserResponse } from "@/types/user/user.type"
+import { useUpdateClientProfile } from "@/services/user.service"
+import { toast } from "react-toastify"
 
 import { ClientProfileFormField } from "./components/ClientProfileFormField"
 import { ClientReadOnlyItem } from "./components/ClientReadOnlyItem"
@@ -43,8 +45,6 @@ export function ClientProfileView() {
     const reduxUser = useSelector(
         (state: RootState) => state.user
     ) as UserResponse | null
-
-    console.log("reduxUser profile:", reduxUser)
 
     return (
         <ClientProfileEditor
@@ -82,31 +82,8 @@ function ClientProfileEditor({
     reduxUser: UserResponse | null
 }) {
     const dispatch = useDispatch()
-    const fileInputRef = useRef<HTMLInputElement>(null)
-
     const [profile, setProfile] = useState<UserResponse | null>(reduxUser)
-    const [avatar, setAvatar] = useState(
-        reduxUser?.avatarUrl || defaultAvatar
-    )
-
-    const handleAvatarClick = () => {
-        fileInputRef.current?.click()
-    }
-
-    const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0]
-
-        if (!file) return
-
-        const reader = new FileReader()
-
-        reader.onloadend = () => {
-            const imageUrl = reader.result as string
-            setAvatar(imageUrl)
-        }
-
-        reader.readAsDataURL(file)
-    }
+    const updateMutation = useUpdateClientProfile()
 
     const updateProfile = (field: keyof UserResponse, value: string) => {
         setProfile((prev: UserResponse | null) => {
@@ -121,11 +98,44 @@ function ClientProfileEditor({
 
     const handleCancel = () => {
         setProfile(reduxUser)
-        setAvatar(reduxUser?.avatarUrl || defaultAvatar)
     }
 
     const handleSave = () => {
-        console.log("Saved client profile:", profile)
+        if (!profile) return
+
+        if (!profile.fullName || !profile.gender || !profile.address || !profile.dateOfBirth || !profile.phone || !profile.email || !profile.companyName || !profile.industry || !profile.companyDescription) {
+            toast.error("Complete all required profile fields before saving.")
+            return
+        }
+
+        updateMutation.mutate(
+            {
+                fullName: profile.fullName,
+                gender: profile.gender,
+                address: profile.address,
+                dateOfBirth: profile.dateOfBirth,
+                avatarUrl: profile.avatarUrl,
+                phone: profile.phone,
+                email: profile.email,
+                companyName: profile.companyName,
+                industry: profile.industry,
+                companyDescription: profile.companyDescription,
+            },
+            {
+                onSuccess: (response) => {
+                    const savedProfile = {
+                        ...profile,
+                        ...response.result,
+                        accessToken: response.result.accessToken ?? profile.accessToken,
+                        refreshToken: response.result.refreshToken ?? profile.refreshToken,
+                    }
+                    dispatch(login(savedProfile))
+                    setProfile(savedProfile)
+                    toast.success("Profile saved.")
+                },
+                onError: () => toast.error("Unable to save your profile. Please try again."),
+            },
+        )
     }
 
     const handleLogout = () => {
@@ -178,30 +188,12 @@ function ClientProfileEditor({
                     >
                         <CardContent className="flex flex-col items-center p-6">
                             <div className="mb-6 flex w-full flex-col items-center gap-6 sm:flex-row sm:items-start">
-                                <div className="group/avatar relative h-44 w-44 shrink-0 cursor-pointer overflow-hidden rounded-[2rem] border border-border bg-muted shadow-lg">
-                                    <input
-                                        type="file"
-                                        ref={fileInputRef}
-                                        onChange={handleFileChange}
-                                        accept="image/*"
-                                        className="hidden"
-                                    />
-
+                                <div className="relative h-44 w-44 shrink-0 overflow-hidden rounded-[2rem] border border-border bg-muted shadow-lg">
                                     <img
-                                        src={avatar}
+                                        src={profile.avatarUrl || defaultAvatar}
                                         alt={profile.fullName}
                                         className="h-full w-full object-cover transition-transform duration-500 group-hover/avatar:scale-105"
-                                        onClick={handleAvatarClick}
                                     />
-
-                                    <div
-                                        onClick={handleAvatarClick}
-                                        className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/60 text-white opacity-0 transition-opacity duration-300 group-hover/avatar:opacity-100"
-                                    >
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/90">
-                                            Change Avatar
-                                        </span>
-                                    </div>
                                 </div>
 
                                 <div className="w-full flex-1 space-y-1 px-1 text-left sm:pt-4">
@@ -255,8 +247,8 @@ function ClientProfileEditor({
                                     <ClientProfileFormField
                                         icon={<Mail size={16} />}
                                         label="Email Address"
-                                        value={profile.email || "No email"}
-                                        onChange={(value) => updateProfile("email", value)}
+                                        value={profile.email || ""}
+                                        readOnly
                                     />
                                 </div>
 
@@ -264,15 +256,38 @@ function ClientProfileEditor({
                                     <ClientProfileFormField
                                         icon={<Phone size={16} />}
                                         label="Phone Number"
-                                        value={profile.phone || "No phone"}
+                                        value={profile.phone || ""}
                                         onChange={(value) => updateProfile("phone", value)}
                                     />
 
                                     <ClientProfileFormField
                                         icon={<MapPin size={16} />}
                                         label="Address"
-                                        value={profile.address || "No address"}
+                                        value={profile.address || ""}
                                         onChange={(value) => updateProfile("address", value)}
+                                    />
+
+                                    <ClientProfileFormField
+                                        icon={<User size={16} />}
+                                        label="Date of Birth"
+                                        value={profile.dateOfBirth || ""}
+                                        onChange={(value) => updateProfile("dateOfBirth", value)}
+                                        inputType="date"
+                                    />
+
+                                    <ClientProfileFormField
+                                        icon={<User size={16} />}
+                                        label="Gender"
+                                        value={profile.gender || ""}
+                                        onChange={(value) => updateProfile("gender", value)}
+                                        options={Object.values(UserGender)}
+                                    />
+
+                                    <ClientProfileFormField
+                                        icon={<FileText size={16} />}
+                                        label="Avatar URL"
+                                        value={profile.avatarUrl || ""}
+                                        onChange={(value) => updateProfile("avatarUrl", value)}
                                     />
                                 </div>
                             </div>
@@ -330,6 +345,7 @@ function ClientProfileEditor({
 
                             <Button
                                 onClick={handleSave}
+                                disabled={updateMutation.isPending}
                                 className="
     h-11
     min-w-[150px]
@@ -344,7 +360,7 @@ function ClientProfileEditor({
     text-white
   "
                             >
-                                Save Changes
+                                {updateMutation.isPending ? "Saving…" : "Save Changes"}
                             </Button>
                         </div>
                     </div>

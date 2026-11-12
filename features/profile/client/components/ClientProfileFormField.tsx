@@ -5,9 +5,12 @@ interface FormFieldProps {
   value: string
   icon: React.ReactNode
   onChange?: (value: string) => void
+  readOnly?: boolean
+  inputType?: React.HTMLInputTypeAttribute
+  options?: readonly string[]
 }
 
-export function ClientProfileFormField({ label, value, icon, onChange }: FormFieldProps) {
+export function ClientProfileFormField({ label, value, icon, onChange, readOnly = false, inputType = "text", options }: FormFieldProps) {
   return (
     <div className="group relative rounded-2xl bg-border p-[1px] transition-all duration-500 hover:shadow-[0_0_20px_rgba(95,123,255,0.15)]">
       <div
@@ -28,12 +31,21 @@ export function ClientProfileFormField({ label, value, icon, onChange }: FormFie
             {icon}
           </div>
 
-          <Input
-            value={value}
-            onChange={(e) => onChange?.(e.target.value)}
-            title={value}
-            className="h-11 cursor-default truncate rounded-xl border border-input/50 bg-card pl-10 pr-3 text-sm font-medium text-card-foreground transition-all duration-300 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring"
-          />
+          {options ? (
+            <select value={value} onChange={(e) => onChange?.(e.target.value)} disabled={readOnly} className="h-11 w-full truncate rounded-xl border border-input/50 bg-card pl-10 pr-3 text-sm font-medium text-card-foreground transition-all duration-300 focus:border-primary focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-default">
+              <option value="" disabled>Select gender</option>
+              {options.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          ) : (
+            <Input
+              type={inputType}
+              value={value}
+              onChange={(e) => onChange?.(e.target.value)}
+              readOnly={readOnly}
+              title={value}
+              className="h-11 truncate rounded-xl border border-input/50 bg-card pl-10 pr-3 text-sm font-medium text-card-foreground transition-all duration-300 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-ring read-only:cursor-default"
+            />
+          )}
 
           {/* Tooltip hiện full value khi hover */}
           <div className="pointer-events-none absolute left-0 top-full z-50 mt-2 hidden max-w-[420px] rounded-xl border border-border bg-card px-3 py-2 text-xs font-semibold text-card-foreground shadow-xl group-hover:block">

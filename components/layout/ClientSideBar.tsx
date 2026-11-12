@@ -10,6 +10,7 @@ import {
   HomeIcon,
   LayoutDashboardIcon,
   PlusCircleIcon,
+  ReceiptTextIcon,
   SearchIcon,
   SparklesIcon,
   WalletCardsIcon,
@@ -75,6 +76,11 @@ const WORKSPACE_CONFIG: Record<
         title: "AI Place",
         url: "/client/dashboard/ai-place",
         icon: BoxesIcon,
+      },
+      {
+        title: "My Purchases",
+        url: "/client/dashboard/ai-place/purchases",
+        icon: ReceiptTextIcon,
       },
       {
         title: "Wallet",

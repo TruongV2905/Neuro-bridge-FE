@@ -12,8 +12,11 @@ import { NotificationEmptyState } from "@/features/notification/components/Notif
 import { NotificationRow } from "@/features/notification/components/NotificationRow";
 import { NotificationSkeleton } from "@/features/notification/components/NotificationSkeleton";
 import { useNotificationBell } from "@/hooks/useNotificationBell";
+import type { UserResponse } from "@/types/user/user.type";
+import { useCurrentUser } from "@/utils/getCurrentUser";
 
 export function NotificationBell() {
+  const currentUser = useCurrentUser() as UserResponse | null;
   const {
     unreadCount,
     visibleNotifications,
@@ -133,6 +136,7 @@ export function NotificationBell() {
                 notification={notification}
                 onMarkAsRead={handleMarkAsRead}
                 isMarking={isMarkingOne}
+                currentRole={currentUser?.role}
               />
             ))}
           </div>

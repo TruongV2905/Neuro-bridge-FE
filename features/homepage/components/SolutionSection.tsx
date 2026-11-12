@@ -1,24 +1,32 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useSelector } from "react-redux";
 import { useInView, useReducedMotion } from "framer-motion";
-import { AvailableAICard } from "@/features/available-ai";
 import { AI_PLACE_ROUTES } from "@/features/ai-place/constants/routes";
 import type { RootState } from "@/redux/store";
-import type { HomepageActivity } from "@/types/homepage";
 import type { UserResponse } from "@/types/user/user.type";
 import { GradientCtaLink } from "./HomepagePrimitives";
 
-interface ActivitiesSectionProps {
-  activities: readonly HomepageActivity[];
-}
+const AI_PLACE_VALUE_CARDS = [
+  {
+    title: "Discover AI products",
+    description:
+      "Explore AI products in one focused marketplace experience.",
+  },
+  {
+    title: "Purchase with confidence",
+    description:
+      "Keep purchase details and protected digital access together in AI Place.",
+  },
+  {
+    title: "Built for your role",
+    description:
+      "Clients can explore products, while experts can manage and publish their offerings.",
+  },
+] as const;
 
-export default function ActivitiesSection({
-  activities,
-}: Readonly<ActivitiesSectionProps>) {
-  const router = useRouter();
+export default function ActivitiesSection() {
   const currentUser = useSelector(
     (state: RootState) => state.user,
   ) as UserResponse | null;
@@ -194,17 +202,21 @@ export default function ActivitiesSection({
           }`}
         >
           <p className="text-[clamp(3rem,6vw,5.5rem)] font-extrabold leading-none text-white/[0.3 ]">
-            AI SOLUTIONS
+            AI PLACE
           </p>
           <h2 className="-mt-6 bg-linear-to-r from-white via-[#8fb7ff] to-[#fc8ee4] bg-clip-text text-[clamp(2rem,3vw,2.75rem)] font-extrabold uppercase tracking-[0.08em] text-transparent drop-shadow-[0_0_26px_rgba(84,112,255,0.38)]">
-            Popular AI solutions
+            Discover AI-powered solutions
           </h2>
+          <p className="mx-auto mt-6 max-w-2xl text-sm leading-7 text-slate-200 sm:text-base">
+            AI Place brings discovery, product management, and purchase access
+            into one focused experience for clients and experts.
+          </p>
         </div>
         <div className="activities-grid mt-16 grid gap-7 lg:grid-cols-3 lg:gap-10">
-          {activities.map((activity, index) => (
+          {AI_PLACE_VALUE_CARDS.map((card, index) => (
             <div
-              key={activity.id ?? activity.name}
-              className={`relative z-10 flex justify-center transition-all duration-700 ease-out ${
+              key={card.title}
+              className={`relative z-10 rounded-3xl border border-white/15 bg-white/10 p-7 text-left shadow-[0_18px_45px_rgba(2,9,22,0.22)] backdrop-blur-sm transition-all duration-700 ease-out ${
                 showCards
                   ? "translate-y-0 opacity-100"
                   : "translate-y-8 opacity-0"
@@ -216,10 +228,15 @@ export default function ActivitiesSection({
                     : "0ms",
               }}
             >
-              <AvailableAICard
-                {...activity}
-                onViewDetails={() => router.push(aiSolutionsDestination)}
-              />
+              <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-linear-to-br from-[#5b51ef] to-[#ec4899] text-lg font-extrabold shadow-lg shadow-indigo-950/30">
+                {index + 1}
+              </span>
+              <h3 className="mt-6 text-xl font-extrabold tracking-tight text-white">
+                {card.title}
+              </h3>
+              <p className="mt-3 text-sm leading-6 text-slate-200/85">
+                {card.description}
+              </p>
             </div>
           ))}
         </div>
@@ -232,7 +249,7 @@ export default function ActivitiesSection({
             href={aiSolutionsDestination}
             className="mt-16 min-w-[280px]"
           >
-            View all AI solutions
+            Explore AI Place
           </GradientCtaLink>
         </div>
       </div>

@@ -51,6 +51,7 @@ export type UserFilterRequest = PageRequest & {
 };
 
 export interface UserResponse {
+  id?: string;
   code: string;
   fullName: string;
   gender: UserGender | null;
@@ -73,3 +74,27 @@ export interface UserResponse {
   // expert
   skillIds?: number[] | null;
 }
+
+export type ClientProfileUpdateRequest = {
+  fullName: string;
+  gender: UserGender;
+  address: string;
+  dateOfBirth: string;
+  avatarUrl?: string | null;
+  phone: string;
+  email: string;
+  companyName: string;
+  industry: string;
+  companyDescription: string;
+};
+
+export type ExpertProfileUpdateRequest = {
+  fullName: string;
+  gender: UserGender;
+  address: string;
+  dateOfBirth: string;
+  avatarUrl?: string | null;
+  phone: string;
+  email: string;
+  skillIds: number[];
+};

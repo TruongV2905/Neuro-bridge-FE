@@ -105,6 +105,8 @@ export type MarketplaceProductListItem = {
   aiCapabilities: string[];
   preview?: PublicPreview;
   lastPublishedAt: AiPlaceDateTime;
+  averageScore?: number;
+  ratingCount: number;
 };
 
 export type SellerSummary = {
@@ -124,6 +126,8 @@ export type MarketplaceProductDetail = {
   priceVnd: number;
   preview?: PublicPreview;
   lastPublishedAt: AiPlaceDateTime;
+  averageScore?: number;
+  ratingCount: number;
   seller: SellerSummary;
 };
 
@@ -135,6 +139,7 @@ export type PageParams = {
 export type BrowseMarketplaceProductsParams = PageParams & {
   keyword?: string;
   categoryCode?: string;
+  sellerExpertCode?: string;
   minPriceVnd?: number;
   maxPriceVnd?: number;
 };

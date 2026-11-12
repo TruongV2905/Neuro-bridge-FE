@@ -4,7 +4,6 @@ import NavDots, { type NavDotItem } from "@/components/common/NavDots"
 
 import {
   aboutImages,
-  activities,
   articles,
   benefits,
 } from "./data/homepage"
@@ -20,7 +19,7 @@ import ProjectJourneySection from "./components/ProjectJourneySection"
 const navItems: NavDotItem[] = [
   { id: "home", label: "Home" },
   { id: "about", label: "About" },
-  { id: "activities", label: "AI Solutions" },
+  { id: "activities", label: "AI Place" },
   { id: "groups", label: "Project Journey" },
   { id: "benefits", label: "Benefits" },
   { id: "blog", label: "Insights" },
@@ -38,7 +37,7 @@ export function HomepageView() {
         <AboutSection images={aboutImages} />
       </AppWrap>
       <AppWrap id="activities">
-        <ActivitiesSection activities={activities} />
+        <ActivitiesSection />
       </AppWrap>
       <AppWrap id="groups">
         <ProjectJourneySection />

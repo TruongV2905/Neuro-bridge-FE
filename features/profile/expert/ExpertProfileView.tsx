@@ -2,195 +2,104 @@
 
 import { useSelector } from "react-redux"
 
-import type { RootState } from "@/redux/store"
-import type { User as UserType, UserResponse } from "@/types/user/user.type"
-
-// import { expertProfile } from "./data/mockExpertProfile"
-import { ExpertProfileHeader } from "./components/ExpertProfileHeader"
-import { ExpertStatsCard } from "./components/ExpertStatsCard"
-import { ExpertPortfolioCard } from "./components/ExpertPortfolioCard"
-import { ExpertTestimonialCard } from "./components/ExpertTestimonialCard"
-import { ExpertSidebarCard } from "./components/ExpertSidebarCard"
-import { ExpertWalletCard } from "./components/ExpertWalletCard"
-import { ExpertSkillCard } from "./components/ExpertSkillCard"
-import { ExpertCertificateCard } from "./components/ExpertCertificateCard"
-
-import { useGetUserByCode } from "@/services/user.service"
-import { useGetSkillsByExpertCode } from "@/services/skill.service"
-import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
-import { useGetCertificatesByExpertCode } from "@/services/certificate.service"
-
 import Header from "@/components/layout/Header"
+import { ProductRatingSummary } from "@/features/ai-place/components/ProductRatingSummary"
+import { formatVnd } from "@/features/ai-place/expert/utils/presentation"
+import { useMarketplaceProducts } from "@/services/ai-available-product.service"
+import { useGetCertificatesByExpertCode } from "@/services/certificate.service"
+import { useGetPortfoliosByExpertCode } from "@/services/portfolio.service"
+import { useGetSkillsByExpertCode } from "@/services/skill.service"
+import type { RootState } from "@/redux/store"
+import type { UserResponse } from "@/types/user/user.type"
+
+import { ExpertCertificateCard } from "./components/ExpertCertificateCard"
+import { ExpertPortfolioCard } from "./components/ExpertPortfolioCard"
+import { ExpertProfileEditor } from "./components/ExpertProfileEditor"
+import { ExpertProfileHeader } from "./components/ExpertProfileHeader"
+import { ExpertSkillCard } from "./components/ExpertSkillCard"
 
 export function ExpertProfileView() {
-  const currentUser = useSelector(
-    (state: RootState) => state.user
-  ) as UserResponse | null
+  const currentUser = useSelector((state: RootState) => state.user) as UserResponse | null
+  const expertCode = currentUser?.role === "EXPERT" ? currentUser.code : ""
+  const isExpert = Boolean(expertCode)
 
-  const isOwnerExpert = currentUser?.role === "EXPERT"
-
-  const expertCode = isOwnerExpert
-    ? currentUser?.code
-    : "EXP-TAAIEE8J88"
-
-  const {
-    data: expertUserData,
-    isLoading: expertUserLoading,
-  } = useGetUserByCode(
+  const portfoliosQuery = useGetPortfoliosByExpertCode(
     { code: expertCode },
-    { enabled: !!expertCode && !isOwnerExpert },
+    { enabled: isExpert },
   )
-
-  const {
-    data: portfolioData,
-    isLoading: portfolioLoading,
-  } = useGetPortfoliosByExpertCode(
+  const skillsQuery = useGetSkillsByExpertCode(
     { code: expertCode },
-    { enabled: !!expertCode },
+    { enabled: isExpert },
   )
-
-  const {
-    data: skillData,
-    isLoading: skillLoading,
-  } = useGetSkillsByExpertCode(
+  const certificatesQuery = useGetCertificatesByExpertCode(
     { code: expertCode },
-    { enabled: !!expertCode },
+    { enabled: isExpert },
   )
+  const productsQuery = useMarketplaceProducts({
+    page: 0,
+    size: 6,
+    sellerExpertCode: expertCode,
+  }, { enabled: isExpert })
 
-  const {
-    data: certificateData,
-    isLoading: certificateLoading,
-  } = useGetCertificatesByExpertCode(
-    { code: expertCode },
-    { enabled: !!expertCode },
-  )
+  if (!currentUser || !isExpert) {
+    return (
+      <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">
+        <Header />
+        <ProfileState message="This profile is available only to the signed-in expert." />
+      </main>
+    )
+  }
 
-  const expertUser: UserType | UserResponse | null = isOwnerExpert
-    ? currentUser
-    : expertUserData?.result ?? null
-
-  const portfolios = portfolioData?.result ?? []
-  const skills = skillData?.result ?? []
-  const certificates = certificateData?.result ?? []
+  const portfolios = portfoliosQuery.data?.result ?? []
+  const skills = skillsQuery.data?.result ?? []
+  const certificates = certificatesQuery.data?.result ?? []
+  const products = productsQuery.data?.result.data ?? []
 
   return (
     <main className="min-h-screen bg-background px-6 pb-10 pt-32 text-foreground">
       <Header />
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 lg:grid-cols-[1fr_360px]">
-        <section className="space-y-8">
-          {expertUserLoading ? (
-            <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
-              Loading expert profile...
-            </div>
-          ) : expertUser ? (
-            <ExpertProfileHeader
-              expert={expertUser}
-              skills={skills}
-              editable
-            />
-          ) : (
-            <div className="rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground">
-              Không tải được thông tin expert.
-            </div>
-          )}
+      <div className="mx-auto max-w-7xl space-y-8">
+        <ExpertProfileHeader expert={currentUser} skills={skills} showContact />
+        <ExpertProfileEditor key={getExpertProfileKey(currentUser)} user={currentUser} skills={skills} />
 
-          {/* <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            {expertProfile.stats.map((stat) => (
-              <ExpertStatsCard
-                key={stat.label}
-                stat={{
-                  ...stat,
-                  icon: stat.icon as "rocket" | "award" | "zap",
-                }}
-              />
-            ))}
-          </div> */}
+        <ProfileSection title="Published AI Products">
+          {productsQuery.isLoading ? <ProfileState message="Loading published AI products..." compact /> : null}
+          {productsQuery.isError ? <ProfileState message="Unable to load published AI products." compact /> : null}
+          {!productsQuery.isLoading && !productsQuery.isError && products.length === 0 ? <ProfileState message="No published AI products yet." compact /> : null}
+          {products.length > 0 ? <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">{products.map((product) => <article key={product.id} className="rounded-2xl border border-border bg-card p-5"><p className="line-clamp-2 font-semibold text-foreground">{product.name}</p><p className="mt-2 text-sm font-medium text-primary">{formatVnd(product.priceVnd)}</p><ProductRatingSummary averageScore={product.averageScore} ratingCount={product.ratingCount} className="mt-3" /></article>)}</div> : null}
+        </ProfileSection>
 
-          <section>
-            <h2 className="mb-4 text-base font-semibold text-foreground">
-              Featured Portfolio
-            </h2>
+        <ProfileSection title="Featured Portfolio">
+          {portfoliosQuery.isLoading ? <ProfileState message="Loading portfolio..." compact /> : null}
+          {!portfoliosQuery.isLoading && portfolios.length === 0 ? <ProfileState message="No portfolio items yet." compact /> : null}
+          {portfolios.length > 0 ? <div className="grid grid-cols-1 gap-6 md:grid-cols-3">{portfolios.map((item) => <ExpertPortfolioCard key={item.id} item={item} />)}</div> : null}
+        </ProfileSection>
 
-            {portfolioLoading ? (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Loading portfolio...
-              </div>
-            ) : portfolios.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {portfolios.map((item) => (
-                  <ExpertPortfolioCard key={item.id} item={item} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có portfolio nào.
-              </div>
-            )}
-          </section>
+        <ProfileSection title="Skills">
+          {skillsQuery.isLoading ? <ProfileState message="Loading skills..." compact /> : null}
+          {!skillsQuery.isLoading && skills.length === 0 ? <ProfileState message="No skills assigned yet." compact /> : null}
+          {skills.length > 0 ? <div className="grid grid-cols-1 gap-6 md:grid-cols-3">{skills.map((item) => <ExpertSkillCard key={item.id} item={item} />)}</div> : null}
+        </ProfileSection>
 
-          <section>
-            <h2 className="mb-4 text-base font-semibold text-foreground">
-              Skills
-            </h2>
-
-            {skillLoading ? (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Loading skills...
-              </div>
-            ) : skills.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                {skills.map((item) => (
-                  <ExpertSkillCard key={item.id} item={item} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có skill nào.
-              </div>
-            )}
-          </section>
-
-          <section>
-            <h2 className="mb-4 text-base font-semibold text-foreground">
-              Certificates
-            </h2>
-
-            {certificateLoading ? (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Loading certificates...
-              </div>
-            ) : certificates.length > 0 ? (
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                {certificates.map((item) => (
-                  <ExpertCertificateCard key={item.id} item={item} />
-                ))}
-              </div>
-            ) : (
-              <div className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">
-                Chưa có certificate nào.
-              </div>
-            )}
-          </section>
-
-          <section>
-            <h2 className="mb-4 text-base font-semibold text-foreground">
-              Verified Testimonials
-            </h2>
-
-            {/* <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              {expertProfile.testimonials.map((item) => (
-                <ExpertTestimonialCard key={item.name} item={item} />
-              ))}
-            </div> */}
-          </section>
-        </section>
-
-        {/* <div className="space-y-6">
-          <ExpertSidebarCard expert={expertProfile} />
-
-          {isOwnerExpert && <ExpertWalletCard wallet={expertProfile.wallet} />}
-        </div> */}
+        <ProfileSection title="Certificates">
+          {certificatesQuery.isLoading ? <ProfileState message="Loading certificates..." compact /> : null}
+          {certificatesQuery.isError ? <ProfileState message="Certificates are not available for this account." compact /> : null}
+          {!certificatesQuery.isLoading && !certificatesQuery.isError && certificates.length === 0 ? <ProfileState message="No certificates yet." compact /> : null}
+          {certificates.length > 0 ? <div className="grid grid-cols-1 gap-6 md:grid-cols-2">{certificates.map((item) => <ExpertCertificateCard key={item.id} item={item} />)}</div> : null}
+        </ProfileSection>
       </div>
     </main>
   )
+}
+
+function ProfileSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return <section><h2 className="mb-4 text-base font-semibold text-foreground">{title}</h2>{children}</section>
+}
+
+function getExpertProfileKey(user: UserResponse) {
+  return [user.code, user.fullName, user.email, user.phone, user.address, user.gender, user.dateOfBirth, user.avatarUrl, user.skillIds?.join(",")].join("|")
+}
+
+function ProfileState({ message, compact = false }: { message: string; compact?: boolean }) {
+  return <div className={compact ? "rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground" : "rounded-[2rem] border border-border bg-card p-8 text-sm text-muted-foreground"}>{message}</div>
 }

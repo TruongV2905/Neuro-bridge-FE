@@ -1,10 +1,8 @@
 import type {
-  HomepageActivity,
   HomepageArticle,
   HomepageBenefit,
   HomepageGalleryImage,
 } from "@/types/homepage";
-import { availableAIData } from "@/features/available-ai/mocks/availableAIData";
 
 export const aboutImages: HomepageGalleryImage[] = [
   { src: "/figma/homepage/about-1.jpg", alt: "AI solution discovery preview" },
@@ -17,23 +15,6 @@ export const aboutImages: HomepageGalleryImage[] = [
     alt: "AI expert project collaboration",
   },
 ];
-
-const trendingActivities = availableAIData.filter(
-  (activity) => activity.status === "Trending"
-);
-
-const featuredActivities =
-  trendingActivities.length >= 3
-    ? trendingActivities.slice(0, 3)
-    : availableAIData.slice(0, 3);
-
-export const activities: HomepageActivity[] = featuredActivities.map(
-  (activity, index) => ({
-    ...activity,
-    status: "Trending" as const,
-    hasGlow: index === 1,
-  })
-);
 
 export const benefits: HomepageBenefit[] = [
   {

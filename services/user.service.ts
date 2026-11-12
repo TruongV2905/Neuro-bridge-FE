@@ -1,4 +1,14 @@
-import type { User, UserFilterRequest } from "@/types/user/user.type";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import api from "@/configs/api";
+import type { APIResponse } from "@/types/common.starter";
+import type {
+  ClientProfileUpdateRequest,
+  ExpertProfileUpdateRequest,
+  User,
+  UserFilterRequest,
+  UserResponse,
+} from "@/types/user/user.type";
 import {
   createMutationHook,
   createPostQueryHook,
@@ -29,3 +39,34 @@ export const useGetUserByCode = createQueryHook<User>(
   userKeys.detail,
   `${USER_ENDPOINT}/:code`,
 );
+
+function useUpdateProfile<TRequest>(path: "client" | "expert") {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (request: TRequest) => {
+      const { data } = await api.put<APIResponse<UserResponse>>(
+        `${USER_ENDPOINT}/${path}`,
+        request,
+      );
+
+      return data;
+    },
+    retry: 0,
+    onSuccess: async (response) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.all });
+      await queryClient.setQueryData(
+        [...userKeys.detail, { code: response.result.code }],
+        response,
+      );
+    },
+  });
+}
+
+export function useUpdateClientProfile() {
+  return useUpdateProfile<ClientProfileUpdateRequest>("client");
+}
+
+export function useUpdateExpertProfile() {
+  return useUpdateProfile<ExpertProfileUpdateRequest>("expert");
+}

@@ -187,10 +187,12 @@ export function useUnpublishAiProduct() {
 
 export function useMarketplaceProducts(
   params: BrowseMarketplaceProductsParams = {},
+  options: { enabled?: boolean } = {},
 ) {
   return useQuery({
     queryKey: aiPlaceQueryKeys.marketplace.list(params),
     queryFn: () => getMarketplaceProducts(params),
+    enabled: options.enabled ?? true,
     retry: 0,
   });
 }

@@ -16,8 +16,17 @@ export function formatNotificationTime(value: string) {
 }
 
 export function getNotificationSocketUrl(userId: string) {
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "";
-  const normalizedBaseUrl = apiBaseUrl.replace(/\/$/, "");
+  const apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL;
 
-  return `${normalizedBaseUrl}/notification/ws/notifications?userId=${encodeURIComponent(userId)}`;
+  if (!apiBaseUrl) {
+    throw new Error("NEXT_PUBLIC_API_BASE_URL is required for notifications.");
+  }
+
+  const url = new URL(apiBaseUrl, window.location.origin);
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.pathname = `${url.pathname.replace(/\/$/, "")}/notification/ws/notifications`;
+  url.search = "";
+  url.searchParams.set("userId", userId);
+
+  return url.toString();
 }

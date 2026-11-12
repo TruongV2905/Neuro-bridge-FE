@@ -169,5 +169,8 @@ async function invalidatePurchaseRatingQueries(
     queryClient.invalidateQueries({
       queryKey: aiPlaceQueryKeys.marketplace.ratings(productId),
     }),
+    queryClient.invalidateQueries({
+      queryKey: aiPlaceQueryKeys.marketplace.all,
+    }),
   ]);
 }

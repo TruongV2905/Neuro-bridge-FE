@@ -45,27 +45,12 @@ export default function Header() {
     (state: RootState) => state.user,
   ) as UserResponse | null;
 
-  const [headerAvatar, setHeaderAvatar] = useState<string | null>(null);
+  const headerAvatar = currentUser?.avatarUrl || null;
   const [activeSectionId, setActiveSectionId] =
     useState<NavSectionId | null>("home");
   const [hasScrolled, setHasScrolled] = useState(false);
   const [isHeaderHidden, setIsHeaderHidden] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const updateAvatar = () => {
-      const savedAvatar = localStorage.getItem("expert-avatar");
-      setHeaderAvatar(savedAvatar || currentUser?.avatarUrl || null);
-    };
-
-    updateAvatar();
-
-    window.addEventListener("avatar-updated", updateAvatar);
-
-    return () => {
-      window.removeEventListener("avatar-updated", updateAvatar);
-    };
-  }, [currentUser?.avatarUrl]);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, CalendarDays, FolderKanban, Users } from "lucide-react";
+import { AlertTriangle, ArrowLeft, CalendarDays, FolderKanban, MessageSquareText, Users } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,14 @@ export function WorkspaceDetailView({ workspaceId, role = "EXPERT" }: { workspac
   if (workspaceQuery.isError || !workspace) return <PageShell><StatePanel title="Unable to load workspace" message={getErrorMessage(workspaceQuery.error)} projectsHref={`/${role.toLowerCase()}/dashboard/projects`} retry={workspaceQuery.isError ? () => workspaceQuery.refetch() : undefined} /></PageShell>;
 
   return <PageShell>
-    <Link href={`/${role.toLowerCase()}/dashboard/projects`} className="inline-flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-800"><ArrowLeft className="h-4 w-4" /> Back to projects</Link>
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <Link href={`/${role.toLowerCase()}/dashboard/projects`} className="inline-flex items-center gap-1 text-sm font-bold text-indigo-600 hover:text-indigo-800"><ArrowLeft className="h-4 w-4" /> Back to projects</Link>
+      <Button asChild className="rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+        <Link href={`/chat-room/${encodeURIComponent(workspace.workspaceId)}`}>
+          <MessageSquareText className="mr-2 h-4 w-4" /> Open Chat Room & Submissions
+        </Link>
+      </Button>
+    </div>
     <section className="mt-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between"><div><p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">Workspace</p><h1 className="mt-2 text-3xl font-extrabold text-slate-950">{workspace.projectName || "Untitled project"}</h1><div className="mt-4 flex flex-wrap gap-2"><StatusBadge value={workspace.status} /><StatusBadge value={workspace.projectStatus} /></div></div><div className="grid grid-cols-2 gap-3 sm:grid-cols-3"><Metric icon={CalendarDays} label="Start" value={formatDate(workspace.startDate)} /><Metric icon={CalendarDays} label="Deadline" value={formatDate(workspace.deadline)} /><Metric icon={FolderKanban} label="Progress" value={`${clamp(workspace.progressPercentage)}%`} /></div></div>
       <div className="mt-6 h-3 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-indigo-600" style={{ width: `${clamp(workspace.progressPercentage)}%` }} /></div>

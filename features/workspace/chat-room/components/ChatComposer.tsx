@@ -1,18 +1,33 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { FilePlus2, ImagePlus, Send, Smile } from "lucide-react"
+import { FilePlus2, ImagePlus, Loader2, Send, Smile } from "lucide-react"
 
-export function ChatComposer() {
+type ChatComposerProps = {
+  onSendMessage?: (content: string) => Promise<void> | void
+  isSending?: boolean
+  disabled?: boolean
+  placeholder?: string
+}
+
+export function ChatComposer({
+  onSendMessage,
+  isSending = false,
+  disabled = false,
+  placeholder = "Type your message here...",
+}: ChatComposerProps) {
   const [message, setMessage] = useState("")
   const imageInputRef = useRef<HTMLInputElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
-  const handleSend = () => {
-    if (!message.trim()) return
+  const handleSend = async () => {
+    const trimmed = message.trim()
+    if (!trimmed || isSending || disabled) return
 
-    console.log("Send message:", message)
     setMessage("")
+    if (onSendMessage) {
+      await onSendMessage(trimmed)
+    }
   }
 
   return (
@@ -21,7 +36,9 @@ export function ChatComposer() {
         <div className="flex items-center gap-1 pr-1 border-r border-slate-100">
           <button
             type="button"
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)]"
+            onClick={() => setMessage((prev) => `${prev} 😊`.trimStart())}
+            disabled={disabled || isSending}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)] disabled:opacity-40"
           >
             <Smile className="h-5 w-5" />
           </button>
@@ -29,7 +46,8 @@ export function ChatComposer() {
           <button
             type="button"
             onClick={() => imageInputRef.current?.click()}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)]"
+            disabled={disabled || isSending}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)] disabled:opacity-40"
           >
             <ImagePlus className="h-5 w-5" />
           </button>
@@ -37,7 +55,8 @@ export function ChatComposer() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)]"
+            disabled={disabled || isSending}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-50 hover:text-[var(--primary)] disabled:opacity-40"
           >
             <FilePlus2 className="h-5 w-5" />
           </button>
@@ -51,7 +70,10 @@ export function ChatComposer() {
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (!file) return
-            console.log("Selected image:", file)
+            setMessage((prev) =>
+              prev ? `${prev} [Image: ${file.name}]` : `[Image: ${file.name}]`,
+            )
+            event.target.value = ""
           }}
         />
 
@@ -62,31 +84,40 @@ export function ChatComposer() {
           onChange={(event) => {
             const file = event.target.files?.[0]
             if (!file) return
-            console.log("Selected file:", file)
+            setMessage((prev) =>
+              prev ? `${prev} [File: ${file.name}]` : `[File: ${file.name}]`,
+            )
+            event.target.value = ""
           }}
         />
 
         <div className="flex flex-1 items-center rounded-full bg-slate-50 px-4 ml-1 border border-slate-100/50 focus-within:border-[var(--primary)]/30 focus-within:bg-white focus-within:shadow-xs transition">
           <input
             value={message}
+            disabled={disabled}
             onChange={(event) => setMessage(event.target.value)}
             onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                handleSend()
+              if (event.key === "Enter" && !event.shiftKey) {
+                event.preventDefault()
+                void handleSend()
               }
             }}
-            placeholder="Type your message here..."
-            className="h-10 flex-1 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400"
+            placeholder={placeholder}
+            className="h-10 flex-1 bg-transparent text-[14px] text-slate-700 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
           />
         </div>
 
         <button
           type="button"
-          onClick={handleSend}
-          disabled={!message.trim()}
+          onClick={() => void handleSend()}
+          disabled={!message.trim() || isSending || disabled}
           className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-white transition shadow-sm hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
         >
-          <Send className="h-4 w-4 ml-0.5" />
+          {isSending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4 ml-0.5" />
+          )}
         </button>
       </div>
     </div>

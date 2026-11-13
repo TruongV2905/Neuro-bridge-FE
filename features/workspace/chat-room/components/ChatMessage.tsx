@@ -5,6 +5,9 @@ import type {
   ChatUser,
 } from "@/types/chat.types"
 
+const DEFAULT_AVATAR =
+  "https://ui-avatars.com/api/?background=4f46e5&color=fff&name=NB"
+
 type ChatMessageProps = {
   message: ChatMessageType
   currentUser: ChatUser
@@ -16,7 +19,9 @@ export function ChatMessage({
   currentUser,
   partner,
 }: ChatMessageProps) {
-  const isMine = message.senderId === currentUser.id
+  const isMine =
+    message.senderId === currentUser.id ||
+    (Boolean(currentUser.code) && message.senderId === currentUser.code)
   const sender = isMine ? currentUser : partner
 
   return (
@@ -27,14 +32,14 @@ export function ChatMessage({
     >
       {!isMine && (
         <img
-          src={sender.avatarUrl}
+          src={sender.avatarUrl || DEFAULT_AVATAR}
           alt={sender.name}
           className="h-8 w-8 rounded-full object-cover ring-2 ring-slate-100"
         />
       )}
 
       <div
-        className={`flex max-w-[460px] flex-col ${
+        className={`flex max-w-[520px] flex-col ${
           isMine ? "items-end" : "items-start"
         }`}
       >
@@ -73,7 +78,7 @@ export function ChatMessage({
 
       {isMine && (
         <img
-          src={sender.avatarUrl}
+          src={sender.avatarUrl || DEFAULT_AVATAR}
           alt={sender.name}
           className="h-8 w-8 rounded-full object-cover ring-2 ring-blue-50"
         />
@@ -94,7 +99,7 @@ function TextBubble({
 }) {
   return (
     <div
-      className={`rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
+      className={`whitespace-pre-line break-words rounded-2xl px-4 py-2.5 text-[14px] leading-relaxed ${
         isMine
           ? "rounded-br-sm bg-[var(--primary)] text-white shadow-sm"
           : "rounded-bl-sm bg-slate-50 border border-slate-100 text-slate-800 shadow-sm"

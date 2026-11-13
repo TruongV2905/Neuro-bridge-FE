@@ -10,6 +10,7 @@ import {
   ChevronRight,
   FolderKanban,
   Loader2,
+  MessageSquareText,
   RefreshCw,
 } from "lucide-react";
 
@@ -160,11 +161,18 @@ function ProjectCard({ project, role }: { project: WorkspaceDashboardItem; role:
       <p className="mt-4 flex items-center gap-2 text-sm font-semibold text-slate-500">
         <CalendarDays className="h-4 w-4" /> {formatDate(project.deadline)}
       </p>
-      <Button asChild className="mt-auto rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
-        <Link href={`/${role.toLowerCase()}/dashboard/projects/${encodeURIComponent(project.workspaceId)}`}>
-          Open workspace <ArrowRight className="ml-2 h-4 w-4" />
-        </Link>
-      </Button>
+      <div className="mt-auto grid grid-cols-2 gap-2 pt-3">
+        <Button asChild variant="outline" className="rounded-xl border-slate-200">
+          <Link href={`/${role.toLowerCase()}/dashboard/projects/${encodeURIComponent(project.workspaceId)}`}>
+            Details <ArrowRight className="ml-1.5 h-4 w-4" />
+          </Link>
+        </Button>
+        <Button asChild className="rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">
+          <Link href={`/chat-room/${encodeURIComponent(project.workspaceId)}`}>
+            <MessageSquareText className="mr-1.5 h-4 w-4" /> Chat Room
+          </Link>
+        </Button>
+      </div>
     </article>
   );
 }

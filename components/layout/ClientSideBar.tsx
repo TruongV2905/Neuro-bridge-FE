@@ -9,6 +9,7 @@ import {
   FolderIcon,
   HomeIcon,
   LayoutDashboardIcon,
+  MessageSquareTextIcon,
   PlusCircleIcon,
   ReceiptTextIcon,
   SearchIcon,
@@ -73,6 +74,11 @@ const WORKSPACE_CONFIG: Record<
         icon: FolderIcon,
       },
       {
+        title: "Chat",
+        url: "/client/dashboard/chat",
+        icon: MessageSquareTextIcon,
+      },
+      {
         title: "AI Place",
         url: "/client/dashboard/ai-place",
         icon: BoxesIcon,
@@ -111,6 +117,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Project",
         url: "/expert/dashboard/projects",
         icon: FolderIcon,
+      },
+      {
+        title: "Chat",
+        url: "/expert/dashboard/chat",
+        icon: MessageSquareTextIcon,
       },
       {
         title: "Wallet",

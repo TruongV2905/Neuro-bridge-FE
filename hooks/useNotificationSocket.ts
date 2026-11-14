@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Client, ReconnectionTimeMode } from "@stomp/stompjs";
+import SockJS from "sockjs-client";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { NOTIFICATION_SOCKET_DESTINATION } from "@/features/notification/constants/notification.constants";
@@ -10,8 +11,6 @@ import { notificationKeys } from "@/services/notification.service";
 import type { NotificationItem } from "@/types/notification.type";
 
 export type NotificationSocketState = "idle" | "connecting" | "connected" | "reconnecting" | "paused";
-
-const MAX_CONSECUTIVE_DISCONNECTS = 6;
 
 export function useNotificationSocket(userId: string): NotificationSocketState {
   const queryClient = useQueryClient();
@@ -24,7 +23,6 @@ export function useNotificationSocket(userId: string): NotificationSocketState {
 
     let isDisposed = false;
     let terminalError = false;
-    let consecutiveDisconnects = 0;
     let socketUrl: string;
 
     try {
@@ -34,18 +32,26 @@ export function useNotificationSocket(userId: string): NotificationSocketState {
       return;
     }
 
+    const accessToken = window.localStorage.getItem("accessToken");
+
     const stompClient = new Client({
-      // Notification Service speaks raw WebSocket/STOMP. It is not a SockJS server.
-      webSocketFactory: () => new WebSocket(socketUrl),
+      webSocketFactory: () => new SockJS(socketUrl),
+      connectHeaders: {
+        userId,
+        ...(accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
+          : {}),
+      },
       connectionTimeout: 10_000,
       reconnectDelay: 1_000,
       maxReconnectDelay: 30_000,
       reconnectTimeMode: ReconnectionTimeMode.EXPONENTIAL,
+      heartbeatIncoming: 25_000,
+      heartbeatOutgoing: 25_000,
       debug: () => undefined,
       onConnect: () => {
         if (isDisposed) return;
 
-        consecutiveDisconnects = 0;
         setConnectionState("connected");
 
         stompClient.subscribe(NOTIFICATION_SOCKET_DESTINATION, (message) => {
@@ -96,16 +102,10 @@ export function useNotificationSocket(userId: string): NotificationSocketState {
       onWebSocketClose: (event) => {
         if (isDisposed || terminalError) return;
 
-        consecutiveDisconnects += 1;
-        if (consecutiveDisconnects >= MAX_CONSECUTIVE_DISCONNECTS) {
-          console.warn("Notification connection is paused after repeated failures. Refresh or remount notifications to retry.");
-          setConnectionState("paused");
-          void stompClient.deactivate();
-          return;
-        }
-
         setConnectionState("reconnecting");
-        console.warn(`Notification WebSocket closed (${event.code}); retrying with backoff.`);
+        console.warn(
+          `Notification SockJS connection closed (${event.code}); retrying with backoff.`,
+        );
       },
     });
 

@@ -23,7 +23,6 @@ export function getNotificationSocketUrl(userId: string) {
   }
 
   const url = new URL(apiBaseUrl, window.location.origin);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = `${url.pathname.replace(/\/$/, "")}/notification/ws/notifications`;
   url.search = "";
   url.searchParams.set("userId", userId);

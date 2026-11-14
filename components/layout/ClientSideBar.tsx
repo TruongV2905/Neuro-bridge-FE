@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   BriefcaseIcon,
   BoxesIcon,
+  FileSignatureIcon,
   FolderIcon,
   HomeIcon,
   LayoutDashboardIcon,
@@ -69,6 +70,11 @@ const WORKSPACE_CONFIG: Record<
         icon: PlusCircleIcon,
       },
       {
+        title: "Contracts",
+        url: "/client/dashboard/contracts",
+        icon: FileSignatureIcon,
+      },
+      {
         title: "Project",
         url: "/client/dashboard/projects",
         icon: FolderIcon,
@@ -112,6 +118,11 @@ const WORKSPACE_CONFIG: Record<
         title: "Browse Jobpost",
         url: "/expert/dashboard",
         icon: SearchIcon,
+      },
+      {
+        title: "Contracts",
+        url: "/expert/dashboard/contracts",
+        icon: FileSignatureIcon,
       },
       {
         title: "Project",

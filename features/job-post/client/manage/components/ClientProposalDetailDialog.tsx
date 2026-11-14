@@ -36,12 +36,14 @@ type ClientProposalDetailDialogProps = {
   proposalSummary: ClientProposalDialogSummary | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onHire?: () => void;
 };
 
 export function ClientProposalDetailDialog({
   proposalSummary,
   open,
   onOpenChange,
+  onHire,
 }: ClientProposalDetailDialogProps) {
   const proposal = proposalSummary?.proposal;
   const proposalId = proposal?.id.trim() ?? "";
@@ -200,14 +202,20 @@ export function ClientProposalDetailDialog({
           </div>
         )}
 
-        <DialogFooter className="m-0 px-6 py-4">
-          {hasProposal && (
-            <Button type="button" variant="outline" disabled>
-              Unlock with Wallet
+        <DialogFooter className="m-0 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
+          {onHire && (
+            <Button
+              type="button"
+              onClick={onHire}
+              className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-5 text-sm font-bold text-white shadow-md shadow-indigo-600/20 hover:from-indigo-700 hover:to-violet-700"
+            >
+              Thuê Chuyên Gia Này
             </Button>
           )}
           <DialogClose asChild>
-            <Button type="button">Close</Button>
+            <Button type="button" variant="outline">
+              Close
+            </Button>
           </DialogClose>
         </DialogFooter>
       </DialogContent>

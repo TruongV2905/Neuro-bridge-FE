@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, Clock4, FileText, LockKeyhole, User } from "lucide-react";
+import {
+  ArrowUpRight,
+  Clock4,
+  FileText,
+  LockKeyhole,
+  User,
+  UserCheck,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,6 +21,8 @@ import type {
 type ClientApplicantCardProps = {
   applicant: JobPostApplicant;
   onViewProposal: (summary: ClientProposalDialogSummary) => void;
+  onHire?: (applicant: JobPostApplicant) => void;
+  isHiring?: boolean;
 };
 
 export type UnlockCostSource = "proposal" | "unavailable";
@@ -21,6 +30,8 @@ export type UnlockCostSource = "proposal" | "unavailable";
 export function ClientApplicantCard({
   applicant,
   onViewProposal,
+  onHire,
+  isHiring,
 }: ClientApplicantCardProps) {
   const { expertApply, proposal } = applicant;
   const unlockCost = resolveApplicantUnlockCost(proposal);
@@ -42,7 +53,7 @@ export function ClientApplicantCard({
           variant="outline"
           className="rounded-full border-indigo-200 bg-indigo-50 text-indigo-700"
         >
-          Applied
+          {expertApply.status || "Applied"}
         </Badge>
       </div>
 
@@ -101,7 +112,7 @@ export function ClientApplicantCard({
             <Button
               type="button"
               onClick={() => onViewProposal({ expertApply, proposal })}
-              className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 text-sm font-bold text-white"
+              className="h-10 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 px-4 text-sm font-bold text-white shadow-sm"
             >
               View proposal
               <ArrowUpRight className="ml-1.5 h-4 w-4" />
@@ -111,6 +122,21 @@ export function ClientApplicantCard({
       ) : (
         <div className="mt-5 flex flex-1 items-center rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 p-4 text-sm font-semibold text-slate-500">
           Basic application — no proposal supplied
+        </div>
+      )}
+
+      {/* Nút Thuê Expert */}
+      {onHire && (
+        <div className="mt-4 flex items-center justify-end gap-2 border-t border-slate-100 pt-4">
+          <Button
+            type="button"
+            onClick={() => onHire(applicant)}
+            disabled={isHiring || expertApply.status === "REJECTED"}
+            className="h-10 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 text-sm font-bold text-white shadow-md shadow-indigo-600/20 hover:from-indigo-700 hover:to-violet-700"
+          >
+            <UserCheck className="mr-1.5 h-4 w-4" />
+            Thuê Expert
+          </Button>
         </div>
       )}
     </article>

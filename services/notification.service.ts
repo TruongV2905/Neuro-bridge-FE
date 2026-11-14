@@ -4,7 +4,7 @@ import api from "@/configs/api";
 import type { APIResponse } from "@/types/common.starter";
 import type { NotificationItem } from "@/types/notification.type";
 
-const NOTIFICATION_ENDPOINT = "/notification/api/v1/notifications";
+const NOTIFICATION_ENDPOINT = "/notification/v1/notifications";
 
 export const notificationKeys = {
   all: ["notifications"],

@@ -6,6 +6,7 @@ export type WorkspaceParticipant = {
 
 export type WorkspaceDetail = {
   workspaceId: string;
+  projectId?: string;
   jobId: string;
   escrowId: string;
   status: string;

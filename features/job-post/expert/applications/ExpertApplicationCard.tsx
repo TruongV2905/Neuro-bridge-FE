@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import {
   ArrowUpRight,
   Briefcase,
   Clock4,
+  FileSignature,
   FileText,
   LockKeyhole,
 } from "lucide-react";
@@ -14,6 +16,7 @@ import type {
   ExpertApplicationViewItem,
   ExpertProposal,
 } from "@/types/job-post.type";
+import { ExpertSignContractModal } from "./components/ExpertSignContractModal";
 
 type ExpertApplicationCardProps = {
   application: ExpertApplicationViewItem;
@@ -24,8 +27,10 @@ export function ExpertApplicationCard({
   application,
   onViewProposal,
 }: ExpertApplicationCardProps) {
+  const [signModalOpen, setSignModalOpen] = useState(false);
   const hasProposal = Boolean(application.proposal);
   const unlockCost = resolveUnlockCost(application);
+  const isApproved = application.expertApply.status === "APPROVED";
 
   return (
     <article className="group flex h-full min-h-[310px] flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/50 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-500/10">
@@ -45,7 +50,11 @@ export function ExpertApplicationCard({
             {application.expertApply.status && (
               <Badge
                 variant="outline"
-                className="h-6 rounded-full border-slate-200 bg-slate-50 px-2.5 text-[11px] font-bold text-slate-600"
+                className={`h-6 rounded-full px-2.5 text-[11px] font-bold ${
+                  isApproved
+                    ? "border-emerald-300 bg-emerald-100 text-emerald-800"
+                    : "border-slate-200 bg-slate-50 text-slate-600"
+                }`}
               >
                 {application.expertApply.status}
               </Badge>
@@ -108,7 +117,18 @@ export function ExpertApplicationCard({
             </p>
           </div>
 
-          <div className="mt-auto flex justify-end pt-5">
+          <div className="mt-auto flex flex-wrap items-center justify-end gap-2 pt-5">
+            {isApproved && (
+              <Button
+                type="button"
+                onClick={() => setSignModalOpen(true)}
+                className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700"
+              >
+                <FileSignature className="mr-1.5 h-4 w-4" />
+                Ký Hợp Đồng
+              </Button>
+            )}
+
             <Button
               type="button"
               onClick={() =>
@@ -122,14 +142,35 @@ export function ExpertApplicationCard({
           </div>
         </>
       ) : (
-        <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
-          <p className="text-sm font-extrabold text-sky-700">
-            Basic application — no proposal supplied
-          </p>
-          <p className="mt-1 text-sm leading-6 text-slate-500">
-            This application includes budget and timeline only.
-          </p>
+        <div className="mt-4 flex flex-1 flex-col justify-between rounded-2xl border border-sky-100 bg-sky-50/70 p-4">
+          <div>
+            <p className="text-sm font-extrabold text-sky-700">
+              Basic application — no proposal supplied
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-500">
+              This application includes budget and timeline only.
+            </p>
+          </div>
+          {isApproved && (
+            <div className="mt-3 flex justify-end">
+              <Button
+                type="button"
+                onClick={() => setSignModalOpen(true)}
+                className="h-10 rounded-xl bg-emerald-600 px-4 text-sm font-bold text-white shadow-md shadow-emerald-600/20 hover:bg-emerald-700"
+              >
+                <FileSignature className="mr-1.5 h-4 w-4" />
+                Ký Hợp Đồng
+              </Button>
+            </div>
+          )}
         </div>
+      )}
+
+      {signModalOpen && (
+        <ExpertSignContractModal
+          open={signModalOpen}
+          onOpenChange={setSignModalOpen}
+        />
       )}
     </article>
   );

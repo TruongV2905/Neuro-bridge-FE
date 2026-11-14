@@ -44,6 +44,9 @@ export function resolveNotificationDestination(
         : null;
     case "CONTRACT_SIGN_REQUIRED":
     case "CONTRACT_FULLY_SIGNED":
+      return isIdentifier(notification.resourceId)
+        ? `/expert/dashboard/contracts/${encodeURIComponent(notification.resourceId)}`
+        : null;
     default:
       return null;
   }

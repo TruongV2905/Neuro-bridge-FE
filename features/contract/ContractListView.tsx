@@ -102,27 +102,28 @@ export function ContractListView({ role }: ContractListViewProps) {
             <div>
               <div className="flex items-center gap-2 text-sm font-bold text-indigo-600">
                 <FileSignature className="h-4 w-4" />
-                {role === "client" ? "Hợp đồng Khách hàng" : "Hợp đồng Chuyên gia"}
+                {role === "client" ? "Client contracts" : "Expert contracts"}
               </div>
               <h1 className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
-                Danh Sách Hợp Đồng
+                Contracts
               </h1>
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Theo dõi tiến độ ký kết hợp đồng điện tử, ký quỹ Escrow và truy cập phòng làm việc dự án.
+                Reopen pending signatures, finish escrow, or continue to the
+                workspace after both sides sign.
               </p>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
               <HeaderMetric
-                label="Đã lưu"
+                label="Saved"
                 value={String(hydratedContracts.length)}
               />
               <HeaderMetric
-                label="Chờ ký"
+                label="Pending"
                 value={String(pendingContractCount)}
               />
               <HeaderMetric
-                label="Đã tạo Workspace"
+                label="Workspace"
                 value={String(workspaceContractCount)}
               />
             </div>
@@ -139,7 +140,7 @@ export function ContractListView({ role }: ContractListViewProps) {
                 onKeyDown={(event) => {
                   if (event.key === "Enter") handleOpenById();
                 }}
-                placeholder="Dán mã Contract ID để mở trực tiếp..."
+                placeholder="Paste contract ID to open..."
                 className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-9 text-sm"
               />
             </div>
@@ -149,7 +150,7 @@ export function ContractListView({ role }: ContractListViewProps) {
               disabled={!contractIdInput.trim()}
               className="h-11 rounded-xl bg-slate-950 px-5 text-sm font-bold text-white hover:bg-slate-800"
             >
-              Mở hợp đồng
+              Open contract
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
@@ -206,29 +207,26 @@ function ContractListCard({
     { code: partnerCode ?? "" },
     { enabled: Boolean(partnerCode) },
   );
-
+  const counterpartyLabel = role === "client" ? "Expert" : "Client";
+  const partnerName = partnerQuery.isLoading
+    ? "Loading profile..."
+    : getPartnerDisplayName(partnerQuery.data?.result?.fullName, role);
   const projectName = getContractProjectName({
     contractProjectName: contract?.projectName,
     savedProjectName: saved.projectName,
     jobTitle: jobQuery.data?.result?.title,
-    isJobLoading: jobQuery.isLoading,
+    isJobLoading: jobQuery.isLoading || jobQuery.isFetching,
   });
 
-  const partnerName = getPartnerDisplayName(
-    partnerQuery.data?.result?.fullName,
-    role,
-  );
-  const counterpartyLabel = role === "client" ? "Expert" : "Client";
-
   return (
-    <article className="rounded-2xl border border-slate-200/80 bg-slate-50/50 p-5 transition hover:border-slate-300 hover:shadow-sm">
+    <article className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm shadow-slate-200/40 transition hover:border-indigo-100 hover:shadow-md hover:shadow-slate-200/60">
       <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+        <div className="min-w-0">
           <Badge
             variant="outline"
             className={cn("rounded-full text-[11px] font-bold", statusMeta.badge)}
           >
-            {isLoading ? "Đang cập nhật..." : statusMeta.label}
+            {isLoading ? "Checking..." : statusMeta.label}
           </Badge>
           <h2 className="mt-3 line-clamp-2 text-base font-extrabold text-slate-950">
             {projectName}
@@ -246,7 +244,7 @@ function ContractListCard({
           variant="ghost"
           onClick={onRemove}
           className="h-9 w-9 shrink-0 rounded-xl p-0 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-          title="Xóa khỏi danh sách lưu"
+          title="Remove from saved contracts"
         >
           <Trash2 className="h-4 w-4" />
         </Button>
@@ -254,27 +252,27 @@ function ContractListCard({
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <MiniMetric
-          label="Bên Thuê (Client)"
-          value={contract?.clientSigned ? "✅ Đã ký" : "⏳ Chưa ký"}
+          label="Client"
+          value={contract?.clientSigned ? "Signed" : "Pending"}
         />
         <MiniMetric
-          label="Chuyên Gia (Expert)"
-          value={contract?.expertSigned ? "✅ Đã ký" : "⏳ Chưa ký"}
+          label="Expert"
+          value={contract?.expertSigned ? "Signed" : "Pending"}
         />
       </div>
 
       {isError ? (
         <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-          Không thể đồng bộ dữ liệu mới nhất. Bạn vẫn có thể mở trực tiếp hợp đồng.
+          Could not refresh this contract. You can still open it directly.
         </p>
       ) : null}
 
       <Button
         asChild
-        className="mt-4 h-11 w-full rounded-xl bg-slate-900 text-sm font-bold text-white shadow-sm hover:bg-slate-800"
+        className="mt-4 h-11 w-full rounded-xl bg-white text-sm font-bold text-slate-900 shadow-sm hover:bg-slate-100"
       >
         <Link href={getContractDetailHref(role, saved.id)}>
-          Xem chi tiết hợp đồng
+          Open contract
           <ArrowRight className="ml-2 h-4 w-4" />
         </Link>
       </Button>
@@ -282,17 +280,21 @@ function ContractListCard({
   );
 }
 
-function EmptyContractList({ role }: { role: ContractRole }) {
+function EmptyContractList({
+  role,
+}: {
+  role: ContractRole;
+}) {
   return (
     <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50/70 px-6 py-14 text-center">
       <Clock4 className="mx-auto h-10 w-10 text-slate-300" />
       <p className="mt-3 text-sm font-extrabold text-slate-900">
-        Chưa có hợp đồng nào được lưu
+        No saved contracts yet
       </p>
       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-slate-500">
         {role === "client"
-          ? "Hợp đồng sẽ xuất hiện tại đây sau khi bạn phê duyệt ứng viên hoặc bấm Thuê Expert. Bạn cũng có thể dán Contract ID ở trên để mở."
-          : "Khi bạn mở hợp đồng từ thông báo hoặc ứng tuyển, hợp đồng sẽ được lưu tại đây để tra cứu nhanh."}
+          ? "Contracts appear here after you hire an expert. You can also paste a contract ID above."
+          : "Open a contract from a notification once and it will stay here for quick access."}
       </p>
     </div>
   );
@@ -342,7 +344,7 @@ function getPartnerDisplayName(
 ) {
   if (fullName?.trim()) return fullName.trim();
 
-  return role === "client" ? "Chuyên gia" : "Bên thuê (Client)";
+  return role === "client" ? "Selected expert" : "Client";
 }
 
 function getContractProjectName({
@@ -359,37 +361,37 @@ function getContractProjectName({
   const title = contractProjectName || savedProjectName || jobTitle;
 
   if (title?.trim()) return title.trim();
-  if (isJobLoading) return "Đang tải tên dự án...";
+  if (isJobLoading) return "Loading project...";
 
-  return "Hợp đồng dự án";
+  return "Untitled contract";
 }
 
 function getContractStatusMeta(status?: ContractStatus) {
   switch (status) {
     case "CLIENT_SIGNED":
       return {
-        label: "Client đã ký",
+        label: "Client signed",
         badge: "border-sky-200 bg-sky-50 text-sky-700",
       };
     case "EXPERT_SIGNED":
       return {
-        label: "Expert đã ký",
+        label: "Expert signed",
         badge: "border-violet-200 bg-violet-50 text-violet-700",
       };
     case "FULLY_SIGNED":
       return {
-        label: "Hoàn tất ký 2 bên",
+        label: "Fully signed",
         badge: "border-emerald-200 bg-emerald-50 text-emerald-700",
       };
     case "CANCELLED":
       return {
-        label: "Đã hủy",
+        label: "Cancelled",
         badge: "border-rose-200 bg-rose-50 text-rose-700",
       };
     case "PENDING":
     default:
       return {
-        label: "Chờ ký",
+        label: "Pending",
         badge: "border-amber-200 bg-amber-50 text-amber-700",
       };
   }

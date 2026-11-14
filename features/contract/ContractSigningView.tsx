@@ -5,14 +5,11 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import {
-  AlertTriangle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
   Clock4,
-  ExternalLink,
   FileSignature,
-  FileText,
   Loader2,
   LockKeyhole,
   RefreshCw,
@@ -21,10 +18,19 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { RootState } from "@/redux/store";
 import {
@@ -37,25 +43,59 @@ import {
   useGetJobPostById,
 } from "@/services/job-post.service";
 import { useGetUserByCode } from "@/services/user.service";
-import type { ContractResponse, ContractStatus, HireExpertResponse } from "@/types/contract.type";
+import type { ContractResponse, ContractStatus } from "@/types/contract.type";
+import type { HireExpertResponse } from "@/types/contract.type";
 import { UserRole, type UserResponse } from "@/types/user/user.type";
+import { formatMoney } from "@/utils/formatMoney";
 import {
   readHireContextFromStorage,
   saveContractHireContext,
   saveContractReferenceFromResponse,
   type ContractHireContext,
 } from "./contractStorage";
-import { formatMoney } from "@/utils/formatMoney";
 
 type ContractSigningViewProps = {
   role?: "client" | "expert";
 };
 
 const CONTRACT_FLOW_STEPS = [
-  "Bản thảo hợp đồng",
-  "Cả 2 bên cùng ký",
-  "Ký quỹ Escrow (Cọc tiền)",
-  "Khởi tạo Workspace & Dự án",
+  "Contract draft",
+  "Both parties sign",
+  "Escrow funding",
+  "Workspace created",
+] as const;
+
+const FIXED_CONTRACT_TERMS = [
+  {
+    title: "Scope and deliverables",
+    description:
+      "The expert must deliver the agreed AI solution, documentation, source files, and supporting materials required for client review.",
+  },
+  {
+    title: "Review and revision",
+    description:
+      "The client reviews submitted deliverables in the workspace. If changes are needed, the client must provide clear revision feedback before final acceptance.",
+  },
+  {
+    title: "Escrow and release",
+    description:
+      "The project budget is held in escrow after workspace initialization. Funds are released only after the client accepts the final deliverables or the platform release condition is met.",
+  },
+  {
+    title: "Communication",
+    description:
+      "Both parties should keep project communication, files, and decisions inside the workspace so the delivery history remains clear and verifiable.",
+  },
+  {
+    title: "Ownership",
+    description:
+      "After successful completion and escrow release, the client receives the right to use the approved final deliverables for the contracted project.",
+  },
+  {
+    title: "Platform protection",
+    description:
+      "The platform may use contract, workspace, submission, and payment records to help resolve disputes or verify project completion.",
+  },
 ] as const;
 
 export function ContractSigningView({ role }: ContractSigningViewProps) {
@@ -72,12 +112,10 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
 
   const effectiveRole: "client" | "expert" =
     role ?? (currentUser?.role === UserRole.EXPERT ? "expert" : "client");
-  const isClientRole = effectiveRole === "client";
-  const isExpertRole = effectiveRole === "expert";
 
   const [finalizeResponse, setFinalizeResponse] =
     useState<HireExpertResponse | null>(null);
-  const [resolvedExpertApplyId, setResolvedExpertApplyId] = useState<string>("");
+  const [paymentConfirmOpen, setPaymentConfirmOpen] = useState(false);
 
   const queryHireContext = readHireContextFromSearch(searchParams);
   const storedHireContext = useMemo(
@@ -90,34 +128,29 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
     enabled: Boolean(contractId),
   });
   const contract = contractQuery.data;
-
   const jobPostId =
     contract?.jobId ?? contract?.jobPostId ?? hireContext?.jobPostId ?? "";
   const jobPostQuery = useGetJobPostById(
     { id: jobPostId },
     { enabled: Boolean(jobPostId) },
   );
-
   const signContract = useSignContract();
   const hireExpert = useHireExpert();
-
   const partnerCode = getPartnerCode(contract, effectiveRole, hireContext);
   const partnerQuery = useGetUserByCode(
     { code: partnerCode ?? "" },
     { enabled: Boolean(partnerCode) },
   );
-  const partnerName = getPartnerDisplayName(
-    partnerQuery.data?.result?.fullName,
-    partnerCode,
-    effectiveRole,
-  );
+  const counterpartyLabel = effectiveRole === "client" ? "Expert" : "Client";
+  const partnerName = partnerQuery.isLoading
+    ? "Loading profile..."
+    : getPartnerDisplayName(partnerQuery.data?.result?.fullName, partnerCode, effectiveRole);
 
-  // Lưu ngữ cảnh hire vào localStorage
   useEffect(() => {
     if (!contractId) return;
 
     if (queryHireContext) {
-      saveContractHireContext(contractId, queryHireContext);
+      saveHireContext(contractId, queryHireContext);
     }
   }, [contractId, queryHireContext]);
 
@@ -125,564 +158,618 @@ export function ContractSigningView({ role }: ContractSigningViewProps) {
     if (!contract) return;
 
     saveContractReferenceFromResponse(contract, effectiveRole, hireContext);
-  }, [contract, effectiveRole, hireContext]);
+  }, [contract, hireContext, effectiveRole]);
 
-  // Tự động tìm expertApplyId từ jobPostId nếu chưa có trong context
-  useEffect(() => {
-    if (hireContext?.expertApplyId) {
-      setResolvedExpertApplyId(hireContext.expertApplyId);
-      return;
-    }
+  const currentRole = currentUser?.role;
+  const roleSigningState = getRoleSigningState(contract, currentRole);
+  const statusMeta = getContractStatusMeta(contract?.status);
 
-    if (jobPostId && contract?.expertCode) {
-      fetchJobPostApplicants(jobPostId)
-        .then((res) => {
-          const list = res?.result ?? [];
-          const matched =
-            list.find(
-              (item) =>
-                item.expertApply?.expertCode?.toLowerCase() ===
-                contract.expertCode?.toLowerCase(),
-            ) ?? (list.length === 1 ? list[0] : null);
-          if (matched?.expertApply?.id) {
-            setResolvedExpertApplyId(matched.expertApply.id);
-            saveContractHireContext(contractId, {
-              jobPostId,
-              expertApplyId: matched.expertApply.id,
-              expertCode: contract.expertCode || undefined,
-            });
-          }
-        })
-        .catch(() => undefined);
-    }
-  }, [contractId, contract?.expertCode, hireContext, jobPostId]);
-
-  const isClientSigned = contract?.clientSigned ?? false;
-  const isExpertSigned = contract?.expertSigned ?? false;
-  const isFullySigned =
-    contract?.status === "FULLY_SIGNED" || (isClientSigned && isExpertSigned);
-
-  const roleSigned = isClientRole ? isClientSigned : isExpertSigned;
-
-  // Quyền ký: người dùng thuộc role đó và chưa ký
-  const canSign = Boolean(contract) && !roleSigned && !isFullySigned;
-
-  // Quyền khởi tạo Workspace / Dự án:
-  // Client có thể bấm khi cả 2 bên đã ký (isFullySigned) và chưa có workspaceId
   const canFinalize =
-    isClientRole &&
-    (isFullySigned || contract?.status === "FULLY_SIGNED") &&
-    !contract?.workspaceId;
+    currentRole === UserRole.CLIENT &&
+    contract?.status === "FULLY_SIGNED" &&
+    !contract.workspaceId;
+
+  const canSign =
+    Boolean(contract) &&
+    (currentRole === UserRole.CLIENT || currentRole === UserRole.EXPERT) &&
+    !roleSigningState.hasSigned &&
+    contract?.status !== "FULLY_SIGNED";
 
   const shortfallAmount =
     finalizeResponse?.shortfallAmount ??
     (hireExpert.error?.response?.data as { shortfallAmount?: number } | undefined)
-      ?.shortfallAmount ??
-    contract?.shortfallAmount;
+      ?.shortfallAmount;
 
-  const budget = contract?.unlockCost ?? contract?.proposedBudget ?? 0;
-  const expertPayout = budget * 0.9;
-  const platformFee = budget * 0.1;
+  const contractEstimatedDays = getEstimatedDays(contract?.estimatedDays);
 
-  // Xử lý ký hợp đồng
+  const projectSummary = {
+    title:
+      contract?.projectName ??
+      jobPostQuery.data?.result?.title ??
+      "Contract project",
+    description:
+      jobPostQuery.data?.result?.description ??
+      "Review and sign the fixed platform terms for this project contract.",
+    budget:
+      contract?.proposedBudget !== undefined &&
+      contract?.proposedBudget !== null &&
+      Number.isFinite(Number(contract.proposedBudget))
+        ? formatContractAmount(Number(contract.proposedBudget))
+        : contract?.unlockCost !== undefined &&
+          contract?.unlockCost !== null &&
+          Number.isFinite(Number(contract.unlockCost))
+          ? formatContractAmount(Number(contract.unlockCost))
+          : "Not available",
+    timelineLabel:
+      contractEstimatedDays !== null || !contract?.deadline
+        ? "Timeline"
+        : "Deadline",
+    timeline:
+      contractEstimatedDays !== null
+        ? formatEstimatedDays(contractEstimatedDays)
+        : contract?.deadline
+          ? formatDate(contract.deadline)
+          : jobPostQuery.data?.result?.estimatedDays
+            ? formatEstimatedDays(jobPostQuery.data.result.estimatedDays)
+            : "Based on selected proposal",
+  };
+
+  const workspacePaymentAmount =
+    contract?.proposedBudget !== undefined &&
+    contract?.proposedBudget !== null &&
+    Number.isFinite(Number(contract.proposedBudget))
+      ? Number(contract.proposedBudget)
+      : contract?.unlockCost !== undefined &&
+        contract?.unlockCost !== null &&
+        Number.isFinite(Number(contract.unlockCost))
+        ? Number(contract.unlockCost)
+        : null;
+
+  const handleOpenFinalizeConfirm = () => {
+    if (workspacePaymentAmount === null) {
+      toast.error(
+        "Missing proposed budget from this contract. Please refresh and try again.",
+      );
+      return;
+    }
+
+    setPaymentConfirmOpen(true);
+  };
+
   const handleSignContract = async () => {
     if (!contractId || signContract.isPending) return;
 
     try {
-      await signContract.mutateAsync(contractId);
-      toast.success("Ký hợp đồng thành công!");
-      void contractQuery.refetch();
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.message || "Ký hợp đồng thất bại. Vui lòng thử lại.",
-      );
+      const signedContract = await signContract.mutateAsync(contractId);
+      toast.success(getSignSuccessMessage(signedContract));
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to sign this contract."));
     }
   };
 
-  // Xử lý Tạo Project / Workspace & Ký Quỹ Escrow (Client bấm lần 2)
   const handleFinalizeWorkspace = async () => {
-    let activeJobPostId = jobPostId;
-    let activeExpertApplyId =
-      resolvedExpertApplyId || hireContext?.expertApplyId;
+    if (!contract || hireExpert.isPending) return;
 
-    if (!activeExpertApplyId && activeJobPostId) {
+    const context = hireContext ?? readHireContextFromStorage(contract.id);
+    let expertApplyId = context?.expertApplyId;
+
+    // Auto resolve expert applicant ID if missing
+    if (!expertApplyId && (contract.jobId || contract.jobPostId)) {
       try {
-        const res = await fetchJobPostApplicants(activeJobPostId);
-        const list = res?.result ?? [];
-        const matched =
-          list.find(
-            (item) =>
-              item.expertApply?.expertCode?.toLowerCase() ===
-              contract?.expertCode?.toLowerCase(),
-          ) ?? (list.length === 1 ? list[0] : null);
+        const jid = contract.jobId || contract.jobPostId || "";
+        const res = await fetchJobPostApplicants(jid);
+        const applicants = res?.result ?? [];
+        const matched = applicants.find(
+          (app) =>
+            (contract.expertCode && app.expertApply?.expertCode === contract.expertCode) ||
+            app.expertApply?.status === "APPROVED" ||
+            app.expertApply?.status === "ACCEPTED",
+        );
         if (matched?.expertApply?.id) {
-          activeExpertApplyId = matched.expertApply.id;
-          setResolvedExpertApplyId(matched.expertApply.id);
+          expertApplyId = matched.expertApply.id;
         }
-      } catch (err) {
-        console.error("Lỗi tự động phân giải ứng viên:", err);
+      } catch (e) {
+        console.warn("Could not auto-fetch applicants", e);
       }
     }
 
-    if (!activeJobPostId || !activeExpertApplyId) {
+    if (!expertApplyId) {
       toast.error(
-        "Thiếu thông tin Jobpost hoặc đơn ứng tuyển để khởi tạo Workspace. Vui lòng thử bấm lại từ danh sách ứng tuyển.",
+        "Missing approved application context. Please open this contract from the hiring flow.",
       );
       return;
     }
 
     try {
+      const targetJobId = contract.jobId || contract.jobPostId || "";
       const response = await hireExpert.mutateAsync({
-        jobPostId: activeJobPostId,
-        expertApplyId: activeExpertApplyId,
+        jobPostId: targetJobId,
+        expertApplyId: expertApplyId,
       });
 
       setFinalizeResponse(response);
 
       if (response.workspaceId) {
-        toast.success("Khởi tạo Workspace & Dự án thành công!");
-        router.push(`/workspace/${response.workspaceId}`);
+        toast.success(response.message || "Workspace created successfully.");
+        router.push(getWorkspaceHref(response.workspaceId, currentRole, effectiveRole));
         return;
       }
 
-      if (response.shortfallAmount && response.shortfallAmount > 0) {
-        toast.warning(
-          response.message ||
-            `Số dư ví không đủ! Cần nạp thêm ${response.shortfallAmount.toLocaleString()} VNĐ qua VNPay để ký quỹ.`,
-        );
-      } else if (response.message) {
-        toast.info(response.message);
+      if (response.shortfallAmount) {
+        toast.error(response.message || "Wallet balance is not enough.");
+        return;
       }
-    } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message || "Khởi tạo Workspace thất bại.",
-      );
+
+      toast.success(response.message || "Contract finalized.");
+      await contractQuery.refetch();
+    } catch (error) {
+      toast.error(getErrorMessage(error, "Unable to finalize this contract."));
     }
   };
 
-  if (contractQuery.isLoading) {
+  const handleConfirmFinalizeWorkspace = async () => {
+    await handleFinalizeWorkspace();
+    setPaymentConfirmOpen(false);
+  };
+
+  if (!contractId) {
     return (
-      <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-44 rounded-3xl" />
-          <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-            <Skeleton className="h-96 rounded-3xl" />
-            <Skeleton className="h-80 rounded-3xl" />
-          </div>
-        </div>
-      </main>
+      <ContractPageState
+        title="Invalid contract"
+        message="The contract ID is missing from this route."
+        role={effectiveRole}
+      />
     );
+  }
+
+  if (contractQuery.isLoading) {
+    return <ContractLoadingState />;
   }
 
   if (contractQuery.isError || !contract) {
     return (
-      <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
-        <div className="mx-auto max-w-2xl rounded-3xl border border-rose-200 bg-rose-50 p-8 text-center text-rose-700">
-          <AlertTriangle className="mx-auto h-10 w-10 text-rose-500" />
-          <h2 className="mt-4 text-xl font-extrabold">
-            Không tìm thấy thông tin Hợp Đồng
-          </h2>
-          <p className="mt-2 text-sm text-rose-600">
-            {getErrorMessage(contractQuery.error, "Mã hợp đồng không hợp lệ hoặc đã bị huỷ.")}
-          </p>
-          <div className="mt-6 flex justify-center gap-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => void contractQuery.refetch()}
-              className="rounded-xl border-rose-200 bg-white text-rose-700 hover:bg-rose-50"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" /> Thử lại
-            </Button>
-            <Button asChild className="rounded-xl bg-indigo-600 text-white">
-              <Link href={getBackHref(effectiveRole)}>Về danh sách hợp đồng</Link>
-            </Button>
-          </div>
-        </div>
-      </main>
+      <ContractPageState
+        title="Unable to load contract"
+        message={getErrorMessage(
+          contractQuery.error,
+          "Please check the contract link and try again.",
+        )}
+        role={effectiveRole}
+        onRetry={() => contractQuery.refetch()}
+      />
     );
   }
 
   return (
     <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* Breadcrumb & Navigation */}
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-slate-500">
-            <Link
-              href={getBackHref(effectiveRole)}
-              className="font-semibold transition hover:text-indigo-600"
-            >
-              Contracts
-            </Link>
-            <span>/</span>
-            <span className="font-mono text-xs font-bold text-slate-700">
-              {contract.id}
-            </span>
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-500">
+              <Link
+                href={getBackHref(effectiveRole)}
+                className="transition hover:text-indigo-600"
+              >
+                {effectiveRole === "client" ? "Client dashboard" : "Expert dashboard"}
+              </Link>
+              <span>/</span>
+              <span className="text-slate-800">Contract signing</span>
+            </div>
+            <h1 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">
+              Contract details
+            </h1>
+            <p className="mt-2 text-sm font-semibold text-slate-500">
+              {counterpartyLabel}:{" "}
+              <span className="text-slate-800">{partnerName}</span>
+            </p>
           </div>
 
           <Button
             asChild
             variant="outline"
-            className="rounded-xl border-slate-200 bg-white text-slate-700 shadow-sm"
+            className="h-10 rounded-xl border-slate-200 bg-white px-4 text-sm font-bold text-slate-700"
           >
             <Link href={getBackHref(effectiveRole)}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> Danh sách hợp đồng
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
             </Link>
           </Button>
         </div>
 
-        {/* Shortfall Alert nếu ví Client thiếu tiền */}
-        {shortfallAmount && shortfallAmount > 0 ? (
-          <div className="rounded-3xl border border-amber-300 bg-amber-50 p-6 shadow-sm">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-6 w-6 shrink-0 text-amber-600 mt-1" />
-                <div>
-                  <h3 className="text-base font-extrabold text-amber-950">
-                    Số dư ví không đủ để ký quỹ Escrow dự án!
-                  </h3>
-                  <p className="mt-1 text-sm text-amber-800 leading-relaxed">
-                    Bạn cần ký quỹ số tiền còn thiếu là{" "}
-                    <strong className="text-amber-950 font-bold">
-                      {shortfallAmount.toLocaleString()} VNĐ
-                    </strong>{" "}
-                    vào ví trung gian Escrow để hệ thống tự động khởi tạo Workspace và phòng làm việc.
-                  </p>
-                </div>
-              </div>
-
-              <Button
-                asChild
-                className="shrink-0 rounded-2xl bg-amber-600 text-white hover:bg-amber-700 shadow-md shadow-amber-600/20"
+        <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <Badge
+                variant="outline"
+                className={cn(
+                  "rounded-full border px-3 py-1 text-[11px] font-bold uppercase tracking-wider",
+                  statusMeta.badgeClass,
+                )}
               >
-                <Link href="/client/dashboard/wallet">
-                  <WalletCards className="mr-2 h-4 w-4" /> Nạp tiền qua VNPay
-                </Link>
-              </Button>
-            </div>
-          </div>
-        ) : null}
-
-        {/* Header Hero Banner */}
-        <div className="rounded-3xl border border-slate-200/80 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 p-6 sm:p-8 text-white shadow-xl">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-bold uppercase tracking-wider text-indigo-300 backdrop-blur-md">
-                <FileSignature className="h-3.5 w-3.5" />
-                Hợp Đồng Điện Tử Dự Án
-              </div>
-              <h1 className="mt-3 text-2xl sm:text-3xl font-extrabold tracking-tight">
-                {contract.projectName || jobPostQuery.data?.result?.title || "Hợp Đồng Dịch Vụ Chuyên Gia"}
-              </h1>
-              <p className="mt-2 text-sm text-slate-300 max-w-2xl">
-                Đối tác: <strong className="text-white">{partnerName}</strong> ({role === "client" ? "Expert" : "Client"})
+                {statusMeta.label}
+              </Badge>
+              <h2 className="mt-4 text-2xl font-extrabold text-slate-950">
+                {projectSummary.title}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
+                {projectSummary.description}
               </p>
             </div>
 
-            <div className="flex items-center gap-2 shrink-0">
-              <Badge
-                className={`rounded-full px-4 py-1.5 text-xs font-extrabold shadow-sm ${
-                  isFullySigned
-                    ? "bg-emerald-400 text-emerald-950"
-                    : roleSigned
-                      ? "bg-teal-400 text-teal-950"
-                      : "bg-amber-400 text-amber-950"
-                }`}
-              >
-                {isFullySigned
-                  ? "HOÀN TẤT KÝ (READY FOR ESCROW)"
-                  : roleSigned
-                    ? "BẠN ĐÃ KÝ - CHỜ ĐỐI TÁC"
-                    : "CHỜ BẠN KÝ"}
-              </Badge>
+            <div className="grid gap-3 sm:grid-cols-3 lg:min-w-[520px]">
+              <ContractMetric
+                icon={LockKeyhole}
+                label="Contract amount"
+                value={projectSummary.budget}
+              />
+              <ContractMetric
+                icon={Clock4}
+                label={projectSummary.timelineLabel}
+                value={projectSummary.timeline}
+              />
+              <ContractMetric
+                icon={ShieldCheck}
+                label="Escrow"
+                value={contract.workspaceId ? "Workspace ready" : "Pending"}
+              />
             </div>
           </div>
+        </section>
 
-          {/* Stepper tiến độ 4 bước */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 border-t border-white/10 pt-6">
-            {CONTRACT_FLOW_STEPS.map((step, idx) => {
-              const isPassed =
-                idx === 0 ||
-                (idx === 1 && isFullySigned) ||
-                (idx === 2 && Boolean(contract.workspaceId)) ||
-                (idx === 3 && Boolean(contract.workspaceId));
-
-              return (
-                <div key={idx} className="flex items-center gap-2">
-                  <span
-                    className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-extrabold ${
-                      isPassed
-                        ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/50"
-                        : "bg-white/10 text-white/50"
-                    }`}
-                  >
-                    {idx + 1}
-                  </span>
-                  <span
-                    className={`text-xs font-bold truncate ${
-                      isPassed ? "text-emerald-300" : "text-white/40"
-                    }`}
-                  >
-                    {step}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Main Content Layout */}
         <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
-          {/* Cột trái: Điều khoản & Tài chính */}
-          <div className="space-y-6">
-            <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-              <CardHeader className="border-b border-slate-100 px-6 py-5">
-                <CardTitle className="text-lg font-extrabold text-slate-950 flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-indigo-600" />
-                  Chi Tiết Ngân Sách & Bảo Chứng Escrow
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-6">
-                <div className="grid gap-4 sm:grid-cols-3 rounded-2xl bg-slate-50 p-5 border border-slate-100">
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Tổng Ngân Sách Ký Quỹ
-                    </span>
-                    <p className="text-xl font-extrabold text-slate-900 mt-1">
-                      {budget > 0 ? `${budget.toLocaleString()} VNĐ` : "Theo thoả thuận"}
-                    </p>
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">
-                      Chuyên Gia Nhận (90%)
-                    </span>
-                    <p className="text-xl font-extrabold text-emerald-600 mt-1">
-                      {budget > 0 ? `${expertPayout.toLocaleString()} VNĐ` : "Theo thoả thuận"}
-                    </p>
-                    <span className="text-[11px] text-slate-400">
-                      Giải ngân sau khi nghiệm thu
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Phí Nền Tảng (10%)
-                    </span>
-                    <p className="text-base font-extrabold text-slate-500 mt-1">
-                      {budget > 0 ? `${platformFee.toLocaleString()} VNĐ` : "10%"}
-                    </p>
-                    <span className="text-[11px] text-slate-400">
-                      Bảo đảm giao dịch trung gian
-                    </span>
-                  </div>
-                </div>
+          <section className="space-y-6 rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+            <div className="rounded-2xl border border-indigo-100 bg-indigo-50/70 p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-indigo-500">
+                Fixed agreement
+              </p>
+              <h2 className="mt-2 text-base font-extrabold text-slate-950">
+                Platform project terms
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-slate-600">
+                These fixed terms apply to this contract before escrow funding,
+                workspace creation, delivery review, and final project
+                completion.
+              </p>
+            </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <Clock4 className="h-4 w-4 text-indigo-600" />
-                      Thời Gian Thực Hiện
-                    </div>
-                    <p className="mt-2 text-base font-extrabold text-slate-900">
-                      {contract.estimatedDays
-                        ? `${contract.estimatedDays} ngày làm việc`
-                        : "Theo tiến độ đề xuất"}
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-slate-100 bg-white p-4">
-                    <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-slate-400">
-                      <LockKeyhole className="h-4 w-4 text-indigo-600" />
-                      Cơ Chế Bảo Vệ
-                    </div>
-                    <p className="mt-2 text-sm font-bold text-slate-800">
-                      Ký quỹ ví chung Escrow 100%
-                    </p>
-                  </div>
-                </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {FIXED_CONTRACT_TERMS.map((term, index) => (
+                <FixedContractTermCard
+                  key={term.title}
+                  index={index + 1}
+                  title={term.title}
+                  description={term.description}
+                />
+              ))}
+            </div>
 
-                {/* Điều khoản */}
-                <div className="space-y-3">
-                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-900">
-                    Quy Trình Hoạt Động & Bảo Đảm Pháp Lý
-                  </h3>
-                  <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/50 p-5 text-sm leading-relaxed text-slate-600">
-                    <p>
-                      <strong>1. Ký hợp đồng 2 bên:</strong> Cả Bên Thuê và Chuyên gia đều phải bấm nút Ký hợp đồng để xác nhận đồng thuận các điều khoản chi phí và thời hạn.
-                    </p>
-                    <p>
-                      <strong>2. Khởi tạo Workspace:</strong> Sau khi ký đủ, Bên Thuê xác nhận khởi tạo phòng làm việc. Tiền cọc sẽ được chuyển vào ví trung gian Escrow để kích hoạt Workspace.
-                    </p>
-                    <p>
-                      <strong>3. Bàn giao & Nghiệm thu:</strong> Chuyên gia bàn giao kết quả qua Submission Package. Khi Bên Thuê bấm Nghiệm thu & Hoàn tất, 90% ngân sách sẽ tự động chuyển vào ví Chuyên gia.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+            {shortfallAmount ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-5 text-amber-700">
+                <p className="text-sm font-extrabold">
+                  Wallet needs more balance
+                </p>
+                <p className="mt-1 text-sm font-semibold">
+                  Please top up {formatMoney(Number(shortfallAmount))} before
+                  finalizing this contract again.
+                </p>
+                <Button
+                  asChild
+                  variant="outline"
+                  className="mt-4 h-10 rounded-xl border-amber-200 bg-white px-4 text-sm font-bold text-amber-700"
+                >
+                  <Link href="/client/dashboard/wallet">
+                    <WalletCards className="mr-2 h-4 w-4" />
+                    Go to wallet
+                  </Link>
+                </Button>
+              </div>
+            ) : null}
+          </section>
 
-          {/* Cột phải: Chữ ký & Nút Hành Động Tạo Project */}
-          <div className="space-y-6">
-            <Card className="rounded-3xl border-slate-200/80 bg-white shadow-sm">
-              <CardHeader className="border-b border-slate-100 px-6 py-5">
-                <CardTitle className="text-base font-extrabold text-slate-950 flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-indigo-600" />
-                  Tiến Độ Ký Của 2 Bên
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 space-y-5">
-                {/* Client Signature */}
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                      isClientSigned
-                        ? "bg-emerald-100 text-emerald-600"
-                        : "bg-slate-200 text-slate-400"
-                    }`}
-                  >
-                    {isClientSigned ? (
-                      <CheckCircle2 className="h-6 w-6" />
-                    ) : (
-                      <Clock4 className="h-5 w-5" />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Bên Thuê (Client)
-                    </p>
-                    <p className="text-sm font-extrabold text-slate-900 truncate">
-                      {contract.clientCode || "Client"}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                      {isClientSigned ? "✅ Đã ký hợp đồng" : "⏳ Chưa ký"}
-                    </p>
-                  </div>
-                </div>
+          <aside className="space-y-6">
+            <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+              <h2 className="text-base font-extrabold text-slate-950">
+                Signing status
+              </h2>
 
-                {/* Expert Signature */}
-                <div className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 p-4">
-                  <span
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${
-                      isExpertSigned
-                        ? "bg-emerald-100 text-emerald-600"
-                        : "bg-slate-200 text-slate-400"
-                    }`}
-                  >
-                    {isExpertSigned ? (
-                      <CheckCircle2 className="h-6 w-6" />
-                    ) : (
-                      <Clock4 className="h-5 w-5" />
-                    )}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Chuyên Gia (Expert)
-                    </p>
-                    <p className="text-sm font-extrabold text-slate-900 truncate">
-                      {contract.expertCode || "Expert"}
-                    </p>
-                    <p className="text-xs font-semibold text-slate-500 mt-0.5">
-                      {isExpertSigned ? "✅ Đã ký hợp đồng" : "⏳ Chưa ký"}
-                    </p>
-                  </div>
-                </div>
+              <div className="mt-5 space-y-3">
+                <PartySignatureRow
+                  label="Client"
+                  signed={contract.clientSigned}
+                />
+                <PartySignatureRow
+                  label="Expert"
+                  signed={contract.expertSigned}
+                />
+              </div>
 
-                {/* NÚT 1: KÝ HỢP ĐỒNG (Nếu vai trò hiện tại chưa ký) */}
+              <div className="mt-5 rounded-2xl border border-slate-200/80 bg-slate-50/80 p-4">
+                <p className="text-sm font-extrabold text-slate-950">
+                  {statusMeta.title}
+                </p>
+                <p className="mt-1 text-sm leading-6 text-slate-500">
+                  {statusMeta.description}
+                </p>
+              </div>
+
+              <div className="mt-5 space-y-3">
                 {canSign && (
                   <Button
                     type="button"
-                    onClick={handleSignContract}
                     disabled={signContract.isPending}
-                    className="h-12 w-full rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-base font-bold text-white shadow-lg shadow-indigo-600/25 hover:from-indigo-700 hover:to-violet-700"
+                    onClick={handleSignContract}
+                    className="h-11 w-full rounded-xl bg-gradient-to-r from-indigo-500 to-sky-500 text-sm font-bold text-white hover:from-indigo-600 hover:to-sky-600 disabled:opacity-60 shadow-md shadow-indigo-500/20"
                   >
                     {signContract.isPending ? (
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Signing...
+                      </>
                     ) : (
-                      <FileSignature className="mr-2 h-5 w-5" />
+                      <>
+                        <FileSignature className="mr-2 h-4 w-4" />
+                        Sign contract
+                      </>
                     )}
-                    {signContract.isPending
-                      ? "Đang xác thực chữ ký..."
-                      : "✍️ Ký Hợp Đồng Ngay"}
                   </Button>
                 )}
 
-                {/* NÚT 2: TẠO PROJECT / KHỞI TẠO WORKSPACE (Khi 2 bên đã ký xong!) */}
+                {!canSign && roleSigningState.hasSigned && (
+                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">
+                    You have signed this contract.
+                  </div>
+                )}
+
                 {canFinalize && (
-                  <div className="space-y-2">
-                    <Button
-                      type="button"
-                      onClick={handleFinalizeWorkspace}
-                      disabled={hireExpert.isPending}
-                      className="h-12 w-full rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-base font-bold text-white shadow-lg shadow-emerald-600/25 hover:from-emerald-700 hover:to-teal-700"
-                    >
-                      {hireExpert.isPending ? (
-                        <>
-                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                          Đang tạo Workspace & Dự án...
-                        </>
-                      ) : (
-                        <>
-                          <LockKeyhole className="mr-2 h-5 w-5" />
-                          🚀 Khởi Tạo Dự Án & Ký Quỹ Escrow
-                        </>
-                      )}
-                    </Button>
-                    <p className="text-center text-[11px] text-slate-500 font-medium">
-                      * Nhấn nút để hoàn tất ký quỹ Escrow và tự động tạo phòng làm việc (Workspace & Dự án)
-                    </p>
-                  </div>
+                  <Button
+                    type="button"
+                    disabled={hireExpert.isPending}
+                    onClick={handleOpenFinalizeConfirm}
+                    className="h-11 w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 text-sm font-bold text-white hover:from-indigo-700 hover:to-violet-700 disabled:opacity-60 shadow-md shadow-indigo-600/20"
+                  >
+                    {hireExpert.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Initializing...
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="mr-2 h-4 w-4" />
+                        Initialize workspace
+                      </>
+                    )}
+                  </Button>
                 )}
 
-                {/* Thông báo cho Expert khi 2 bên đã ký, chờ Client ký quỹ tạo Workspace */}
-                {isFullySigned && !contract.workspaceId && isExpertRole && (
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center">
-                    <CheckCircle2 className="mx-auto h-7 w-7 text-emerald-600 mb-2" />
-                    <p className="text-sm font-extrabold text-emerald-900">
-                      Hợp đồng đã hoàn tất ký bởi 2 bên!
-                    </p>
-                    <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-                      Bên Thuê (Client) đang tiến hành ký quỹ Escrow để kích hoạt phòng làm việc Workspace & Dự án. Bạn sẽ có thể vào phòng làm việc ngay khi Client hoàn tất bước này.
-                    </p>
-                  </div>
-                )}
-
-                {/* Thông báo nếu đã ký nhưng đang chờ đối tác */}
-                {roleSigned && !isFullySigned && (
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-center">
-                    <p className="text-xs font-bold text-sky-800">
-                      Bạn đã ký hợp đồng thành công!
-                    </p>
-                    <p className="mt-1 text-xs text-sky-600">
-                      Vui lòng đợi đối tác hoàn tất chữ ký để mở bước tạo phòng làm việc.
-                    </p>
-                  </div>
-                )}
-
-                {/* NÚT 3: VÀO WORKSPACE (Khi Workspace đã tạo thành công) */}
                 {contract.workspaceId && (
                   <Button
                     asChild
-                    className="h-12 w-full rounded-2xl bg-indigo-600 text-sm font-bold text-white hover:bg-indigo-700 shadow-md shadow-indigo-600/20"
+                    className="h-11 w-full rounded-xl bg-slate-900 text-sm font-bold text-white hover:bg-slate-800"
                   >
-                    <Link href={`/workspace/${contract.workspaceId}`}>
-                      <ExternalLink className="mr-2 h-4 w-4" /> Vào Phòng Làm Việc (Workspace)
+                    <Link
+                      href={getWorkspaceHref(
+                        contract.workspaceId,
+                        currentRole,
+                        effectiveRole,
+                      )}
+                    >
+                      Open workspace
+                      <ArrowRight className="ml-2 h-4 w-4" />
                     </Link>
                   </Button>
                 )}
-              </CardContent>
-            </Card>
-
-            <div className="rounded-3xl border border-indigo-100 bg-gradient-to-b from-indigo-50/80 to-white p-5 text-indigo-950 space-y-2">
-              <div className="flex items-center gap-2 font-extrabold text-sm text-indigo-900">
-                <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                Bảo Vệ Thanh Toán An Toàn
               </div>
-              <p className="text-xs leading-relaxed text-slate-600">
-                Sau khi ký đủ 2 bên và ký quỹ, phòng làm việc Workspace sẽ tự động được khởi tạo kèm hợp đồng điện tử bảo chứng.
-              </p>
-            </div>
+            </section>
+
+            <section className="rounded-3xl border border-slate-200/70 bg-white p-6 shadow-sm shadow-slate-200/40">
+              <h2 className="text-base font-extrabold text-slate-950">
+                Flow
+              </h2>
+              <div className="mt-5 space-y-4">
+                {CONTRACT_FLOW_STEPS.map((step, index) => (
+                  <div key={step} className="flex gap-3">
+                    <span
+                      className={cn(
+                        "flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold",
+                        getStepState(contract, index)
+                          ? "bg-indigo-600 text-white"
+                          : "bg-slate-100 text-slate-400",
+                      )}
+                    >
+                      {index + 1}
+                    </span>
+                    <div>
+                      <p className="text-sm font-bold text-slate-900">
+                        {step}
+                      </p>
+                      <p className="text-xs leading-5 text-slate-500">
+                        {getStepDescription(index)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </aside>
+        </div>
+      </div>
+
+      <AlertDialog
+        open={paymentConfirmOpen}
+        onOpenChange={(open) => {
+          if (!hireExpert.isPending) {
+            setPaymentConfirmOpen(open);
+          }
+        }}
+      >
+        <AlertDialogContent className="max-w-[440px] rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-extrabold text-slate-950">
+              Confirm workspace payment
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm leading-6 text-slate-500">
+              Confirm this wallet payment before initializing the workspace for
+              this contract.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <div className="rounded-2xl border border-slate-100 bg-slate-50/80 p-4">
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400">
+              Payment amount
+            </p>
+            <p className="mt-2 text-2xl font-extrabold text-slate-950">
+              {workspacePaymentAmount !== null
+                ? formatMoney(workspacePaymentAmount)
+                : "Not available"}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">
+              This amount comes from the contract proposed budget and will be
+              used for escrow funding.
+            </p>
           </div>
+
+          <AlertDialogFooter className="mt-4 gap-2 sm:gap-2">
+            <AlertDialogCancel disabled={hireExpert.isPending}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={hireExpert.isPending || workspacePaymentAmount === null}
+              onClick={(event) => {
+                event.preventDefault();
+                void handleConfirmFinalizeWorkspace();
+              }}
+              className="bg-indigo-600 text-white hover:bg-indigo-700"
+            >
+              {hireExpert.isPending ? "Processing..." : "Accept payment"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </main>
+  );
+}
+
+function ContractMetric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-slate-200/70 bg-slate-50/80 p-4">
+      <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+        <Icon className="h-4 w-4" />
+        {label}
+      </div>
+      <p className="mt-2 truncate text-sm font-extrabold text-slate-950">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function FixedContractTermCard({
+  index,
+  title,
+  description,
+}: {
+  index: number;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-slate-50/70 p-4">
+      <div className="flex items-start gap-3">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-xs font-extrabold text-indigo-600 ring-1 ring-slate-200">
+          {index}
+        </span>
+        <div>
+          <p className="text-sm font-extrabold text-slate-950">{title}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-600">
+            {description}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PartySignatureRow({
+  label,
+  signed,
+}: {
+  label: string;
+  signed: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3">
+      <span className="text-sm font-bold text-slate-700">{label}</span>
+      <Badge
+        variant="outline"
+        className={cn(
+          "rounded-full text-[11px] font-bold",
+          signed
+            ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+            : "border-amber-200 bg-amber-50 text-amber-700",
+        )}
+      >
+        {signed ? (
+          <CheckCircle2 className="mr-1 h-3.5 w-3.5" />
+        ) : (
+          <Clock4 className="mr-1 h-3.5 w-3.5" />
+        )}
+        {signed ? "Signed" : "Pending"}
+      </Badge>
+    </div>
+  );
+}
+
+function ContractLoadingState() {
+  return (
+    <main className="min-h-screen bg-[#f6f1f1] p-6 sm:p-8 lg:p-10">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <Skeleton className="h-28 rounded-3xl" />
+        <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+          <Skeleton className="h-[560px] rounded-3xl" />
+          <Skeleton className="h-[420px] rounded-3xl" />
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function ContractPageState({
+  title,
+  message,
+  role,
+  onRetry,
+}: {
+  title: string;
+  message: string;
+  role: "client" | "expert";
+  onRetry?: () => void;
+}) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-[#f6f1f1] p-6">
+      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+        <FileSignature className="mx-auto h-10 w-10 text-slate-300" />
+        <h1 className="mt-4 text-xl font-extrabold text-slate-950">
+          {title}
+        </h1>
+        <p className="mt-2 text-sm leading-6 text-slate-500">{message}</p>
+        <div className="mt-6 flex justify-center gap-3">
+          {onRetry && (
+            <Button type="button" onClick={onRetry}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Retry
+            </Button>
+          )}
+          <Button variant="outline" asChild>
+            <Link href={getBackHref(role)}>Back</Link>
+          </Button>
         </div>
       </div>
     </main>
@@ -698,6 +785,93 @@ function readHireContextFromSearch(
   if (!jobPostId || !expertApplyId) return null;
 
   return { jobPostId, expertApplyId };
+}
+
+function saveHireContext(contractId: string, context: ContractHireContext) {
+  saveContractHireContext(contractId, context);
+}
+
+function getRoleSigningState(
+  contract: ContractResponse | undefined,
+  role: UserRole | undefined,
+) {
+  if (!contract) return { hasSigned: false };
+
+  if (role === UserRole.CLIENT) {
+    return { hasSigned: contract.clientSigned };
+  }
+
+  if (role === UserRole.EXPERT) {
+    return { hasSigned: contract.expertSigned };
+  }
+
+  return { hasSigned: false };
+}
+
+function getContractStatusMeta(status?: ContractStatus) {
+  switch (status) {
+    case "CLIENT_SIGNED":
+      return {
+        label: "Client signed",
+        title: "Waiting for expert",
+        description: "The client has signed. The expert still needs to review and sign.",
+        badgeClass: "border-sky-200 bg-sky-50 text-sky-700",
+      };
+    case "EXPERT_SIGNED":
+      return {
+        label: "Expert signed",
+        title: "Waiting for client",
+        description: "The expert has signed. The client still needs to review and sign.",
+        badgeClass: "border-violet-200 bg-violet-50 text-violet-700",
+      };
+    case "FULLY_SIGNED":
+      return {
+        label: "Fully signed",
+        title: "Ready for escrow",
+        description: "Both sides signed. The client can finalize escrow and create the workspace.",
+        badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+      };
+    case "PENDING":
+    default:
+      return {
+        label: "Pending signatures",
+        title: "Signatures required",
+        description: "Both client and expert must sign before workspace creation.",
+        badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
+      };
+  }
+}
+
+function getStepState(contract: ContractResponse, stepIndex: number) {
+  if (stepIndex === 0) return true;
+  if (stepIndex === 1) return contract.status === "FULLY_SIGNED";
+  if (stepIndex === 2) return Boolean(contract.workspaceId);
+  if (stepIndex === 3) return Boolean(contract.workspaceId);
+
+  return false;
+}
+
+function getStepDescription(index: number) {
+  switch (index) {
+    case 0:
+      return "Created after the client chooses an expert.";
+    case 1:
+      return "Client and expert confirm the same terms.";
+    case 2:
+      return "Client wallet funds are moved into project escrow.";
+    case 3:
+      return "The project workspace opens for collaboration.";
+    default:
+      return "";
+  }
+}
+
+function getSignSuccessMessage(contract: ContractResponse) {
+  if (contract.status === "FULLY_SIGNED") {
+    return "Contract fully signed. The client can finalize the workspace.";
+  }
+
+  return "Contract signed successfully.";
 }
 
 function getPartnerCode(
@@ -720,7 +894,7 @@ function getPartnerDisplayName(
   if (fullName?.trim()) return fullName.trim();
   if (partnerCode?.trim()) return partnerCode.trim();
 
-  return role === "client" ? "Chuyên gia" : "Bên thuê (Client)";
+  return role === "client" ? "Selected expert" : "Client";
 }
 
 function getBackHref(role: "client" | "expert") {
@@ -729,8 +903,55 @@ function getBackHref(role: "client" | "expert") {
     : "/expert/dashboard/contracts";
 }
 
+function getWorkspaceHref(
+  workspaceId: string,
+  authenticatedRole: UserRole | undefined,
+  viewRole: "client" | "expert",
+) {
+  const normalizedWorkspaceId = workspaceId.trim();
+  const dashboardRole =
+    authenticatedRole === UserRole.CLIENT ||
+    authenticatedRole === UserRole.EXPERT
+      ? authenticatedRole
+      : viewRole === "client"
+        ? UserRole.CLIENT
+        : UserRole.EXPERT;
+  const dashboardBase =
+    dashboardRole === UserRole.EXPERT
+      ? "/expert/dashboard/projects"
+      : "/client/dashboard/projects";
+
+  return `${dashboardBase}/${encodeURIComponent(normalizedWorkspaceId)}`;
+}
+
+function formatDate(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return value;
+
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+  }).format(date);
+}
+
+function getEstimatedDays(value?: number | null) {
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+    return null;
+  }
+
+  return Math.round(value);
+}
+
+function formatEstimatedDays(days: number) {
+  return `${days} ${days === 1 ? "day" : "days"}`;
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
-  if (!error || typeof error !== "object") return fallback;
+  if (!error || typeof error !== "object") {
+    return fallback;
+  }
 
   const apiError = error as {
     response?: { data?: { message?: string } };
@@ -738,4 +959,8 @@ function getErrorMessage(error: unknown, fallback: string) {
   };
 
   return apiError.response?.data?.message || apiError.message || fallback;
+}
+
+function formatContractAmount(value: number) {
+  return formatMoney(value);
 }

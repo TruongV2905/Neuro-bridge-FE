@@ -60,6 +60,15 @@ export type UserWallet = {
   accountHolderName: string | null;
 };
 
+export type ProjectEscrowPayment = {
+  id?: string;
+  projectId?: string;
+  amount: number | string;
+  heldAmount: number | string;
+  platformFee: number | string;
+  status?: string | null;
+};
+
 export type WalletResponse = UserWallet;
 
 export type PaymentTransaction = {

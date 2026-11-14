@@ -13,6 +13,7 @@ import type {
   PaymentTransaction,
   PaymentTransactionFilterRequest,
   PaymentTransactionPageResponse,
+  ProjectEscrowPayment,
   UpdateMyWalletBankInfoRequest,
   UserWallet,
   WalletResponse,
@@ -20,6 +21,7 @@ import type {
 
 const WALLET_ENDPOINT = "/payment/api/wallet";
 const PAYMENT_TRANSACTION_ENDPOINT = "/payment/payment-transactions";
+const PROJECT_ESCROW_ENDPOINT = "/payment/api/project-escrow";
 
 type PaymentApiError = AxiosError<APIResponse<null>>;
 
@@ -68,6 +70,17 @@ export async function getPaymentTransactionById(id: string) {
   );
 
   return data;
+}
+
+export async function getProjectEscrowPayment(escrowId: string) {
+  const { data } = await api.get<ProjectEscrowPayment | APIResponse<ProjectEscrowPayment>>(
+    `${PROJECT_ESCROW_ENDPOINT}/${encodeURIComponent(escrowId)}`,
+  );
+
+  if ("result" in data && data.result) {
+    return data.result as ProjectEscrowPayment;
+  }
+  return data as ProjectEscrowPayment;
 }
 
 export async function payProposalByWallet(
@@ -120,6 +133,34 @@ export function useGetMyWallet(
   >({
     queryKey: paymentKeys.walletMine,
     queryFn: getMyWallet,
+    retry: 0,
+    ...options,
+  });
+}
+
+export function useProjectEscrowPayment(
+  escrowId?: string | null,
+  options?: Omit<
+    UseQueryOptions<
+      ProjectEscrowPayment,
+      PaymentApiError,
+      ProjectEscrowPayment,
+      QueryKey
+    >,
+    "queryKey" | "queryFn"
+  >,
+) {
+  const normalizedEscrowId = escrowId?.trim() ?? "";
+
+  return useQuery<
+    ProjectEscrowPayment,
+    PaymentApiError,
+    ProjectEscrowPayment,
+    QueryKey
+  >({
+    queryKey: ["payments", "project-escrow", normalizedEscrowId],
+    queryFn: () => getProjectEscrowPayment(normalizedEscrowId),
+    enabled: Boolean(normalizedEscrowId),
     retry: 0,
     ...options,
   });

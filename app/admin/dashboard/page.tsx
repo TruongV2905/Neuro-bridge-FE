@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { AdminOverviewView } from "@/features/admin/overview/AdminOverviewView";
 
 export default function DashboardHomePage() {
-  redirect("/dashboard/users");
+  return <AdminOverviewView />;
 }

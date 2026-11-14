@@ -100,7 +100,7 @@ export function ClientProjectSubmissionPanel({
 
     return (
         <>
-            <aside className="hidden h-full w-[410px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white p-6 shadow-sm xl:flex">
+            <aside className="flex min-h-[520px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
                 <div className="shrink-0 border-b border-slate-100 pb-5">
                     <h2 className="text-lg font-semibold text-slate-900">
                         Project Submission

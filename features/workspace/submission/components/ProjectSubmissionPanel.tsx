@@ -308,7 +308,7 @@ export function ProjectSubmissionPanel({ workspaceId }: ProjectSubmissionPanelPr
 
     return (
         <>
-            <aside className="hidden h-full w-[390px] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/70 bg-white/95 p-6 shadow-md backdrop-blur-sm xl:flex">
+            <aside className="flex min-h-[520px] w-full flex-col overflow-hidden rounded-3xl border border-slate-200/80 bg-white p-6 shadow-sm">
                 <div className="border-b border-slate-100 pb-5">
                     <div>
                         <h2 className="text-lg font-semibold text-slate-900">
